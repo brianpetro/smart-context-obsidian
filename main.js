@@ -12,7 +12,7 @@ export default class SmartContextPlugin extends Plugin {
 
     this.addSettingTab(new SmartContextSettingTab(this.app, this));
 
-    // Command to copy folder contents to clipboard (with folder structure and file contents)
+    // Existing commands
     this.addCommand({
       id: 'copy-folder-contents',
       name: 'Copy Folder Contents to Clipboard',
@@ -23,7 +23,6 @@ export default class SmartContextPlugin extends Plugin {
       },
     });
 
-    // Command to copy the content of only currently visible open files
     this.addCommand({
       id: 'copy-visible-open-files-content',
       name: 'Copy Visible Open Files Content to Clipboard',
@@ -32,12 +31,38 @@ export default class SmartContextPlugin extends Plugin {
       },
     });
 
-    // Command to copy content from all open files to clipboard (visible or not)
     this.addCommand({
       id: 'copy-all-open-files-content',
       name: 'Copy All Open Files Content to Clipboard',
       callback: async () => {
         await this.copy_all_open_files_content();
+      },
+    });
+
+    // New commands that include linked files
+    this.addCommand({
+      id: 'copy-visible-open-files-content-with-linked',
+      name: 'Copy Visible Open Files Content (with Linked Files) to Clipboard',
+      callback: async () => {
+        const visible_files = this.get_visible_open_files();
+        if (visible_files.size === 0) {
+          new Notice('No visible Markdown or Canvas files found.');
+          return;
+        }
+        await this.copy_files_with_linked_files(visible_files, 'Visible Open Files');
+      },
+    });
+
+    this.addCommand({
+      id: 'copy-all-open-files-content-with-linked',
+      name: 'Copy All Open Files Content (with Linked Files) to Clipboard',
+      callback: async () => {
+        const all_files = this.get_all_open_files();
+        if (all_files.size === 0) {
+          new Notice('No open Markdown or Canvas files found.');
+          return;
+        }
+        await this.copy_files_with_linked_files(all_files, 'All Open Files');
       },
     });
 
@@ -126,18 +151,7 @@ export default class SmartContextPlugin extends Plugin {
    * -----------------------
    */
   async copy_visible_open_files_content() {
-    const visible_files = new Set();
-    const all_leaves = this.get_all_leaves(this.app.workspace);
-
-    for (const leaf of all_leaves) {
-      if (this.is_leaf_visible(leaf)) {
-        const file = leaf.view?.file;
-        if (file instanceof TFile && ['md', 'canvas'].includes(file.extension)) {
-          visible_files.add(file);
-        }
-      }
-    }
-
+    const visible_files = this.get_visible_open_files();
     if (visible_files.size === 0) {
       new Notice('No visible Markdown or Canvas files found.');
       return;
@@ -178,15 +192,7 @@ export default class SmartContextPlugin extends Plugin {
    * -----------------------
    */
   async copy_all_open_files_content() {
-    const files_set = new Set();
-    const all_leaves = this.get_all_leaves(this.app.workspace);
-
-    for (const leaf of all_leaves) {
-      const file = leaf.view?.file;
-      if (file instanceof TFile && ['md', 'canvas'].includes(file.extension)) {
-        files_set.add(file);
-      }
-    }
+    const files_set = this.get_all_open_files();
 
     if (files_set.size === 0) {
       new Notice('No open Markdown or Canvas files found.');
@@ -215,6 +221,107 @@ export default class SmartContextPlugin extends Plugin {
       console.error('Failed to copy text: ', err);
       new Notice('Failed to copy all open files content to clipboard.');
     }
+  }
+
+  /**
+   * New method: Copy initial files plus all linked files to clipboard.
+   * @param {Set<TFile>} initial_files
+   * @param {string} label - A label for the notice ("Visible Open Files" or "All Open Files")
+   */
+  async copy_files_with_linked_files(initial_files, label) {
+    // Gather all linked files recursively
+    const all_files = await this.get_all_linked_files_in_set(initial_files);
+
+    if (all_files.size === 0) {
+      new Notice(`No files found to copy.`);
+      return;
+    }
+
+    let content_to_copy = `${label} Contents (including linked files):\n`;
+    let total_excluded_sections = 0;
+
+    for (const file of all_files) {
+      let file_content = await this.app.vault.read(file);
+      const { processed_content, excluded_count } = this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+      total_excluded_sections += excluded_count;
+
+      content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n-----------------------\n\n`;
+    }
+
+    try {
+      await navigator.clipboard.writeText(content_to_copy);
+      let noticeMsg = `${label} content (with linked files) copied to clipboard! (${all_files.size} files)`;
+      if (total_excluded_sections > 0) {
+        noticeMsg += `, ${total_excluded_sections} section(s) excluded`;
+      }
+      new Notice(noticeMsg);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      new Notice(`Failed to copy ${label.toLowerCase()} content with linked files to clipboard.`);
+    }
+  }
+
+  /**
+   * Get all linked files in a set of files.
+   * @param {Set<TFile>} initial_files
+   * @returns {Promise<Set<TFile>>}
+   */
+  async get_all_linked_files_in_set(initial_files) {
+    const visited = new Set();
+    const queue = [...initial_files];
+
+    for (const f of initial_files) {
+      visited.add(f.path);
+    }
+
+    // BFS or DFS to gather all linked files
+    while (queue.length > 0) {
+      const current_file = queue.shift();
+      const linked_files = await this.get_all_linked_files(current_file);
+      for (const lf of linked_files) {
+        if (!visited.has(lf.path)) {
+          visited.add(lf.path);
+          queue.push(lf);
+        }
+      }
+    }
+
+    // Convert visited paths back to files
+    const all_files = new Set();
+    for (const path of visited) {
+      const file = this.app.vault.getAbstractFileByPath(path);
+      if (file instanceof TFile && ['md', 'canvas'].includes(file.extension)) {
+        all_files.add(file);
+      }
+    }
+
+    return all_files;
+  }
+
+  /**
+   * Extract all linked files from a file's content.
+   * Supports wiki-links of the form [[Note Name]] or [[Folder/Note Name]].
+   * @param {TFile} file
+   * @returns {Promise<Set<TFile>>}
+   */
+  async get_all_linked_files(file) {
+    const links = new Set();
+    const content = await this.app.vault.read(file);
+
+    // Regex to match wiki-links: [[some link]]
+    const linkRegex = /\[\[([^\]]+)\]\]/g;
+    let match;
+    while ((match = linkRegex.exec(content)) !== null) {
+      const linkText = match[1].trim();
+
+      // Resolve the link to a file in the vault
+      const linked_file = this.app.metadataCache.getFirstLinkpathDest(linkText, file.path);
+      if (linked_file && linked_file instanceof TFile && ['md', 'canvas'].includes(linked_file.extension)) {
+        links.add(linked_file);
+      }
+    }
+
+    return links;
   }
 
   /**
@@ -392,6 +499,40 @@ export default class SmartContextPlugin extends Plugin {
     }
 
     return leaf.containerEl && leaf.containerEl.offsetParent !== null;
+  }
+
+  /**
+   * Get the set of visible open files.
+   */
+  get_visible_open_files() {
+    const visible_files = new Set();
+    const all_leaves = this.get_all_leaves(this.app.workspace);
+
+    for (const leaf of all_leaves) {
+      if (this.is_leaf_visible(leaf)) {
+        const file = leaf.view?.file;
+        if (file instanceof TFile && ['md', 'canvas'].includes(file.extension)) {
+          visible_files.add(file);
+        }
+      }
+    }
+    return visible_files;
+  }
+
+  /**
+   * Get the set of all open files (visible or not).
+   */
+  get_all_open_files() {
+    const files_set = new Set();
+    const all_leaves = this.get_all_leaves(this.app.workspace);
+
+    for (const leaf of all_leaves) {
+      const file = leaf.view?.file;
+      if (file instanceof TFile && ['md', 'canvas'].includes(file.extension)) {
+        files_set.add(file);
+      }
+    }
+    return files_set;
   }
 }
 
