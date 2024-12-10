@@ -1,0 +1,35 @@
+{
+  "name": "smart-context-obsidian",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Copy folder contents (Markdown & Canvas files) to the clipboard with a Smart Context approach.",
+  "scripts": {
+    "build": "node esbuild.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brianpetro/obsidian-smart-connections.git"
+  },
+  "keywords": [
+    "Obsidian",
+    "Smart",
+    "Context",
+    "Clipboard"
+  ],
+  "author": "WFH Brian (Brian Petro)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/brianpetro/smart-context-obsidian/issues"
+  },
+  "homepage": "https://smartconnections.app",
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  },
+  "ava": {
+    "files": [
+      "smart-chat/*.test.js",
+      "src/*.test.js"
+    ],
+    "require": []
+  }
+}
