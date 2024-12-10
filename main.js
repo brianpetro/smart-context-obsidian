@@ -115,14 +115,24 @@ export default class SmartContextPlugin extends Plugin {
 
     // Generate folder structure
     const folder_structure = this.generate_folder_structure(folder);
-
     let content_to_copy = `${folder_name} folder structure:\n${folder_structure}\nFile contents:\n`;
 
     let total_excluded_sections = 0;
+    let all_excluded_sections = new Map();
+
     for (const file of files) {
       let file_content = await this.app.vault.read(file);
-      const { processed_content, excluded_count } = this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+      const { processed_content, excluded_count, excluded_sections } = 
+        this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+      
       total_excluded_sections += excluded_count;
+      // Merge excluded sections counts
+      excluded_sections.forEach((count, section) => {
+        all_excluded_sections.set(
+          section, 
+          (all_excluded_sections.get(section) || 0) + count
+        );
+      });
 
       const relative_file_path = this.get_relative_path(folder, file);
       content_to_copy += `----------------------\n/${relative_file_path}\n-----------------------\n${processed_content}\n-----------------------\n\n`;
@@ -132,7 +142,7 @@ export default class SmartContextPlugin extends Plugin {
       await navigator.clipboard.writeText(content_to_copy);
       let noticeMsg = `Folder contents and structure copied to clipboard! (${files.length} files)`;
       if (total_excluded_sections > 0) {
-        noticeMsg += `, ${total_excluded_sections} section(s) excluded`;
+        noticeMsg += `, ${total_excluded_sections} section(s) excluded${this.format_excluded_sections(all_excluded_sections)}`;
       }
       new Notice(noticeMsg);
     } catch (err) {
@@ -160,11 +170,20 @@ export default class SmartContextPlugin extends Plugin {
 
     let content_to_copy = `Open files contents:\n`;
     let total_excluded_sections = 0;
+    let all_excluded_sections = new Map();
 
     for (const file of visible_files) {
       let file_content = await this.app.vault.read(file);
-      const { processed_content, excluded_count } = this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+      const { processed_content, excluded_count, excluded_sections } = 
+        this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+      
       total_excluded_sections += excluded_count;
+      excluded_sections.forEach((count, section) => {
+        all_excluded_sections.set(
+          section, 
+          (all_excluded_sections.get(section) || 0) + count
+        );
+      });
 
       content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n-----------------------\n\n`;
     }
@@ -173,7 +192,7 @@ export default class SmartContextPlugin extends Plugin {
       await navigator.clipboard.writeText(content_to_copy);
       let noticeMsg = `Visible open files content copied to clipboard! (${visible_files.size} files)`;
       if (total_excluded_sections > 0) {
-        noticeMsg += `, ${total_excluded_sections} section(s) excluded`;
+        noticeMsg += `, ${total_excluded_sections} section(s) excluded${this.format_excluded_sections(all_excluded_sections)}`;
       }
       new Notice(noticeMsg);
     } catch (err) {
@@ -202,11 +221,21 @@ export default class SmartContextPlugin extends Plugin {
 
     let content_to_copy = `Open files contents:\n`;
     let total_excluded_sections = 0;
+    let all_excluded_sections = new Map();
 
     for (const file of files_set) {
       let file_content = await this.app.vault.read(file);
-      const { processed_content, excluded_count } = this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+      const { processed_content, excluded_count, excluded_sections } = 
+        this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+      
       total_excluded_sections += excluded_count;
+      // Merge excluded sections counts
+      excluded_sections.forEach((count, section) => {
+        all_excluded_sections.set(
+          section, 
+          (all_excluded_sections.get(section) || 0) + count
+        );
+      });
 
       content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n-----------------------\n\n`;
     }
@@ -215,7 +244,7 @@ export default class SmartContextPlugin extends Plugin {
       await navigator.clipboard.writeText(content_to_copy);
       let noticeMsg = `All open files content copied to clipboard! (${files_set.size} files)`;
       if (total_excluded_sections > 0) {
-        noticeMsg += `, ${total_excluded_sections} section(s) excluded`;
+        noticeMsg += `, ${total_excluded_sections} section(s) excluded${this.format_excluded_sections(all_excluded_sections)}`;
       }
       new Notice(noticeMsg);
     } catch (err) {
@@ -240,11 +269,21 @@ export default class SmartContextPlugin extends Plugin {
 
     let content_to_copy = `${label} contents (including linked files):\n`;
     let total_excluded_sections = 0;
+    let all_excluded_sections = new Map();
 
     for (const file of all_files) {
       let file_content = await this.app.vault.read(file);
-      const { processed_content, excluded_count } = this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+      const { processed_content, excluded_count, excluded_sections } = 
+        this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+      
       total_excluded_sections += excluded_count;
+      // Merge excluded sections counts
+      excluded_sections.forEach((count, section) => {
+        all_excluded_sections.set(
+          section, 
+          (all_excluded_sections.get(section) || 0) + count
+        );
+      });
 
       content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n-----------------------\n\n`;
     }
@@ -253,7 +292,7 @@ export default class SmartContextPlugin extends Plugin {
       await navigator.clipboard.writeText(content_to_copy);
       let noticeMsg = `${label} content (with linked files) copied to clipboard! (${all_files.size} files)`;
       if (total_excluded_sections > 0) {
-        noticeMsg += `, ${total_excluded_sections} section(s) excluded`;
+        noticeMsg += `, ${total_excluded_sections} section(s) excluded${this.format_excluded_sections(all_excluded_sections)}`;
       }
       new Notice(noticeMsg);
     } catch (err) {
@@ -330,59 +369,94 @@ export default class SmartContextPlugin extends Plugin {
    * Exclusions are now heading-level agnostic. The user specifies headings without '#'.
    * For example, "Secret". Any heading whose text (after # ) matches "Secret"
    * will start exclusion until the next heading of same or higher level.
+   * Ignores headings in code blocks.
    *
    * @param {string} content
    * @param {string[]} excluded_headings - Array of heading strings (without #'s)
-   * @returns {{processed_content: string, excluded_count: number}}
+   * @returns {{processed_content: string, excluded_count: number, excluded_sections: Map<string, number>}}
    */
   strip_excluded_sections(content, excluded_headings) {
-    if (!excluded_headings || excluded_headings.length === 0) return { processed_content: content, excluded_count: 0 };
+    if (!excluded_headings || excluded_headings.length === 0) {
+      return { 
+        processed_content: content, 
+        excluded_count: 0,
+        excluded_sections: new Map()
+      };
+    }
 
     const lines = content.split('\n');
     let result = [];
     let exclude_mode = false;
     let exclude_level = null;
     let excluded_count = 0;
+    let in_code_block = false;
+    let code_block_marker = '';
+    // Track which sections were excluded and how many times
+    let excluded_sections = new Map();
+    let current_excluded_heading = null;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
 
-      // Check if line is a heading
+      // Check for code block markers
+      const code_block_match = line.trim().match(/^(`{3,}|~{3,})/);
+      if (code_block_match) {
+        if (!in_code_block) {
+          in_code_block = true;
+          code_block_marker = code_block_match[1];
+        } else if (line.trim().startsWith(code_block_marker)) {
+          in_code_block = false;
+          code_block_marker = '';
+        }
+        if (!exclude_mode) {
+          result.push(line);
+        }
+        continue;
+      }
+
+      // If we're in a code block, include the line unless we're in exclude mode
+      if (in_code_block) {
+        if (!exclude_mode) {
+          result.push(line);
+        }
+        continue;
+      }
+
+      // Check if line is a heading (only if not in code block)
       const heading_match = line.match(/^(#+)\s+(.*)$/);
       if (heading_match) {
-        const hashes = heading_match[1]; // string of '#'
-        const heading_text = heading_match[2].trim(); // The actual heading text without '# '
+        const hashes = heading_match[1];
+        const heading_text = heading_match[2].trim();
 
-        // If we encounter a heading line
-        // Check if we should start excluding
-        if (excluded_headings.includes(heading_text)) {
-          // If we were not already excluding, increment excluded_count
-          if (!exclude_mode) {
-            excluded_count++;
-          }
-          // Start exclusion mode
+        // Check if this heading should be excluded
+        const excluded_heading = excluded_headings.find(h => h === heading_text);
+        if (excluded_heading) {
+          excluded_count++;
+          current_excluded_heading = excluded_heading;
+          excluded_sections.set(
+            excluded_heading,
+            (excluded_sections.get(excluded_heading) || 0) + 1
+          );
           exclude_mode = true;
-          exclude_level = hashes.length; // The level of this heading
+          exclude_level = hashes.length;
           continue;
-        } else {
-          // If we are currently excluding, check if this heading signals the end of exclusion
-          if (exclude_mode) {
-            const current_level = hashes.length;
-            // If this heading is at the same or higher level (fewer or equal #),
-            // we stop excluding.
-            if (current_level <= exclude_level) {
-              exclude_mode = false;
-              exclude_level = null;
-              // This heading is outside excluded section, include it
-              result.push(line);
-            } else {
-              // Still deeper, continue excluding
-              continue;
-            }
-          } else {
-            // Not excluding currently, just add line
+        }
+
+        // If we are currently excluding, check if this heading signals the end of exclusion
+        if (exclude_mode) {
+          const current_level = hashes.length;
+          // If this heading is at the same or higher level (fewer or equal #),
+          // we stop excluding.
+          if (current_level <= exclude_level) {
+            exclude_mode = false;
+            exclude_level = null;
+            current_excluded_heading = null;
+            // This heading is outside excluded section, include it
             result.push(line);
           }
+        } else {
+          // Not excluding currently, just add line
+          result.push(line);
         }
       } else {
         // Not a heading line
@@ -392,7 +466,28 @@ export default class SmartContextPlugin extends Plugin {
       }
     }
 
-    return { processed_content: result.join('\n'), excluded_count };
+    return { 
+      processed_content: result.join('\n'), 
+      excluded_count,
+      excluded_sections
+    };
+  }
+
+  /**
+   * Format excluded sections for notification
+   * @param {Map<string, number>} excluded_sections
+   * @returns {string}
+   */
+  format_excluded_sections(excluded_sections) {
+    if (excluded_sections.size === 0) return '';
+    
+    const sections = Array.from(excluded_sections.entries())
+      .map(([section, count]) => 
+        count === 1 ? `  • "${section}"` : `  • "${section}" (${count}×)`
+      )
+      .join('\n');
+    
+    return `:\n${sections}`;
   }
 
   /**
