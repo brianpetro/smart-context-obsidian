@@ -2,6 +2,8 @@ import { Plugin, Notice, SuggestModal, TFile, TFolder } from 'obsidian';
 
 export default class SmartContextPlugin extends Plugin {
   async onload() {
+    console.log('Loading Smart Context Plugin');
+
     // Command to copy folder contents to clipboard
     this.addCommand({
       id: 'copy-folder-contents',
@@ -13,12 +15,12 @@ export default class SmartContextPlugin extends Plugin {
       },
     });
 
-    // Command to copy the content of only currently visible tabs
+    // Command to copy the content of only currently visible open files
     this.addCommand({
-      id: 'copy-visible-open-file-content',
-      name: 'Copy Visible Open File Content to Clipboard',
+      id: 'copy-visible-open-files-content',
+      name: 'Copy Visible Open Files Content to Clipboard',
       callback: async () => {
-        await this.copy_visible_open_file_content();
+        await this.copy_visible_open_files_content();
       },
     });
 
@@ -81,27 +83,16 @@ export default class SmartContextPlugin extends Plugin {
   /**
    * Copy the content of only currently visible open files.
    * Visible means:
-   * - If a pane has multiple tabs, only the active tab in that pane is visible.
-   * - If multiple panes are side by side, all of those panes are visible.
+   * - If a pane has multiple tabs (WorkspaceTabs), only the activeTab is visible.
+   * - For other panes (WorkspaceSplit) or standalone leaves, check DOM visibility via offsetParent.
+   *   If offsetParent is null, the element (leaf) is not visible.
    */
-  async copy_visible_open_file_content() {
-    const leaves = this.app.workspace.getLeaves();
+  async copy_visible_open_files_content() {
     const visible_files = new Set();
+    const all_leaves = this.get_all_leaves(this.app.workspace);
 
-    for (const leaf of leaves) {
-      // Check if this leaf is visible:
-      // If it's in a tab group (WorkspaceTabs), only copy if this leaf is the activeTab.
-      // If it's directly in a split or otherwise, we consider it visible by default.
-      const parent = leaf.parent;
-      let is_visible = true;
-      if (parent && 'activeTab' in parent) {
-        // parent is a WorkspaceTabs-like container
-        if (parent.activeTab !== leaf) {
-          is_visible = false;
-        }
-      }
-
-      if (is_visible) {
+    for (const leaf of all_leaves) {
+      if (this.is_leaf_visible(leaf)) {
         const file = leaf.view?.file;
         if (file instanceof TFile && ['md', 'canvas'].includes(file.extension)) {
           visible_files.add(file);
@@ -125,10 +116,10 @@ export default class SmartContextPlugin extends Plugin {
 
     try {
       await navigator.clipboard.writeText(contents);
-      new Notice('Visible open file content copied to clipboard.');
+      new Notice('Visible open files content copied to clipboard.');
     } catch (err) {
       console.error('Failed to copy text: ', err);
-      new Notice('Failed to copy visible open file content to clipboard.');
+      new Notice('Failed to copy visible open files content to clipboard.');
     }
   }
 
@@ -136,10 +127,10 @@ export default class SmartContextPlugin extends Plugin {
    * Copy content from all open files to clipboard (visible or not).
    */
   async copy_all_open_files_content() {
-    const leaves = this.app.workspace.getLeaves();
     const files_set = new Set();
+    const all_leaves = this.get_all_leaves(this.app.workspace);
 
-    for (const leaf of leaves) {
+    for (const leaf of all_leaves) {
       const file = leaf.view?.file;
       if (file instanceof TFile && ['md', 'canvas'].includes(file.extension)) {
         files_set.add(file);
@@ -191,6 +182,55 @@ export default class SmartContextPlugin extends Plugin {
     process_folder(folder);
     return files;
   }
+
+  /**
+   * Recursively retrieve all leaves in the workspace.
+   * @param {Workspace} workspace - The Obsidian workspace
+   * @returns {Array<Leaf>} Array of leaves
+   */
+  get_all_leaves(workspace) {
+    const leaves = [];
+
+    function recurse(container) {
+      if (container.children) {
+        for (const child of container.children) {
+          recurse(child);
+        }
+      }
+      if (container.type === 'leaf') {
+        leaves.push(container);
+      }
+    }
+
+    recurse(workspace.rootSplit);
+    return leaves;
+  }
+
+  /**
+   * Determine if a leaf is visible.
+   * A leaf is considered visible if:
+   * - It is inside a WorkspaceTabs container and is the activeTab.
+   * - OR, if it's not inside WorkspaceTabs, we check if leaf.containerEl is actually visible in the DOM.
+   *   We do this by checking if leaf.containerEl.offsetParent is not null.
+   *   If offsetParent is null, the element is not currently displayed.
+   *
+   * Note: The offsetParent check ensures that hidden or non-active tabs are excluded.
+   */
+  is_leaf_visible(leaf) {
+    const parent = leaf.parent;
+    if (!parent) {
+      // If no parent, just check offsetParent to ensure it's displayed
+      return leaf.containerEl && leaf.containerEl.offsetParent !== null;
+    }
+
+    // If parent is WorkspaceTabs (detected by 'activeTab' property), only activeTab is visible
+    if ('activeTab' in parent) {
+      return parent.activeTab === leaf && leaf.containerEl && leaf.containerEl.offsetParent !== null;
+    }
+
+    // For WorkspaceSplit or other containers, we rely on the element being physically visible
+    return leaf.containerEl && leaf.containerEl.offsetParent !== null;
+  }
 }
 
 class FolderSelectModal extends SuggestModal {
@@ -205,6 +245,11 @@ class FolderSelectModal extends SuggestModal {
     this.get_all_folders(this.app.vault.getRoot(), this.allFolders);
   }
 
+  /**
+   * Recursively collect all folders starting from root.
+   * @param {TFolder} rootFolder 
+   * @param {Array<TFolder>} folders 
+   */
   get_all_folders(rootFolder, folders) {
     folders.push(rootFolder);
     for (const child of rootFolder.children) {
@@ -214,6 +259,11 @@ class FolderSelectModal extends SuggestModal {
     }
   }
 
+  /**
+   * Get suggestions based on user query.
+   * @param {string} query 
+   * @returns {Array<TFolder>}
+   */
   get_suggestions(query) {
     const lowerCaseQuery = query.toLowerCase();
     return this.allFolders.filter((folder) =>
@@ -221,10 +271,20 @@ class FolderSelectModal extends SuggestModal {
     );
   }
 
+  /**
+   * Render each suggestion in the modal.
+   * @param {TFolder} folder 
+   * @param {HTMLElement} el 
+   */
   render_suggestion(folder, el) {
     el.createEl('div', { text: folder.path });
   }
 
+  /**
+   * Handle the selection of a suggestion.
+   * @param {TFolder} folder 
+   * @param {MouseEvent | KeyboardEvent} evt 
+   */
   on_choose_suggestion(folder, evt) {
     this.onChoose(folder);
   }
