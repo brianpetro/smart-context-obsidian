@@ -6,16 +6,14 @@ const DEFAULT_SETTINGS = {
 
 export default class SmartContextPlugin extends Plugin {
   async onload() {
-    console.log('Loading Smart Context Plugin');
-
     await this.loadSettings();
 
     this.addSettingTab(new SmartContextSettingTab(this.app, this));
 
-    // Existing commands
+    // Command to copy folder contents to clipboard (with folder structure and file contents)
     this.addCommand({
       id: 'copy-folder-contents',
-      name: 'Copy Folder Contents to Clipboard',
+      name: 'Copy folder contents to clipboard',
       callback: () => {
         new FolderSelectModal(this.app, async (folder) => {
           await this.copy_folder_contents(folder);
@@ -23,46 +21,49 @@ export default class SmartContextPlugin extends Plugin {
       },
     });
 
+    // Command to copy the content of only currently visible open files
     this.addCommand({
       id: 'copy-visible-open-files-content',
-      name: 'Copy Visible Open Files Content to Clipboard',
+      name: 'Copy visible open files content to clipboard',
       callback: async () => {
         await this.copy_visible_open_files_content();
       },
     });
 
+    // Command to copy content from all open files to clipboard (visible or not)
     this.addCommand({
       id: 'copy-all-open-files-content',
-      name: 'Copy All Open Files Content to Clipboard',
+      name: 'Copy all open files content to clipboard',
       callback: async () => {
         await this.copy_all_open_files_content();
       },
     });
 
-    // New commands that include linked files
+    // Command to copy content of visible open files (with linked files)
     this.addCommand({
       id: 'copy-visible-open-files-content-with-linked',
-      name: 'Copy Visible Open Files Content (with Linked Files) to Clipboard',
+      name: 'Copy visible open files content (with linked files) to clipboard',
       callback: async () => {
         const visible_files = this.get_visible_open_files();
         if (visible_files.size === 0) {
           new Notice('No visible Markdown or Canvas files found.');
           return;
         }
-        await this.copy_files_with_linked_files(visible_files, 'Visible Open Files');
+        await this.copy_files_with_linked_files(visible_files, 'Visible open files');
       },
     });
 
+    // Command to copy content of all open files (with linked files)
     this.addCommand({
       id: 'copy-all-open-files-content-with-linked',
-      name: 'Copy All Open Files Content (with Linked Files) to Clipboard',
+      name: 'Copy all open files content (with linked files) to clipboard',
       callback: async () => {
         const all_files = this.get_all_open_files();
         if (all_files.size === 0) {
           new Notice('No open Markdown or Canvas files found.');
           return;
         }
-        await this.copy_files_with_linked_files(all_files, 'All Open Files');
+        await this.copy_files_with_linked_files(all_files, 'All open files');
       },
     });
 
@@ -115,7 +116,7 @@ export default class SmartContextPlugin extends Plugin {
     // Generate folder structure
     const folder_structure = this.generate_folder_structure(folder);
 
-    let content_to_copy = `${folder_name} Folder Structure:\n${folder_structure}\nFile Contents:\n`;
+    let content_to_copy = `${folder_name} folder structure:\n${folder_structure}\nFile contents:\n`;
 
     let total_excluded_sections = 0;
     for (const file of files) {
@@ -157,7 +158,7 @@ export default class SmartContextPlugin extends Plugin {
       return;
     }
 
-    let content_to_copy = `Open Files Contents:\n`;
+    let content_to_copy = `Open files contents:\n`;
     let total_excluded_sections = 0;
 
     for (const file of visible_files) {
@@ -199,7 +200,7 @@ export default class SmartContextPlugin extends Plugin {
       return;
     }
 
-    let content_to_copy = `Open Files Contents:\n`;
+    let content_to_copy = `Open files contents:\n`;
     let total_excluded_sections = 0;
 
     for (const file of files_set) {
@@ -224,7 +225,7 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * New method: Copy initial files plus all linked files to clipboard.
+   * Copy initial files plus all linked files to clipboard.
    * @param {Set<TFile>} initial_files
    * @param {string} label - A label for the notice ("Visible Open Files" or "All Open Files")
    */
@@ -237,7 +238,7 @@ export default class SmartContextPlugin extends Plugin {
       return;
     }
 
-    let content_to_copy = `${label} Contents (including linked files):\n`;
+    let content_to_copy = `${label} contents (including linked files):\n`;
     let total_excluded_sections = 0;
 
     for (const file of all_files) {
@@ -604,14 +605,10 @@ class SmartContextSettingTab extends PluginSettingTab {
     const { containerEl } = this;
 
     containerEl.empty();
-    containerEl.createEl('h2', { text: 'Smart Context Settings' });
 
-    // Excluded headings setting
     new Setting(containerEl)
-      .setName('Excluded Headings')
-      .setDesc('Headings to exclude when copying sections. Do NOT include "#" characters. ' +
-               'For example, enter "Secret" to exclude any heading "## Secret", "### Secret", etc. ' +
-               'Separate multiple headings by commas or new lines.')
+      .setName('Excluded headings')
+      .setDesc('Headings to exclude when copying sections. Do not include "#" characters. Separate multiple headings by commas or new lines.')
       .addTextArea(text => {
         text
           .setPlaceholder('Secret\nDraft\nOld Section')
