@@ -1,8 +1,16 @@
-import { Plugin, Notice, SuggestModal, TFile, TFolder } from 'obsidian';
+import { Plugin, Notice, SuggestModal, TFile, TFolder, PluginSettingTab, Setting } from 'obsidian';
+
+const DEFAULT_SETTINGS = {
+  excluded_headings: [],
+};
 
 export default class SmartContextPlugin extends Plugin {
   async onload() {
     console.log('Loading Smart Context Plugin');
+
+    await this.loadSettings();
+
+    this.addSettingTab(new SmartContextSettingTab(this.app, this));
 
     // Command to copy folder contents to clipboard (with folder structure and file contents)
     this.addCommand({
@@ -49,6 +57,14 @@ export default class SmartContextPlugin extends Plugin {
     );
   }
 
+  async loadSettings() {
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+  }
+
+  async saveSettings() {
+    await this.saveData(this.settings);
+  }
+
   /**
    * Copy folder contents to clipboard.
    * Format:
@@ -76,16 +92,23 @@ export default class SmartContextPlugin extends Plugin {
 
     let content_to_copy = `${folder_name} Folder Structure:\n${folder_structure}\nFile Contents:\n`;
 
-    // Add each file in the desired format
+    let total_excluded_sections = 0;
     for (const file of files) {
-      const file_content = await this.app.vault.read(file);
+      let file_content = await this.app.vault.read(file);
+      const { processed_content, excluded_count } = this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+      total_excluded_sections += excluded_count;
+
       const relative_file_path = this.get_relative_path(folder, file);
-      content_to_copy += `----------------------\n/${relative_file_path}\n-----------------------\n${file_content}\n-----------------------\n\n`;
+      content_to_copy += `----------------------\n/${relative_file_path}\n-----------------------\n${processed_content}\n-----------------------\n\n`;
     }
 
     try {
       await navigator.clipboard.writeText(content_to_copy);
-      new Notice(`Folder contents and structure copied to clipboard! (${files.length} files)`);
+      let noticeMsg = `Folder contents and structure copied to clipboard! (${files.length} files)`;
+      if (total_excluded_sections > 0) {
+        noticeMsg += `, ${total_excluded_sections} section(s) excluded`;
+      }
+      new Notice(noticeMsg);
     } catch (err) {
       console.error('Failed to copy text: ', err);
       new Notice('Failed to copy folder contents to clipboard.');
@@ -121,16 +144,23 @@ export default class SmartContextPlugin extends Plugin {
     }
 
     let content_to_copy = `Open Files Contents:\n`;
+    let total_excluded_sections = 0;
 
     for (const file of visible_files) {
-      const file_content = await this.app.vault.read(file);
-      // file.path is relative to vault root
-      content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${file_content}\n-----------------------\n\n`;
+      let file_content = await this.app.vault.read(file);
+      const { processed_content, excluded_count } = this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+      total_excluded_sections += excluded_count;
+
+      content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n-----------------------\n\n`;
     }
 
     try {
       await navigator.clipboard.writeText(content_to_copy);
-      new Notice(`Visible open files content copied to clipboard! (${visible_files.size} files)`);
+      let noticeMsg = `Visible open files content copied to clipboard! (${visible_files.size} files)`;
+      if (total_excluded_sections > 0) {
+        noticeMsg += `, ${total_excluded_sections} section(s) excluded`;
+      }
+      new Notice(noticeMsg);
     } catch (err) {
       console.error('Failed to copy text: ', err);
       new Notice('Failed to copy visible open files content to clipboard.');
@@ -164,19 +194,97 @@ export default class SmartContextPlugin extends Plugin {
     }
 
     let content_to_copy = `Open Files Contents:\n`;
+    let total_excluded_sections = 0;
 
     for (const file of files_set) {
-      const file_content = await this.app.vault.read(file);
-      content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${file_content}\n-----------------------\n\n`;
+      let file_content = await this.app.vault.read(file);
+      const { processed_content, excluded_count } = this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+      total_excluded_sections += excluded_count;
+
+      content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n-----------------------\n\n`;
     }
 
     try {
       await navigator.clipboard.writeText(content_to_copy);
-      new Notice(`All open files content copied to clipboard! (${files_set.size} files)`);
+      let noticeMsg = `All open files content copied to clipboard! (${files_set.size} files)`;
+      if (total_excluded_sections > 0) {
+        noticeMsg += `, ${total_excluded_sections} section(s) excluded`;
+      }
+      new Notice(noticeMsg);
     } catch (err) {
       console.error('Failed to copy text: ', err);
       new Notice('Failed to copy all open files content to clipboard.');
     }
+  }
+
+  /**
+   * Strip excluded sections from file content.
+   * Exclusions are now heading-level agnostic. The user specifies headings without '#'.
+   * For example, "Secret". Any heading whose text (after # ) matches "Secret"
+   * will start exclusion until the next heading of same or higher level.
+   *
+   * @param {string} content
+   * @param {string[]} excluded_headings - Array of heading strings (without #'s)
+   * @returns {{processed_content: string, excluded_count: number}}
+   */
+  strip_excluded_sections(content, excluded_headings) {
+    if (!excluded_headings || excluded_headings.length === 0) return { processed_content: content, excluded_count: 0 };
+
+    const lines = content.split('\n');
+    let result = [];
+    let exclude_mode = false;
+    let exclude_level = null;
+    let excluded_count = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // Check if line is a heading
+      const heading_match = line.match(/^(#+)\s+(.*)$/);
+      if (heading_match) {
+        const hashes = heading_match[1]; // string of '#'
+        const heading_text = heading_match[2].trim(); // The actual heading text without '# '
+
+        // If we encounter a heading line
+        // Check if we should start excluding
+        if (excluded_headings.includes(heading_text)) {
+          // If we were not already excluding, increment excluded_count
+          if (!exclude_mode) {
+            excluded_count++;
+          }
+          // Start exclusion mode
+          exclude_mode = true;
+          exclude_level = hashes.length; // The level of this heading
+          continue;
+        } else {
+          // If we are currently excluding, check if this heading signals the end of exclusion
+          if (exclude_mode) {
+            const current_level = hashes.length;
+            // If this heading is at the same or higher level (fewer or equal #),
+            // we stop excluding.
+            if (current_level <= exclude_level) {
+              exclude_mode = false;
+              exclude_level = null;
+              // This heading is outside excluded section, include it
+              result.push(line);
+            } else {
+              // Still deeper, continue excluding
+              continue;
+            }
+          } else {
+            // Not excluding currently, just add line
+            result.push(line);
+          }
+        }
+      } else {
+        // Not a heading line
+        if (!exclude_mode) {
+          result.push(line);
+        }
+      }
+    }
+
+    return { processed_content: result.join('\n'), excluded_count };
   }
 
   /**
@@ -204,14 +312,11 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Generate a folder structure in a tree-like format.
-   * Similar to the VSCode plugin approach, but using Obsidian's TFolder and TFile.
-   *
    * @param {TFolder} folder
    * @param {string} prefix
    * @returns {string} The ASCII tree structure of the folder and its contents
    */
   generate_folder_structure(folder, prefix = '') {
-    // Sort children by type: folders first, then files, for consistent structure
     const children = folder.children.slice().sort((a, b) => {
       const aFolder = a instanceof TFolder;
       const bFolder = b instanceof TFolder;
@@ -240,12 +345,9 @@ export default class SmartContextPlugin extends Plugin {
    * @returns {string}
    */
   get_relative_path(folder, file) {
-    // folder.path and file.path are relative to vault root
-    // To get relative path from folder to file, we can remove the folder.path prefix
     if (file.path.startsWith(folder.path + '/')) {
       return file.path.slice(folder.path.length + 1);
     } else {
-      // If file is not under folder (shouldn't happen), just return file.path
       return file.path;
     }
   }
@@ -282,16 +384,13 @@ export default class SmartContextPlugin extends Plugin {
   is_leaf_visible(leaf) {
     const parent = leaf.parent;
     if (!parent) {
-      // If no parent, just check offsetParent to ensure it's displayed
       return leaf.containerEl && leaf.containerEl.offsetParent !== null;
     }
 
     if ('activeTab' in parent) {
-      // parent is WorkspaceTabs
       return parent.activeTab === leaf && leaf.containerEl && leaf.containerEl.offsetParent !== null;
     }
 
-    // If not WorkspaceTabs (likely a WorkspaceSplit), check DOM visibility
     return leaf.containerEl && leaf.containerEl.offsetParent !== null;
   }
 }
@@ -305,7 +404,7 @@ class FolderSelectModal extends SuggestModal {
     super(app);
     this.onChoose = onChoose;
     this.allFolders = [];
-    this.get_all_folders(this.app.vault.getRoot(), this.allFolders);
+    this.getAllFolders(this.app.vault.getRoot(), this.allFolders);
   }
 
   /**
@@ -313,11 +412,11 @@ class FolderSelectModal extends SuggestModal {
    * @param {TFolder} rootFolder 
    * @param {Array<TFolder>} folders 
    */
-  get_all_folders(rootFolder, folders) {
+  getAllFolders(rootFolder, folders) {
     folders.push(rootFolder);
     for (const child of rootFolder.children) {
       if (child instanceof TFolder) {
-        this.get_all_folders(child, folders);
+        this.getAllFolders(child, folders);
       }
     }
   }
@@ -327,7 +426,7 @@ class FolderSelectModal extends SuggestModal {
    * @param {string} query 
    * @returns {Array<TFolder>}
    */
-  get_suggestions(query) {
+  getSuggestions(query) {
     const lowerCaseQuery = query.toLowerCase();
     return this.allFolders.filter((folder) =>
       folder.path.toLowerCase().includes(lowerCaseQuery)
@@ -339,7 +438,7 @@ class FolderSelectModal extends SuggestModal {
    * @param {TFolder} folder 
    * @param {HTMLElement} el 
    */
-  render_suggestion(folder, el) {
+  renderSuggestion(folder, el) {
     el.createEl('div', { text: folder.path });
   }
 
@@ -348,7 +447,43 @@ class FolderSelectModal extends SuggestModal {
    * @param {TFolder} folder 
    * @param {MouseEvent | KeyboardEvent} evt 
    */
-  on_choose_suggestion(folder, evt) {
+  onChooseSuggestion(folder, evt) {
     this.onChoose(folder);
+  }
+}
+
+
+class SmartContextSettingTab extends PluginSettingTab {
+  constructor(app, plugin) {
+    super(app, plugin);
+    this.plugin = plugin;
+  }
+
+  display() {
+    const { containerEl } = this;
+
+    containerEl.empty();
+    containerEl.createEl('h2', { text: 'Smart Context Settings' });
+
+    // Excluded headings setting
+    new Setting(containerEl)
+      .setName('Excluded Headings')
+      .setDesc('Headings to exclude when copying sections. Do NOT include "#" characters. ' +
+               'For example, enter "Secret" to exclude any heading "## Secret", "### Secret", etc. ' +
+               'Separate multiple headings by commas or new lines.')
+      .addTextArea(text => {
+        text
+          .setPlaceholder('Secret\nDraft\nOld Section')
+          .setValue(this.plugin.settings.excluded_headings.join('\n'))
+          .onChange(async (value) => {
+            // Parse the value by splitting on newlines or commas
+            let headings = value.split(/\r?\n|,/)
+              .map(h => h.trim())
+              .filter(h => h.length > 0);
+
+            this.plugin.settings.excluded_headings = headings;
+            await this.plugin.saveSettings();
+          });
+      });
   }
 }
