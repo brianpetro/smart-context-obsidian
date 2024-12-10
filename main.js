@@ -4,7 +4,7 @@ export default class SmartContextPlugin extends Plugin {
   async onload() {
     console.log('Loading Smart Context Plugin');
 
-    // Command to copy folder contents to clipboard
+    // Command to copy folder contents to clipboard (with folder structure and file contents)
     this.addCommand({
       id: 'copy-folder-contents',
       name: 'Copy Folder Contents to Clipboard',
@@ -51,29 +51,41 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Copy folder contents to clipboard.
-   * @param {TFolder} folder - The folder to copy
-   * @param {boolean} [include_subfolders=true] - Whether to include subfolders
+   * Format:
+   * <folder_name> Folder Structure:
+   * <folder_structure>
+   * File Contents:
+   * ----------------------
+   * /<relative_file_path>
+   * -----------------------
+   * <file_content>
+   * -----------------------
    */
   async copy_folder_contents(folder, include_subfolders = true) {
     const files = this.get_files_from_folder(folder, include_subfolders);
+    const folder_name = folder.name;
 
+    // If no files found
     if (files.length === 0) {
       new Notice('No Markdown or Canvas files found in the selected folder.');
       return;
     }
 
-    const contents_array = await Promise.all(
-      files.map(async (file) => {
-        const file_content = await this.app.vault.read(file);
-        return `---${file.path}---\n${file_content}\n\n`;
-      })
-    );
+    // Generate folder structure
+    const folder_structure = this.generate_folder_structure(folder);
 
-    const contents = contents_array.join('');
+    let content_to_copy = `${folder_name} Folder Structure:\n${folder_structure}\nFile Contents:\n`;
+
+    // Add each file in the desired format
+    for (const file of files) {
+      const file_content = await this.app.vault.read(file);
+      const relative_file_path = this.get_relative_path(folder, file);
+      content_to_copy += `----------------------\n/${relative_file_path}\n-----------------------\n${file_content}\n-----------------------\n\n`;
+    }
 
     try {
-      await navigator.clipboard.writeText(contents);
-      new Notice('Folder contents copied to clipboard.');
+      await navigator.clipboard.writeText(content_to_copy);
+      new Notice(`Folder contents and structure copied to clipboard! (${files.length} files)`);
     } catch (err) {
       console.error('Failed to copy text: ', err);
       new Notice('Failed to copy folder contents to clipboard.');
@@ -82,10 +94,13 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Copy the content of only currently visible open files.
-   * Visible means:
-   * - If a pane has multiple tabs (WorkspaceTabs), only the activeTab is visible.
-   * - For other panes (WorkspaceSplit) or standalone leaves, check DOM visibility via offsetParent.
-   *   If offsetParent is null, the element (leaf) is not visible.
+   * Format:
+   * Open Files Contents:
+   * ----------------------
+   * /<file_path>
+   * -----------------------
+   * <file_content>
+   * -----------------------
    */
   async copy_visible_open_files_content() {
     const visible_files = new Set();
@@ -105,18 +120,17 @@ export default class SmartContextPlugin extends Plugin {
       return;
     }
 
-    const contents_array = await Promise.all(
-      Array.from(visible_files).map(async (file) => {
-        const file_content = await this.app.vault.read(file);
-        return `---${file.path}---\n${file_content}\n\n`;
-      })
-    );
+    let content_to_copy = `Open Files Contents:\n`;
 
-    const contents = contents_array.join('');
+    for (const file of visible_files) {
+      const file_content = await this.app.vault.read(file);
+      // file.path is relative to vault root
+      content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${file_content}\n-----------------------\n\n`;
+    }
 
     try {
-      await navigator.clipboard.writeText(contents);
-      new Notice('Visible open files content copied to clipboard.');
+      await navigator.clipboard.writeText(content_to_copy);
+      new Notice(`Visible open files content copied to clipboard! (${visible_files.size} files)`);
     } catch (err) {
       console.error('Failed to copy text: ', err);
       new Notice('Failed to copy visible open files content to clipboard.');
@@ -125,6 +139,13 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Copy content from all open files to clipboard (visible or not).
+   * Format:
+   * Open Files Contents:
+   * ----------------------
+   * /<file_path>
+   * -----------------------
+   * <file_content>
+   * -----------------------
    */
   async copy_all_open_files_content() {
     const files_set = new Set();
@@ -142,18 +163,16 @@ export default class SmartContextPlugin extends Plugin {
       return;
     }
 
-    const contents_array = await Promise.all(
-      Array.from(files_set).map(async (file) => {
-        const file_content = await this.app.vault.read(file);
-        return `---${file.path}---\n${file_content}\n\n`;
-      })
-    );
+    let content_to_copy = `Open Files Contents:\n`;
 
-    const contents = contents_array.join('');
+    for (const file of files_set) {
+      const file_content = await this.app.vault.read(file);
+      content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${file_content}\n-----------------------\n\n`;
+    }
 
     try {
-      await navigator.clipboard.writeText(contents);
-      new Notice('All open files content copied to clipboard.');
+      await navigator.clipboard.writeText(content_to_copy);
+      new Notice(`All open files content copied to clipboard! (${files_set.size} files)`);
     } catch (err) {
       console.error('Failed to copy text: ', err);
       new Notice('Failed to copy all open files content to clipboard.');
@@ -184,6 +203,54 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
+   * Generate a folder structure in a tree-like format.
+   * Similar to the VSCode plugin approach, but using Obsidian's TFolder and TFile.
+   *
+   * @param {TFolder} folder
+   * @param {string} prefix
+   * @returns {string} The ASCII tree structure of the folder and its contents
+   */
+  generate_folder_structure(folder, prefix = '') {
+    // Sort children by type: folders first, then files, for consistent structure
+    const children = folder.children.slice().sort((a, b) => {
+      const aFolder = a instanceof TFolder;
+      const bFolder = b instanceof TFolder;
+      if (aFolder && !bFolder) return -1;
+      if (!aFolder && bFolder) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    let structure = '';
+    children.forEach((child, index) => {
+      const is_last = index === children.length - 1;
+      const connector = is_last ? '└── ' : '├── ';
+      structure += `${prefix}${connector}${child.name}\n`;
+
+      if (child instanceof TFolder) {
+        structure += this.generate_folder_structure(child, prefix + (is_last ? '    ' : '│   '));
+      }
+    });
+    return structure;
+  }
+
+  /**
+   * Get relative path of a file relative to a folder
+   * @param {TFolder} folder
+   * @param {TFile} file
+   * @returns {string}
+   */
+  get_relative_path(folder, file) {
+    // folder.path and file.path are relative to vault root
+    // To get relative path from folder to file, we can remove the folder.path prefix
+    if (file.path.startsWith(folder.path + '/')) {
+      return file.path.slice(folder.path.length + 1);
+    } else {
+      // If file is not under folder (shouldn't happen), just return file.path
+      return file.path;
+    }
+  }
+
+  /**
    * Recursively retrieve all leaves in the workspace.
    * @param {Workspace} workspace - The Obsidian workspace
    * @returns {Array<Leaf>} Array of leaves
@@ -210,11 +277,7 @@ export default class SmartContextPlugin extends Plugin {
    * Determine if a leaf is visible.
    * A leaf is considered visible if:
    * - It is inside a WorkspaceTabs container and is the activeTab.
-   * - OR, if it's not inside WorkspaceTabs, we check if leaf.containerEl is actually visible in the DOM.
-   *   We do this by checking if leaf.containerEl.offsetParent is not null.
-   *   If offsetParent is null, the element is not currently displayed.
-   *
-   * Note: The offsetParent check ensures that hidden or non-active tabs are excluded.
+   * - OR, if it's not inside WorkspaceTabs, and leaf.containerEl is visible in the DOM (offsetParent not null).
    */
   is_leaf_visible(leaf) {
     const parent = leaf.parent;
@@ -223,12 +286,12 @@ export default class SmartContextPlugin extends Plugin {
       return leaf.containerEl && leaf.containerEl.offsetParent !== null;
     }
 
-    // If parent is WorkspaceTabs (detected by 'activeTab' property), only activeTab is visible
     if ('activeTab' in parent) {
+      // parent is WorkspaceTabs
       return parent.activeTab === leaf && leaf.containerEl && leaf.containerEl.offsetParent !== null;
     }
 
-    // For WorkspaceSplit or other containers, we rely on the element being physically visible
+    // If not WorkspaceTabs (likely a WorkspaceSplit), check DOM visibility
     return leaf.containerEl && leaf.containerEl.offsetParent !== null;
   }
 }
