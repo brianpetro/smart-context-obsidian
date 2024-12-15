@@ -1,8 +1,16 @@
 import { Plugin, Notice, SuggestModal, TFile, TFolder, PluginSettingTab, Setting } from 'obsidian';
+import { 
+    strip_excluded_sections, 
+    format_excluded_sections, 
+    remove_included_link_lines, 
+    inline_embedded_links 
+} from './utils.js';
 
 const DEFAULT_SETTINGS = {
   excluded_headings: [],
 };
+
+const WITH_LINKS_DEPTH = 1; // Only include direct links from initial files
 
 export default class SmartContextPlugin extends Plugin {
   async onload() {
@@ -93,6 +101,8 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Copy folder contents to clipboard.
+   * @param {TFolder} folder 
+   * @param {boolean} include_subfolders 
    * Format:
    * <folder_name> Folder Structure:
    * <folder_structure>
@@ -107,13 +117,11 @@ export default class SmartContextPlugin extends Plugin {
     const files = this.get_files_from_folder(folder, include_subfolders);
     const folder_name = folder.name;
 
-    // If no files found
     if (files.length === 0) {
       new Notice('No Markdown or Canvas files found in the selected folder.');
       return;
     }
 
-    // Generate folder structure
     const folder_structure = this.generate_folder_structure(folder);
     let content_to_copy = `${folder_name} folder structure:\n${folder_structure}\nFile contents:\n`;
 
@@ -123,10 +131,9 @@ export default class SmartContextPlugin extends Plugin {
     for (const file of files) {
       let file_content = await this.app.vault.read(file);
       const { processed_content, excluded_count, excluded_sections } = 
-        this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+        strip_excluded_sections(file_content, this.settings.excluded_headings);
       
       total_excluded_sections += excluded_count;
-      // Merge excluded sections counts
       excluded_sections.forEach((count, section) => {
         all_excluded_sections.set(
           section, 
@@ -142,7 +149,7 @@ export default class SmartContextPlugin extends Plugin {
       await navigator.clipboard.writeText(content_to_copy);
       let noticeMsg = `Folder contents and structure copied to clipboard! (${files.length} files)`;
       if (total_excluded_sections > 0) {
-        noticeMsg += `, ${total_excluded_sections} section(s) excluded${this.format_excluded_sections(all_excluded_sections)}`;
+        noticeMsg += `, ${total_excluded_sections} section(s) excluded${format_excluded_sections(all_excluded_sections)}`;
       }
       new Notice(noticeMsg);
     } catch (err) {
@@ -175,7 +182,7 @@ export default class SmartContextPlugin extends Plugin {
     for (const file of visible_files) {
       let file_content = await this.app.vault.read(file);
       const { processed_content, excluded_count, excluded_sections } = 
-        this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+        strip_excluded_sections(file_content, this.settings.excluded_headings);
       
       total_excluded_sections += excluded_count;
       excluded_sections.forEach((count, section) => {
@@ -192,7 +199,7 @@ export default class SmartContextPlugin extends Plugin {
       await navigator.clipboard.writeText(content_to_copy);
       let noticeMsg = `Visible open files content copied to clipboard! (${visible_files.size} files)`;
       if (total_excluded_sections > 0) {
-        noticeMsg += `, ${total_excluded_sections} section(s) excluded${this.format_excluded_sections(all_excluded_sections)}`;
+        noticeMsg += `, ${total_excluded_sections} section(s) excluded${format_excluded_sections(all_excluded_sections)}`;
       }
       new Notice(noticeMsg);
     } catch (err) {
@@ -226,10 +233,9 @@ export default class SmartContextPlugin extends Plugin {
     for (const file of files_set) {
       let file_content = await this.app.vault.read(file);
       const { processed_content, excluded_count, excluded_sections } = 
-        this.strip_excluded_sections(file_content, this.settings.excluded_headings);
+        strip_excluded_sections(file_content, this.settings.excluded_headings);
       
       total_excluded_sections += excluded_count;
-      // Merge excluded sections counts
       excluded_sections.forEach((count, section) => {
         all_excluded_sections.set(
           section, 
@@ -244,7 +250,7 @@ export default class SmartContextPlugin extends Plugin {
       await navigator.clipboard.writeText(content_to_copy);
       let noticeMsg = `All open files content copied to clipboard! (${files_set.size} files)`;
       if (total_excluded_sections > 0) {
-        noticeMsg += `, ${total_excluded_sections} section(s) excluded${this.format_excluded_sections(all_excluded_sections)}`;
+        noticeMsg += `, ${total_excluded_sections} section(s) excluded${format_excluded_sections(all_excluded_sections)}`;
       }
       new Notice(noticeMsg);
     } catch (err) {
@@ -254,30 +260,107 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Copy initial files plus all linked files to clipboard.
-   * @param {Set<TFile>} initial_files
-   * @param {string} label - A label for the notice ("Visible Open Files" or "All Open Files")
+   * Copy content of files with their linked files to clipboard.
+   * @param {Set<TFile>} initial_files - Initial set of files to process
+   * @param {string} label - Label for the notice message
    */
   async copy_files_with_linked_files(initial_files, label) {
-    // Gather all linked files recursively
     const all_files = await this.get_all_linked_files_in_set(initial_files);
-
-    if (all_files.size === 0) {
-      new Notice(`No files found to copy.`);
-      return;
+    const initial_file_paths = new Set(Array.from(initial_files).map(f => f.path));
+    
+    // First, collect all embedded files from initial files
+    const embedded_files_map = new Map(); // Map<string, Set<string>> - file path to set of embedded file paths
+    for (const file of initial_files) {
+      const embedded_files = await this.get_embedded_links(file);
+      embedded_files_map.set(file.path, new Set(Array.from(embedded_files).map(f => f.path)));
     }
 
-    let content_to_copy = `${label} contents (including linked files):\n`;
+    // Helper function to check if a file is embedded anywhere
+    const is_file_embedded = (file_path) => {
+      for (const embedded_set of embedded_files_map.values()) {
+        if (embedded_set.has(file_path)) return true;
+      }
+      return false;
+    };
+
+    let content_to_copy = `${label} contents (with linked files):\n`;
     let total_excluded_sections = 0;
     let all_excluded_sections = new Map();
 
-    for (const file of all_files) {
+    // Process linked files first (that weren't in the initial set and aren't embedded)
+    const linked_only_files = new Set(
+      Array.from(all_files).filter(f => {
+        if (initial_file_paths.has(f.path)) return false;
+        if (is_file_embedded(f.path)) return false;
+        return true;
+      })
+    );
+
+    if (linked_only_files.size > 0) {
+      content_to_copy += `Linked files:\n`;
+      for (const file of linked_only_files) {
+        let file_content = await this.app.vault.read(file);
+        const { processed_content, excluded_count, excluded_sections } = 
+          strip_excluded_sections(file_content, this.settings.excluded_headings);
+        
+        total_excluded_sections += excluded_count;
+        excluded_sections.forEach((count, section) => {
+          all_excluded_sections.set(
+            section, 
+            (all_excluded_sections.get(section) || 0) + count
+          );
+        });
+        
+        content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n\n-----------------------\n\n`;
+      }
+    }
+
+    // Then process initial files (visible/open files)
+    content_to_copy += `\n${label}:\n`;
+    for (const file of initial_files) {
       let file_content = await this.app.vault.read(file);
+
+      // Create a resolver function for embedded links that checks against initial files
+      const embedded_files = embedded_files_map.get(file.path) || new Set();
+      const link_resolver = (linkText, currentPath) => {
+        const linked_file = this.app.metadataCache.getFirstLinkpathDest(linkText, currentPath);
+        return linked_file?.path;
+      };
+      const file_content_resolver = async (filePath) => {
+        const tfile = this.app.vault.getAbstractFileByPath(filePath);
+        if (tfile instanceof TFile) {
+          return this.app.vault.read(tfile);
+        }
+        return '';
+      };
+      const embedded_links_resolver = (filePath) => {
+        return embedded_files;
+      };
+
+      // Process embedded links
+      file_content = await inline_embedded_links(
+        file_content,
+        file.path,
+        link_resolver,
+        file_content_resolver,
+        this.settings.excluded_headings,
+        embedded_links_resolver
+      );
+
+      // Remove lines that only contain links to included files or embedded files
+      file_content = remove_included_link_lines(
+        file_content,
+        new Set([...initial_file_paths, ...Array.from(embedded_files)]),
+        (linkText) => {
+          const linked_file = this.app.metadataCache.getFirstLinkpathDest(linkText, file.path);
+          return linked_file?.path;
+        }
+      );
+
       const { processed_content, excluded_count, excluded_sections } = 
-        this.strip_excluded_sections(file_content, this.settings.excluded_headings);
-      
+        strip_excluded_sections(file_content, this.settings.excluded_headings);
+        
       total_excluded_sections += excluded_count;
-      // Merge excluded sections counts
       excluded_sections.forEach((count, section) => {
         all_excluded_sections.set(
           section, 
@@ -285,83 +368,24 @@ export default class SmartContextPlugin extends Plugin {
         );
       });
 
-      content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n-----------------------\n\n`;
+      content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n`;
     }
 
     try {
       await navigator.clipboard.writeText(content_to_copy);
-      let noticeMsg = `${label} content (with linked files) copied to clipboard! (${all_files.size} files)`;
+      let noticeMsg = `${label} content copied to clipboard! (${initial_files.size} files`;
+      if (linked_only_files.size > 0) {
+        noticeMsg += ` + ${linked_only_files.size} linked files`;
+      }
+      noticeMsg += ')';
       if (total_excluded_sections > 0) {
-        noticeMsg += `, ${total_excluded_sections} section(s) excluded${this.format_excluded_sections(all_excluded_sections)}`;
+        noticeMsg += `, ${total_excluded_sections} section(s) excluded${format_excluded_sections(all_excluded_sections)}`;
       }
       new Notice(noticeMsg);
     } catch (err) {
       console.error('Failed to copy text: ', err);
-      new Notice(`Failed to copy ${label.toLowerCase()} content with linked files to clipboard.`);
+      new Notice('Failed to copy files content to clipboard.');
     }
-  }
-
-  /**
-   * Get all linked files in a set of files.
-   * @param {Set<TFile>} initial_files
-   * @returns {Promise<Set<TFile>>}
-   */
-  async get_all_linked_files_in_set(initial_files) {
-    const visited = new Set();
-    const queue = [...initial_files];
-
-    for (const f of initial_files) {
-      visited.add(f.path);
-    }
-
-    // BFS or DFS to gather all linked files
-    while (queue.length > 0) {
-      const current_file = queue.shift();
-      const linked_files = await this.get_all_linked_files(current_file);
-      for (const lf of linked_files) {
-        if (!visited.has(lf.path)) {
-          visited.add(lf.path);
-          queue.push(lf);
-        }
-      }
-    }
-
-    // Convert visited paths back to files
-    const all_files = new Set();
-    for (const path of visited) {
-      const file = this.app.vault.getAbstractFileByPath(path);
-      if (file instanceof TFile && ['md', 'canvas'].includes(file.extension)) {
-        all_files.add(file);
-      }
-    }
-
-    return all_files;
-  }
-
-  /**
-   * Extract all linked files from a file's content.
-   * Supports wiki-links of the form [[Note Name]] or [[Folder/Note Name]].
-   * @param {TFile} file
-   * @returns {Promise<Set<TFile>>}
-   */
-  async get_all_linked_files(file) {
-    const links = new Set();
-    const content = await this.app.vault.read(file);
-
-    // Regex to match wiki-links: [[some link]]
-    const linkRegex = /\[\[([^\]]+)\]\]/g;
-    let match;
-    while ((match = linkRegex.exec(content)) !== null) {
-      const linkText = match[1].trim();
-
-      // Resolve the link to a file in the vault
-      const linked_file = this.app.metadataCache.getFirstLinkpathDest(linkText, file.path);
-      if (linked_file && linked_file instanceof TFile && ['md', 'canvas'].includes(linked_file.extension)) {
-        links.add(linked_file);
-      }
-    }
-
-    return links;
   }
 
   /**
@@ -491,22 +515,22 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Retrieve files from a folder.
-   * @param {TFolder} folder - The folder to retrieve files from
-   * @param {boolean} include_subfolders - Whether to include files from subfolders
-   * @returns {Array<TFile>} Array of files (Markdown or Canvas)
+   * Get all files from a folder.
+   * @param {TFolder} folder 
+   * @param {boolean} include_subfolders 
+   * @returns {TFile[]}
    */
   get_files_from_folder(folder, include_subfolders) {
-    let files = [];
+    const files = [];
 
     const process_folder = (current_folder) => {
-      current_folder.children.forEach((child) => {
-        if (child instanceof TFile && ['md', 'canvas'].includes(child.extension)) {
+      for (const child of current_folder.children) {
+        if (child instanceof TFile && (child.extension === 'md' || child.extension === 'canvas')) {
           files.push(child);
         } else if (include_subfolders && child instanceof TFolder) {
           process_folder(child);
         }
-      });
+      }
     };
 
     process_folder(folder);
@@ -514,51 +538,52 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Generate a folder structure in a tree-like format.
-   * @param {TFolder} folder
-   * @param {string} prefix
-   * @returns {string} The ASCII tree structure of the folder and its contents
+   * Generate a folder structure string.
+   * @param {TFolder} folder 
+   * @param {string} prefix 
+   * @returns {string}
    */
   generate_folder_structure(folder, prefix = '') {
-    const children = folder.children.slice().sort((a, b) => {
-      const aFolder = a instanceof TFolder;
-      const bFolder = b instanceof TFolder;
-      if (aFolder && !bFolder) return -1;
-      if (!aFolder && bFolder) return 1;
+    let structure = '';
+    const children = folder.children.sort((a, b) => {
+      // Folders first, then files
+      if (a instanceof TFolder && b instanceof TFile) return -1;
+      if (a instanceof TFile && b instanceof TFolder) return 1;
+      // Alphabetical within same type
       return a.name.localeCompare(b.name);
     });
 
-    let structure = '';
-    children.forEach((child, index) => {
-      const is_last = index === children.length - 1;
-      const connector = is_last ? '└── ' : '├── ';
-      structure += `${prefix}${connector}${child.name}\n`;
-
-      if (child instanceof TFolder) {
-        structure += this.generate_folder_structure(child, prefix + (is_last ? '    ' : '│   '));
+    for (const child of children) {
+      if (child instanceof TFile && (child.extension === 'md' || child.extension === 'canvas')) {
+        structure += `${prefix}└── ${child.name}\n`;
+      } else if (child instanceof TFolder) {
+        structure += `${prefix}└── ${child.name}/\n`;
+        structure += this.generate_folder_structure(child, `${prefix}    `);
       }
-    });
+    }
+
     return structure;
   }
 
   /**
-   * Get relative path of a file relative to a folder
-   * @param {TFolder} folder
-   * @param {TFile} file
+   * Get the relative path of a file from a folder.
+   * @param {TFolder} folder 
+   * @param {TFile} file 
    * @returns {string}
    */
   get_relative_path(folder, file) {
-    if (file.path.startsWith(folder.path + '/')) {
-      return file.path.slice(folder.path.length + 1);
-    } else {
-      return file.path;
+    const folder_path = folder.path;
+    const file_path = file.path;
+    if (file_path.startsWith(folder_path)) {
+      return file_path.slice(folder_path.length + 1);
     }
+    return file_path;
   }
 
   /**
-   * Recursively retrieve all leaves in the workspace.
-   * @param {Workspace} workspace - The Obsidian workspace
-   * @returns {Array<Leaf>} Array of leaves
+   * Get all leaves in the workspace.
+   * @param {any} workspace 
+   * @returns {any[]}
    */
   get_all_leaves(workspace) {
     const leaves = [];
@@ -579,10 +604,9 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Determine if a leaf is visible.
-   * A leaf is considered visible if:
-   * - It is inside a WorkspaceTabs container and is the activeTab.
-   * - OR, if it's not inside WorkspaceTabs, and leaf.containerEl is visible in the DOM (offsetParent not null).
+   * Check if a leaf is visible.
+   * @param {any} leaf 
+   * @returns {boolean}
    */
   is_leaf_visible(leaf) {
     const parent = leaf.parent;
@@ -590,6 +614,7 @@ export default class SmartContextPlugin extends Plugin {
       return leaf.containerEl && leaf.containerEl.offsetParent !== null;
     }
 
+    // If parent has an activeTab attribute (e.g. a tabs container), check if this leaf is the active tab.
     if ('activeTab' in parent) {
       return parent.activeTab === leaf && leaf.containerEl && leaf.containerEl.offsetParent !== null;
     }
@@ -598,97 +623,161 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Get the set of visible open files.
+   * Get all visible open files.
+   * @returns {Set<TFile>}
    */
   get_visible_open_files() {
     const visible_files = new Set();
-    const all_leaves = this.get_all_leaves(this.app.workspace);
+    const leaves = this.get_all_leaves(this.app.workspace);
 
-    for (const leaf of all_leaves) {
+    for (const leaf of leaves) {
       if (this.is_leaf_visible(leaf)) {
         const file = leaf.view?.file;
-        if (file instanceof TFile && ['md', 'canvas'].includes(file.extension)) {
+        if (file && (file.extension === 'md' || file.extension === 'canvas')) {
           visible_files.add(file);
         }
       }
     }
+
     return visible_files;
   }
 
   /**
-   * Get the set of all open files (visible or not).
+   * Get all open files.
+   * @returns {Set<TFile>}
    */
   get_all_open_files() {
     const files_set = new Set();
-    const all_leaves = this.get_all_leaves(this.app.workspace);
+    const leaves = this.get_all_leaves(this.app.workspace);
 
-    for (const leaf of all_leaves) {
+    for (const leaf of leaves) {
       const file = leaf.view?.file;
-      if (file instanceof TFile && ['md', 'canvas'].includes(file.extension)) {
+      if (file && (file.extension === 'md' || file.extension === 'canvas')) {
         files_set.add(file);
       }
     }
+
     return files_set;
+  }
+
+  /**
+   * Get all linked files in a set of files.
+   * @param {Set<TFile>} initial_files 
+   * @returns {Promise<Set<TFile>>}
+   */
+  async get_all_linked_files_in_set(initial_files) {
+    const all_files = new Set(initial_files);
+    const processed_files = new Set();
+    const files_to_process = new Set(initial_files);
+
+    while (files_to_process.size > 0) {
+      const current_file = files_to_process.values().next().value;
+      files_to_process.delete(current_file);
+      processed_files.add(current_file);
+
+      const linked_files = await this.get_all_linked_files(current_file);
+      for (const linked_file of linked_files) {
+        all_files.add(linked_file);
+        if (!processed_files.has(linked_file)) {
+          files_to_process.add(linked_file);
+        }
+      }
+    }
+
+    return all_files;
+  }
+
+  /**
+   * Get all linked files from a file.
+   * @param {TFile} file 
+   * @returns {Promise<Set<TFile>>}
+   */
+  async get_all_linked_files(file) {
+    const linked_files = new Set();
+    const cache = this.app.metadataCache.getFileCache(file);
+
+    if (!cache) {
+      return linked_files;
+    }
+
+    // Process links
+    if (cache.links) {
+      for (const link of cache.links) {
+        const linked_file = this.app.metadataCache.getFirstLinkpathDest(link.link, file.path);
+        if (linked_file && (linked_file.extension === 'md' || linked_file.extension === 'canvas')) {
+          linked_files.add(linked_file);
+        }
+      }
+    }
+
+    // Process embeds
+    if (cache.embeds) {
+      for (const embed of cache.embeds) {
+        const linked_file = this.app.metadataCache.getFirstLinkpathDest(embed.link, file.path);
+        if (linked_file && (linked_file.extension === 'md' || linked_file.extension === 'canvas')) {
+          linked_files.add(linked_file);
+        }
+      }
+    }
+
+    return linked_files;
+  }
+
+  /**
+   * Get all embedded links from a file.
+   * @param {TFile} file 
+   * @returns {Promise<Set<TFile>>}
+   */
+  async get_embedded_links(file) {
+    const embedded_files = new Set();
+    const cache = this.app.metadataCache.getFileCache(file);
+
+    if (!cache || !cache.embeds) {
+      return embedded_files;
+    }
+
+    for (const embed of cache.embeds) {
+      const linked_file = this.app.metadataCache.getFirstLinkpathDest(embed.link, file.path);
+      if (linked_file && (linked_file.extension === 'md' || linked_file.extension === 'canvas')) {
+        embedded_files.add(linked_file);
+      }
+    }
+
+    return embedded_files;
   }
 }
 
 class FolderSelectModal extends SuggestModal {
-  /**
-   * @param {App} app 
-   * @param {(folder:TFolder) => void} onChoose 
-   */
   constructor(app, onChoose) {
     super(app);
     this.onChoose = onChoose;
-    this.allFolders = [];
-    this.getAllFolders(this.app.vault.getRoot(), this.allFolders);
   }
 
-  /**
-   * Recursively collect all folders starting from root.
-   * @param {TFolder} rootFolder 
-   * @param {Array<TFolder>} folders 
-   */
-  getAllFolders(rootFolder, folders) {
+  getAllFolders(rootFolder, folders = []) {
     folders.push(rootFolder);
     for (const child of rootFolder.children) {
       if (child instanceof TFolder) {
         this.getAllFolders(child, folders);
       }
     }
+    return folders;
   }
 
-  /**
-   * Get suggestions based on user query.
-   * @param {string} query 
-   * @returns {Array<TFolder>}
-   */
   getSuggestions(query) {
-    const lowerCaseQuery = query.toLowerCase();
-    return this.allFolders.filter((folder) =>
-      folder.path.toLowerCase().includes(lowerCaseQuery)
+    const folders = this.getAllFolders(this.app.vault.getRoot());
+    return folders.filter(folder => 
+      folder.path.toLowerCase().includes(query.toLowerCase())
     );
   }
 
-  /**
-   * Render each suggestion in the modal.
-   * @param {TFolder} folder 
-   * @param {HTMLElement} el 
-   */
   renderSuggestion(folder, el) {
     el.createEl('div', { text: folder.path });
   }
 
-  /**
-   * Handle the selection of a suggestion.
-   * @param {TFolder} folder 
-   * @param {MouseEvent | KeyboardEvent} evt 
-   */
   onChooseSuggestion(folder, evt) {
     this.onChoose(folder);
   }
 }
-
 
 class SmartContextSettingTab extends PluginSettingTab {
   constructor(app, plugin) {
@@ -698,25 +787,17 @@ class SmartContextSettingTab extends PluginSettingTab {
 
   display() {
     const { containerEl } = this;
-
     containerEl.empty();
 
     new Setting(containerEl)
-      .setName('Excluded headings')
-      .setDesc('Headings to exclude when copying sections. Do not include "#" characters. Separate multiple headings by commas or new lines.')
-      .addTextArea(text => {
-        text
-          .setPlaceholder('Secret\nDraft\nOld Section')
-          .setValue(this.plugin.settings.excluded_headings.join('\n'))
-          .onChange(async (value) => {
-            // Parse the value by splitting on newlines or commas
-            let headings = value.split(/\r?\n|,/)
-              .map(h => h.trim())
-              .filter(h => h.length > 0);
-
-            this.plugin.settings.excluded_headings = headings;
-            await this.plugin.saveSettings();
-          });
-      });
+      .setName('Excluded Headings')
+      .setDesc('Headings to exclude from copied content (one per line)')
+      .addTextArea(text => text
+        .setPlaceholder('Enter headings to exclude')
+        .setValue(this.plugin.settings.excluded_headings.join('\n'))
+        .onChange(async (value) => {
+          this.plugin.settings.excluded_headings = value.split('\n').map(s => s.trim()).filter(s => s);
+          await this.plugin.saveSettings();
+        }));
   }
 }
