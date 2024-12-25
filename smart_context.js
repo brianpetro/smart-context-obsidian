@@ -1,236 +1,246 @@
-// smart_context.js
-// -------------------------------------------
-
-import { strip_excluded_sections, format_excluded_sections, remove_included_link_lines, inline_embedded_links } from './utils.js';
-
 /**
- * @typedef {Object} BuildContextOptions
- * @property {string} label - Label for the output (e.g. 'Open files contents')
- * @property {string} mode - One of 'folder', 'visible', 'all-open', 'visible-linked', 'all-open-linked'
- * @property {TFile[]} [files] - A list of files (if mode is folder, visible, all-open)
- * @property {TFile[]} [initial_files] - Initial files for linked modes
- * @property {TFile[]} [all_files] - All files including linked
- * @property {string} [folder_structure] - Folder structure string if mode=folder
- * @property {string[]} excluded_headings
- * @property {string} [output_template]
+ * @file smart_context_module.js
+ * @description
+ * Exports a `SmartContext` class that can be instantiated with:
+ *   new SmartContext({
+ *     fs,                      // Your SmartFs (or compatible) instance
+ *     get_links_for_path,      // (filePath: string) => { links: string[], embeds: string[] }
+ *     get_embeds_for_path,     // (filePath: string) => Set<string>
+ *     resolve_link,            // (linkText: string, currentPath: string) => string|undefined
+ *     excluded_headings,       // string[] of headings to exclude
+ *     output_template          // optional text template to prepend
+ *   });
+ *
+ * Then call `.build_context(context_opts)`, where `context_opts` includes:
+ *   - mode: 'folder' | 'visible' | 'all-open' | 'visible-linked' | 'all-open-linked'
+ *   - label: string
+ *   - files?:        array of { path: string }
+ *   - initial_files?: array of { path: string }
+ *   - all_files?:     array of { path: string }
+ *   - folder_structure?: string  (when mode='folder')
+ *   - excluded_headings?: string[]
+ *   - output_template?: string
+ * 
+ * This yields a final string containing the aggregated content with excluded
+ * headings removed, embedded files inlined (if applicable), etc.
  */
 
-/**
- * @typedef {Object} SmartContextOpts
- * @property {(file:TFile)=>Promise<string>} get_file_contents
- * @property {(linkText:string, currentPath:string)=>string|undefined} resolve_link
- * @property {(path:string)=>TFile|null} get_file_by_path
- * @property {(file:TFile)=>Set<string>} get_embeds_for_file
- * @property {(file:TFile)=>{links:string[], embeds:string[]}} get_links_for_file
- * @property {Object} settings
- */
+import {
+  strip_excluded_sections,
+  remove_included_link_lines,
+  inline_embedded_links
+} from './utils.js';  // Re-use your existing utility logic
 
-/**
- * The SmartContext class builds a comprehensive context string from given sets of files.
- * It relies on callbacks passed in from the plugin to handle Obsidian-specific logic:
- * reading files, resolving links, and retrieving linked files.
- * This keeps SmartContext more platform-agnostic and testable.
- */
 export class SmartContext {
   /**
-   * @param {SmartContextOpts} opts
+   * @param {Object} opts
+   * @param {Object} opts.fs - A SmartFs or similar object with .read(filePath, encoding)
+   * @param {(filePath: string) => { links: string[], embeds: string[] }} opts.get_links_for_path
+   * @param {(filePath: string) => Set<string>} opts.get_embeds_for_path
+   * @param {(linkText: string, currentPath: string) => string|undefined} opts.resolve_link
+   * @param {string[]} [opts.excluded_headings=[]]
+   * @param {string} [opts.output_template='']
    */
   constructor(opts) {
-    this.get_file_contents = opts.get_file_contents;
+    this.fs = opts.fs;
+    this.get_links_for_path = opts.get_links_for_path;
+    this.get_embeds_for_path = opts.get_embeds_for_path;
     this.resolve_link = opts.resolve_link;
-    this.get_file_by_path = opts.get_file_by_path;
-    this.get_embeds_for_file = opts.get_embeds_for_file;
-    this.get_links_for_file = opts.get_links_for_file;
-    this.settings = opts.settings;
+    this.default_excluded_headings = opts.excluded_headings || [];
+    this.default_output_template = opts.output_template || '';
   }
 
   /**
-   * @method build_context
-   * @description Builds the output string for given mode and files.
+   * @typedef {Object} BuildContextOptions
+   * @property {string} mode - 'folder' | 'visible' | 'all-open' | 'visible-linked' | 'all-open-linked'
+   * @property {string} label
+   * @property {string} [folder_structure]
+   * @property {{path:string}[]} [files]
+   * @property {{path:string}[]} [initial_files]
+   * @property {{path:string}[]} [all_files]
+   * @property {string[]} [excluded_headings]
+   * @property {string} [output_template]
+   */
+
+  /**
+   * Constructs a final string with file contents (and optional linking).
    * @param {BuildContextOptions} context_opts
    * @returns {Promise<string>}
    */
   async build_context(context_opts) {
-    const { mode, label, folder_structure, excluded_headings, output_template } = context_opts;
+    const {
+      mode,
+      label,
+      folder_structure = '',
+      files = [],
+      initial_files = [],
+      all_files = [],
+      excluded_headings = this.default_excluded_headings,
+      output_template = this.default_output_template
+    } = context_opts;
 
     let content_to_copy = '';
-    let files_to_process = [];
-    let initial_files = new Set();
-    let all_files = new Set();
-
-    if (mode === 'folder' || mode === 'visible' || mode === 'all-open') {
-      files_to_process = context_opts.files || [];
-    } else if (mode === 'visible-linked' || mode === 'all-open-linked') {
-      initial_files = new Set(context_opts.initial_files || []);
-      all_files = new Set(context_opts.all_files || []);
-    }
-
-    // Formatting:
-    // folder mode:
-    // <folder_name> Folder Structure:
-    // <folder_structure>
-    // File Contents:
-    //
-    // visible/all-open:
-    // Open files contents:
-    //
-    // linked variants:
-    // Linked files:
-    // ...contents...
-    //
-    // <label>:
-    // ...contents...
-    //
-
     let total_excluded_sections = 0;
-    let all_excluded_sections = new Map();
+    const all_excluded_map = new Map();
 
+    // 1) Handle simpler modes
     if (mode === 'folder') {
       content_to_copy += `${label}:\n${folder_structure}\nFile contents:\n`;
-      for (const file of files_to_process) {
-        const processed = await this.process_single_file(file, excluded_headings, null, null);
+      for (const file of files) {
+        const processed = await this.#process_single_file(file.path, excluded_headings);
         total_excluded_sections += processed.excluded_count;
-        this.aggregate_exclusions(all_excluded_sections, processed.excluded_sections);
+        this.#aggregate_exclusions(all_excluded_map, processed.excluded_sections);
 
         content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed.content}\n-----------------------\n\n`;
       }
-    } else if (mode === 'visible' || mode === 'all-open') {
+    }
+    else if (mode === 'visible' || mode === 'all-open') {
       content_to_copy += `${label}:\n`;
-      for (const file of files_to_process) {
-        const processed = await this.process_single_file(file, excluded_headings, null, null);
+      for (const file of files) {
+        const processed = await this.#process_single_file(file.path, excluded_headings);
         total_excluded_sections += processed.excluded_count;
-        this.aggregate_exclusions(all_excluded_sections, processed.excluded_sections);
+        this.#aggregate_exclusions(all_excluded_map, processed.excluded_sections);
 
         content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed.content}\n-----------------------\n\n`;
       }
-    } else if (mode === 'visible-linked' || mode === 'all-open-linked') {
-      // Need to process linked files first (that are not initial or embedded)
-      const initial_file_paths = new Set(Array.from(initial_files).map(f => f.path));
+    }
+    // 2) Handle linked modes
+    else if (mode === 'visible-linked' || mode === 'all-open-linked') {
+      const initPaths = new Set(initial_files.map(f => f.path));
 
-      // Determine embedded files map for initial files
-      const embedded_files_map = new Map();
-      for (const file of initial_files) {
-        const embedded_set = this.get_embeds_for_file(file);
-        embedded_files_map.set(file.path, embedded_set);
+      // Build map: filePath => setOfEmbeddedFilePaths
+      const embedded_map = new Map();
+      for (const f of initial_files) {
+        const embedSet = this.get_embeds_for_path(f.path);
+        embedded_map.set(f.path, embedSet || new Set());
       }
-
-      const is_file_embedded = (file_path) => {
-        for (const emb_set of embedded_files_map.values()) {
-          if (emb_set.has(file_path)) return true;
+      const isEmbedded = (filePath) => {
+        for (const s of embedded_map.values()) {
+          if (s.has(filePath)) return true;
         }
         return false;
       };
 
-      const linked_only_files = new Set(
-        Array.from(all_files).filter(f => {
-          if (initial_file_paths.has(f.path)) return false;
-          if (is_file_embedded(f.path)) return false;
-          return true;
-        })
-      );
-
-      if (linked_only_files.size > 0) {
+      // Linked-only files: in all_files but not initial, not embedded
+      const linked_only_files = all_files.filter(f => {
+        if (initPaths.has(f.path)) return false;
+        if (isEmbedded(f.path)) return false;
+        return true;
+      });
+      if (linked_only_files.length > 0) {
         content_to_copy += `Linked files:\n`;
-        for (const file of linked_only_files) {
-          const processed = await this.process_single_file(file, excluded_headings, null, null);
+        for (const lf of linked_only_files) {
+          const processed = await this.#process_single_file(lf.path, excluded_headings);
           total_excluded_sections += processed.excluded_count;
-          this.aggregate_exclusions(all_excluded_sections, processed.excluded_sections);
+          this.#aggregate_exclusions(all_excluded_map, processed.excluded_sections);
 
-          content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed.content}\n\n-----------------------\n\n`;
+          content_to_copy += `----------------------\n/${lf.path}\n-----------------------\n${processed.content}\n\n-----------------------\n\n`;
         }
       }
 
-      // Process initial files, with embedded inlining and link line removal
+      // Now, initial files, with embedded expansions
       content_to_copy += `\n${label}:\n`;
-      for (const file of initial_files) {
-        const file_path = file.path;
-        const embedded_set = embedded_files_map.get(file_path) || new Set();
-
-        // We'll inline embeds and remove link-only lines as in main-v1 logic
-        const processed = await this.process_single_file(
-          file,
+      for (const f of initial_files) {
+        const embedded_set = embedded_map.get(f.path) || new Set();
+        const processed = await this.#process_single_file_with_embeddings(
+          f.path,
           excluded_headings,
-          (linkText) => this.resolve_link(linkText, file_path),
-          async (filePath) => {
-            const f = this.get_file_by_path(filePath);
-            return f ? await this.get_file_contents(f) : '';
-          },
-          embedded_set,
-          initial_file_paths
+          initPaths,
+          embedded_set
         );
-
         total_excluded_sections += processed.excluded_count;
-        this.aggregate_exclusions(all_excluded_sections, processed.excluded_sections);
+        this.#aggregate_exclusions(all_excluded_map, processed.excluded_sections);
 
-        content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed.content}\n`;
+        content_to_copy += `----------------------\n/${f.path}\n-----------------------\n${processed.content}\n`;
       }
     }
 
+    // 3) Insert user’s output_template
     if (output_template) {
       content_to_copy = `${output_template}\n${content_to_copy}`;
     }
 
-    // Add notice-like summary in main (already done in main's copyToClipboard)
-    // Here we just return the final string
+    // (Optional) Could do something with total_excluded_sections or all_excluded_map
     return content_to_copy;
   }
 
-  aggregate_exclusions(all_excluded_sections, new_exclusions) {
-    new_exclusions.forEach((count, section) => {
-      all_excluded_sections.set(section, (all_excluded_sections.get(section) || 0) + count);
-    });
+  /**
+   * Helper to accumulate excluded sections into a global map.
+   * @param {Map<string, number>} targetMap
+   * @param {Map<string, number>} newExclusions
+   */
+  #aggregate_exclusions(targetMap, newExclusions) {
+    for (const [section, count] of newExclusions.entries()) {
+      targetMap.set(section, (targetMap.get(section) || 0) + count);
+    }
   }
 
   /**
-   * Process a single file: read contents, strip excluded sections, handle embeddings if provided.
-   * @param {TFile} file
-   * @param {string[]} excluded_headings
-   * @param {(linkText:string)=>string|undefined} link_resolver Optional link resolver for embeddings
-   * @param {(filePath:string)=>Promise<string>} file_content_resolver Optional file content resolver for embeddings
-   * @param {Set<string>} embedded_set Optional set of embedded file paths
-   * @param {Set<string>} included_file_paths Optional set of included files for link removal
-   * @returns {Promise<{content:string,excluded_count:number,excluded_sections:Map<string,number>}>}
+   * Reads a file, strips excluded headings.
+   * @param {string} filePath
+   * @param {string[]} excluded
    */
-  async process_single_file(
-    file,
-    excluded_headings,
-    link_resolver = null,
-    file_content_resolver = null,
-    embedded_set = null,
-    included_file_paths = null
-  ) {
-    let file_content = await this.get_file_contents(file);
-    let excluded_count = 0;
-    let excluded_sections = new Map();
+  async #process_single_file(filePath, excluded) {
+    let rawContent = '';
+    try {
+      rawContent = await this.fs.read(filePath, 'utf-8');
+    } catch (e) {
+      // Handle read error or just keep empty
+      rawContent = '';
+    }
+    const { processed_content, excluded_count, excluded_sections } =
+      strip_excluded_sections(rawContent, excluded);
+    return {
+      content: processed_content,
+      excluded_count,
+      excluded_sections
+    };
+  }
 
-    // If we have embeddings and link_resolvers, inline them
-    if (link_resolver && file_content_resolver && embedded_set) {
-      file_content = await inline_embedded_links(
-        file_content,
-        file.path,
-        link_resolver,
-        file_content_resolver,
-        excluded_headings,
-        () => embedded_set
+  /**
+   * Reads a file, inlines embedded content if in `embedded_set`, removes link-only lines for any `initPaths`.
+   * Then strips excluded headings.
+   * @param {string} filePath
+   * @param {string[]} excluded
+   * @param {Set<string>} initPaths
+   * @param {Set<string>} embedded_set
+   */
+  async #process_single_file_with_embeddings(filePath, excluded, initPaths, embedded_set) {
+    let rawContent = '';
+    try {
+      rawContent = await this.fs.read(filePath, 'utf-8');
+    } catch (e) {
+      rawContent = '';
+    }
+
+    // 1) Inline embedded links
+    rawContent = await inline_embedded_links(
+      rawContent,
+      filePath,
+      this.resolve_link,
+      async (fp) => {
+        try { return await this.fs.read(fp, 'utf-8'); }
+        catch(e) { return ''; }
+      },
+      excluded,
+      () => embedded_set
+    );
+
+    // 2) Remove lines that only link to included files
+    if (initPaths && this.resolve_link) {
+      rawContent = remove_included_link_lines(
+        rawContent,
+        initPaths,
+        (linkText) => this.resolve_link(linkText, filePath)
       );
     }
 
-    // If we have included_file_paths, remove link-only lines
-    if (included_file_paths && link_resolver) {
-      file_content = remove_included_link_lines(
-        file_content,
-        included_file_paths,
-        (linkText) => link_resolver(linkText, file.path)
-      );
-    }
-
-    // Exclusion processing
-    const res = strip_excluded_sections(file_content, excluded_headings);
-    excluded_count = res.excluded_count;
-    excluded_sections = res.excluded_sections;
+    // 3) Exclude headings
+    const { processed_content, excluded_count, excluded_sections } =
+      strip_excluded_sections(rawContent, excluded);
 
     return {
-      content: res.processed_content,
+      content: processed_content,
       excluded_count,
       excluded_sections
     };
