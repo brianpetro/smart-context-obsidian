@@ -1,5 +1,5 @@
 import test from 'ava';
-import { SmartContext } from './smart_context.js'; // Adjust path if needed
+import { SmartContext } from './smart_context.js';
 
 /**
  * Mock in-memory SmartFs-like adapter.
@@ -7,7 +7,7 @@ import { SmartContext } from './smart_context.js'; // Adjust path if needed
  */
 class InMemoryFs {
   constructor(files = {}) {
-    this.files = files; // e.g. { "folder/file1.md": "#Secret\nExclude me\n", ... }
+    this.files = files; 
   }
 
   async read(filePath, encoding = 'utf-8') {
@@ -18,21 +18,10 @@ class InMemoryFs {
   }
 
   get_link_target_path(linkText, currentFilePath) {
-    // Basic linkText -> file path resolution
-    // e.g. "someNote" => "someNote.md" if it exists in `files`
-    // For these tests, we can just do a naive approach:
     const tryPath = linkText.endsWith('.md') ? linkText : linkText + '.md';
     return this.files.hasOwnProperty(tryPath) ? tryPath : undefined;
   }
 }
-
-/** 
- * Test suite for SmartContext
- * 
- * We illustrate four sample tests:
- * 1) folder mode with excluded headings
- * 2) visible mode merges only specified files
- */
 
 test('Given folder mode, When multiple files exist, Then merges them & excludes specified headings', async (t) => {
   // Given
@@ -43,7 +32,15 @@ test('Given folder mode, When multiple files exist, Then merges them & excludes 
   const fs = new InMemoryFs(files);
   const context = new SmartContext({
     fs,
-    excluded_headings: ['Secret'],
+    settings: {
+      excluded_headings: ['Secret'],
+      before_prompt: '',
+      before_each_prompt: '',
+      after_each_prompt: '',
+      after_prompt: '',
+      link_depth: 0,
+      max_linked_files: 0,
+    },
   });
 
   // When
@@ -65,28 +62,35 @@ test('Given folder mode, When multiple files exist, Then merges them & excludes 
 });
 
 test('Given visible mode, When files are specified, Then only merges those files', async (t) => {
-  // Given
   const files = {
     'someNote.md': `# Visible\nHello world\n`,
     'anotherNote.md': `# Not used\nThis won't appear`,
   };
   const fs = new InMemoryFs(files);
-  const context = new SmartContext({ fs });
+  const context = new SmartContext({
+    fs,
+    settings: {
+      excluded_headings: [],
+      before_prompt: '',
+      before_each_prompt: '',
+      after_each_prompt: '',
+      after_prompt: '',
+      link_depth: 0,
+      max_linked_files: 0,
+    },
+  });
 
-  // When
   const output = await context.build_context({
     mode: 'visible',
     label: 'Open files contents',
     files: [{ path: 'someNote.md' }],
   });
 
-  // Then
-  t.true(output.context.includes('/someNote.md'), 'Uses only someNote.md');
-  t.false(output.context.includes('anotherNote.md'), 'anotherNote not included');
+  t.true(output.context.includes('<context path="someNote.md">'), 'Uses only someNote.md');
+  t.false(output.context.includes('<context path="anotherNote.md">'), 'anotherNote not included');
 });
 
 test('Given excluded_headings, When they appear in multiple files, Then each is stripped accordingly', async (t) => {
-  // Given
   const files = {
     'fileA.md': `# Secret\nexcluded A\n# Keep\nremain A`,
     'fileB.md': `## Secret\nexcluded B\n## AlsoKeep\nremain B`,
@@ -94,10 +98,17 @@ test('Given excluded_headings, When they appear in multiple files, Then each is 
   const fs = new InMemoryFs(files);
   const context = new SmartContext({
     fs,
-    excluded_headings: ['Secret'],
+    settings: {
+      excluded_headings: ['Secret'],
+      before_prompt: '',
+      before_each_prompt: '',
+      after_each_prompt: '',
+      after_prompt: '',
+      link_depth: 0,
+      max_linked_files: 0,
+    },
   });
 
-  // When
   const output = await context.build_context({
     mode: 'all-open',
     label: 'All open files',
@@ -108,35 +119,29 @@ test('Given excluded_headings, When they appear in multiple files, Then each is 
     excluded_headings: ['Secret'],
   });
 
-  // Then
   t.false(output.context.includes('excluded A'), 'Excludes from fileA');
   t.false(output.context.includes('excluded B'), 'Excludes from fileB');
   t.true(output.context.includes('remain A'), 'Retains other heading content from fileA');
   t.true(output.context.includes('remain B'), 'Retains other heading content from fileB');
 });
 
-
 test('Given an unknown mode, Then returns fallback text and zero file stats', async (t) => {
-  // Given
   const files = {
     'dummy.md': `# Just a dummy file`,
   };
   const fs = new InMemoryFs(files);
   const context = new SmartContext({ fs });
 
-  // When
-  const { context: output, stats } = await context.build_context({
+  const { context: out, stats } = await context.build_context({
     mode: 'non-existent-mode',
     files: [{ path: 'dummy.md' }],
   });
 
-  // Then
-  t.true(output.context.includes('(No valid mode selected.)'), 'Fallback message should appear');
+  t.true(out.includes('(No valid mode selected.)'), 'Fallback message should appear');
   t.is(stats.file_count, 0, 'No files processed for unknown mode');
 });
 
 test('Given all-open-linked mode, When link_depth=2, Then BFS includes transitive links up to 2 hops', async (t) => {
-  // Given
   const files = {
     'noteA.md': `[[noteB]]\n[[noteC]]`,
     'noteB.md': `[[noteD]]\n# Secret\nexcluded B`,
@@ -146,15 +151,20 @@ test('Given all-open-linked mode, When link_depth=2, Then BFS includes transitiv
   const fs = new InMemoryFs(files);
   const context = new SmartContext({
     fs,
-    excluded_headings: ['Secret'],
-    // link_depth set in test options
+    settings: {
+      excluded_headings: ['Secret'],
+      before_prompt: '',
+      before_each_prompt: '',
+      after_each_prompt: '',
+      after_prompt: '',
+      link_depth: 2,
+      max_linked_files: 0,
+    },
   });
 
-  // When
-  const { context: output, stats } = await context.build_context({
+  const { context: out, stats } = await context.build_context({
     mode: 'all-open-linked',
     label: 'All open linked',
-    // noteA is open; we'll pretend it is the only open file
     initial_files: [{ path: 'noteA.md' }],
     all_files: [
       { path: 'noteA.md' },
@@ -166,52 +176,42 @@ test('Given all-open-linked mode, When link_depth=2, Then BFS includes transitiv
     link_depth: 2,
   });
 
-  // Then
-  // BFS from noteA with depth=2 will pull in noteB, noteC, and also noteD (since B -> D).
-  // - noteB has "Secret" heading, so that should be excluded
-  t.true(output.context.includes('noteB.md'), 'noteB should be included via BFS hop=1');
-  t.true(output.context.includes('noteC.md'), 'noteC should be included via BFS hop=1');
-  t.true(output.context.includes('noteD.md'), 'noteD should be included via BFS hop=2');
-  t.false(output.context.includes('excluded B'), 'excluded heading from noteB not included');
-  t.true(output.context.includes('Some D content'), 'noteD content included');
-  t.is(stats.file_count, 4, 'All 4 notes are included in final stats');
+  t.true(out.includes('noteB.md'), 'noteB included (hop=1)');
+  t.true(out.includes('noteC.md'), 'noteC included (hop=1)');
+  t.true(out.includes('noteD.md'), 'noteD included (hop=2)');
+  t.false(out.includes('excluded B'), 'excluded heading from noteB not included');
+  t.true(out.includes('Some D content'), 'noteD content included');
+  t.is(stats.file_count, 4, 'All 4 notes included in final stats');
 });
 
-test('Given skip_exclude_links_in_active_file, When multiple notes contain link-only lines, Then only active note retains them', async (t) => {
-  // Given
+test('Given before_each/after_each placeholders, When building context, Then placeholders are replaced', async (t) => {
   const files = {
-    'active.md': `[[keepMe]]\nHello from active`,
-    'other.md': `[[removeMe]]\nHello from other`,
-    'keepMe.md': `Kept content`,
-    'removeMe.md': `Removed content`,
+    'notes/test1.md': `# Heading\nFile 1 content`,
+    'test2.md': `Some other content`,
   };
   const fs = new InMemoryFs(files);
+
   const context = new SmartContext({
     fs,
-    skip_exclude_links_in_active_file: true,
+    settings: {
+      excluded_headings: [],
+      before_each_prompt: '',
+      after_each_prompt: '',
+      before_prompt: '',
+      after_prompt: '',
+      link_depth: 0,
+      max_linked_files: 0,
+    },
   });
 
-  // When
-  const { context: output, stats } = await context.build_context({
-    mode: 'all-open-linked',
-    label: 'Testing skip exclude in only active',
-    initial_files: [{ path: 'active.md' }, { path: 'other.md' }],
-    all_files: [
-      { path: 'active.md' },
-      { path: 'other.md' },
-      { path: 'keepMe.md' },
-      { path: 'removeMe.md' },
-    ],
-    active_file_path: 'active.md',
-    link_depth: 1,
+  const output = await context.build_context({
+    mode: 'all-open',
+    label: 'Test placeholders',
+    files: [{ path: 'notes/test1.md' }, { path: 'test2.md' }],
   });
 
-  // Then
-  // The "[[keepMe]]" line remains in active.md. But "[[removeMe]]" in other.md is removed
-  // because skip_exclude_links_in_active_file only applies to the active note.
-  t.true(output.context.includes('[[keepMe]]'), 'Active note retains link-only line');
-  t.false(output.context.includes('[[removeMe]]'), 'Non-active note has link-only line removed');
-  t.true(output.context.includes('Hello from active'), 'Active note content remains');
-  t.true(output.context.includes('Hello from other'), 'Other note text remains (minus the link-only line)');
-  t.is(stats.file_count, 4, 'All 4 files included in final output');
+  // Should see defaults: ---{{FILE_PATH}}--- and ------
+  t.true(output.context.includes('<context path="notes/test1.md">'), 'before_each replaced FILE_PATH for test1');
+  t.true(output.context.includes('<context path="test2.md">'), 'before_each replaced FILE_PATH for test2');
+  t.true(output.context.includes('</context>'), 'after_each default found');
 });

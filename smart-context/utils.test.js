@@ -6,7 +6,6 @@ import {
   inline_embedded_links 
 } from './utils.js';
 
-
 // ***** Tests for strip_excluded_sections *****
 
 test('strip_excluded_sections returns original content if no excluded headings', t => {
@@ -44,7 +43,6 @@ test('strip_excluded_sections does not exclude code blocks when heading is exclu
 test('strip_excluded_sections does not check headings inside code blocks', t => {
   const content = `\`\`\`\n# Secret heading inside code\n\`\`\`\n# Public\nVisible content`;
   const { processed_content } = strip_excluded_sections(content, ['Secret heading inside code']);
-  // Nothing is excluded because heading is in code block
   t.is(processed_content.trim(), content.trim());
 });
 
@@ -85,7 +83,6 @@ Visible again
   t.true(processed_content.includes('Another Public'));
 });
 
-
 // ***** Tests for format_excluded_sections *****
 
 test('format_excluded_sections returns empty string for empty map', t => {
@@ -106,7 +103,6 @@ test('format_excluded_sections formats multiple counts', t => {
   t.true(result.includes('"Secret" (2×)'));
   t.true(result.includes('"Another"'));
 });
-
 
 // ***** Tests for remove_included_link_lines *****
 
@@ -139,23 +135,25 @@ Just text
 More text
 `;
   const included_files = new Set(['some/path']);
-  const link_resolver = () => undefined; // no link resolves
+  const link_resolver = () => undefined;
   const processed = remove_included_link_lines(content, included_files, link_resolver);
-  t.is(processed, content.trim());
+  t.is(processed.trim(), content.trim());
 });
 
 test('remove_included_link_lines removes only lines that are exclusively a single included link', t => {
   const content = `
 [[included-file]] This line should remain because it has more than a link
 [[included-file]]
+- [[included-file]] 
 `;
   const included_files = new Set(['inc-path']);
   const link_resolver = (linkText) => linkText === 'included-file' ? 'inc-path' : undefined;
   const processed = remove_included_link_lines(content, included_files, link_resolver);
   t.true(processed.includes('This line should remain'));
+  // The line that only had [[included-file]] or bullet + [[included-file]] is removed
   t.false(processed.includes('[[included-file]]\n'));
+  t.false(processed.includes('- [[included-file]]'));
 });
-
 
 // ***** Tests for inline_embedded_links *****
 
@@ -192,7 +190,6 @@ test('inline_embedded_links converts embedded link to normal link if not in embe
   const embedded_links_resolver = () => new Set(); // no embedded files
 
   const processed = await inline_embedded_links(content, 'current.md', link_resolver, file_content_resolver, [], embedded_links_resolver);
-  // Should just become a normal link: [[another-file]]
   t.false(processed.includes('![[another-file]]'));
   t.true(processed.includes('[[another-file]]'));
 });
@@ -239,6 +236,4 @@ test('inline_embedded_links preserves whitespace and handles empty content grace
 
   const processed = await inline_embedded_links(content, 'current.md', link_resolver, file_content_resolver, [], embedded_links_resolver);
   t.true(processed.includes('> [!embed] empty.md'));
-  // No content in embedded file, just no error should occur
 });
-

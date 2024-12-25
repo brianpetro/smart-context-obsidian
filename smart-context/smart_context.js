@@ -30,6 +30,7 @@ import {
  * @property {string} [after_each_prompt]
  * @property {string} [after_prompt]
  * @property {string[]} [excluded_headings]
+ * @property {number} [max_linked_files] // newly recognized bounding setting
  */
 
 /**
@@ -40,7 +41,21 @@ import {
  * @property {string} after_each_prompt
  * @property {string} after_prompt
  * @property {number} link_depth
+ * @property {number} max_linked_files
  */
+
+/**
+ * Replace the {{FILE_PATH}} and {{FILE_NAME}} placeholders in a prompt template.
+ * @param {string} template - The prompt template to process
+ * @param {string} file_path - The file path to inject
+ * @returns {string} - Modified template with placeholders replaced
+ */
+function replace_file_placeholders(template, file_path) {
+  const file_name = file_path.substring(file_path.lastIndexOf('/') + 1);
+  return template
+    .replace(/\{\{FILE_PATH\}\}/g, file_path)
+    .replace(/\{\{FILE_NAME\}\}/g, file_name);
+}
 
 /**
  * A module for building "smart context" from multiple notes.
@@ -62,6 +77,7 @@ export class SmartContext {
       after_each_prompt: '',
       after_prompt: '',
       link_depth: 0,
+      max_linked_files: 0,
     };
   }
 
@@ -91,19 +107,22 @@ export class SmartContext {
       all_files = [],
       active_file_path = '',
       link_depth = this.settings.link_depth,
+      max_linked_files = this.settings.max_linked_files,
 
-      // If user passes them directly, override plugin settings. Otherwise, pull from this.settings.
       before_prompt = this.settings.before_prompt,
       before_each_prompt = this.settings.before_each_prompt,
       after_each_prompt = this.settings.after_each_prompt,
       after_prompt = this.settings.after_prompt,
     } = context_opts;
 
-    // We'll use the plugin’s settings if no per-command overrides
     const excluded_headings =
       context_opts.hasOwnProperty('excluded_headings')
         ? context_opts.excluded_headings
         : this.settings.excluded_headings;
+
+    // 1) Use default prompts if user-set strings are empty
+    const final_before_each_prompt = before_each_prompt || '<context path="{{FILE_PATH}}">\n';
+    const final_after_each_prompt = after_each_prompt || '</context>\n';
 
     let content_to_copy = '';
 
@@ -123,7 +142,11 @@ export class SmartContext {
         content_to_copy += `${label}:\n${folder_structure}\nFile contents:\n`;
         for (const file of files) {
           file_count++;
-          if (before_each_prompt) content_to_copy += `${before_each_prompt}\n`;
+
+          if (final_before_each_prompt) {
+            content_to_copy += replace_file_placeholders(final_before_each_prompt, file.path) + '\n';
+          }
+
           const { processed_content, excluded_count, excluded_sections } = await this.#process_file(
             file.path,
             excluded_headings
@@ -133,8 +156,11 @@ export class SmartContext {
             excluded_sections_map.set(sec, (excluded_sections_map.get(sec) || 0) + cnt);
           });
 
-          content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n-----------------------\n\n`;
-          if (after_each_prompt) content_to_copy += `${after_each_prompt}\n`;
+          content_to_copy += `\n${processed_content}\n`;
+
+          if (final_after_each_prompt) {
+            content_to_copy += replace_file_placeholders(final_after_each_prompt, file.path) + '\n';
+          }
         }
         break;
       }
@@ -144,7 +170,11 @@ export class SmartContext {
         content_to_copy += `${label}:\n`;
         for (const file of files) {
           file_count++;
-          if (before_each_prompt) content_to_copy += `${before_each_prompt}\n`;
+
+          if (final_before_each_prompt) {
+            content_to_copy += replace_file_placeholders(final_before_each_prompt, file.path) + '\n';
+          }
+
           const { processed_content, excluded_count, excluded_sections } = await this.#process_file(
             file.path,
             excluded_headings
@@ -154,15 +184,17 @@ export class SmartContext {
             excluded_sections_map.set(sec, (excluded_sections_map.get(sec) || 0) + cnt);
           });
 
-          content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n-----------------------\n\n`;
-          if (after_each_prompt) content_to_copy += `${after_each_prompt}\n`;
+          content_to_copy += `\n${processed_content}\n`;
+
+          if (final_after_each_prompt) {
+            content_to_copy += replace_file_placeholders(final_after_each_prompt, file.path) + '\n';
+          }
         }
         break;
       }
 
       case 'visible-linked':
       case 'all-open-linked': {
-        // “linked_only” = in all_files but not in initial_files
         const initPaths = new Set(initial_files.map((f) => f.path));
         const linked_only = all_files.filter((f) => !initPaths.has(f.path));
 
@@ -171,7 +203,11 @@ export class SmartContext {
           content_to_copy += `Linked files:\n`;
           for (const lf of linked_only) {
             file_count++;
-            if (before_each_prompt) content_to_copy += `${before_each_prompt}\n`;
+
+            if (final_before_each_prompt) {
+              content_to_copy += replace_file_placeholders(final_before_each_prompt, lf.path) + '\n';
+            }
+
             const { processed_content, excluded_count, excluded_sections } = await this.#process_file(
               lf.path,
               excluded_headings
@@ -181,8 +217,11 @@ export class SmartContext {
               excluded_sections_map.set(sec, (excluded_sections_map.get(sec) || 0) + cnt);
             });
 
-            content_to_copy += `----------------------\n/${lf.path}\n-----------------------\n${processed_content}\n\n-----------------------\n\n`;
-            if (after_each_prompt) content_to_copy += `${after_each_prompt}\n`;
+            content_to_copy += `\n${processed_content}\n`;
+
+            if (final_after_each_prompt) {
+              content_to_copy += replace_file_placeholders(final_after_each_prompt, lf.path) + '\n';
+            }
           }
         }
 
@@ -190,27 +229,30 @@ export class SmartContext {
         content_to_copy += `\n${label}:\n`;
         for (const file of initial_files) {
           file_count++;
-          if (before_each_prompt) content_to_copy += `${before_each_prompt}\n`;
 
-          const { processed_content, excluded_count, excluded_sections } = await this.#process_file_inlined_embeds(
-            file.path,
-            excluded_headings,
-            initPaths,
-          );
+          if (final_before_each_prompt) {
+            content_to_copy += replace_file_placeholders(final_before_each_prompt, file.path) + '\n';
+          }
+
+          // Inline embeds for initial files
+          const { processed_content, excluded_count, excluded_sections } =
+            await this.#process_file_inlined_embeds(file.path, excluded_headings, initPaths);
 
           total_excluded_sections += excluded_count;
           excluded_sections.forEach((cnt, sec) => {
             excluded_sections_map.set(sec, (excluded_sections_map.get(sec) || 0) + cnt);
           });
 
-          content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n`;
-          if (after_each_prompt) content_to_copy += `${after_each_prompt}\n`;
+          content_to_copy += `\n${processed_content}\n`;
+
+          if (final_after_each_prompt) {
+            content_to_copy += replace_file_placeholders(final_after_each_prompt, file.path) + '\n';
+          }
         }
         break;
       }
 
       default: {
-        // Fallback if an unknown mode is passed
         content_to_copy += '(No valid mode selected.)\n';
         break;
       }
@@ -242,10 +284,8 @@ export class SmartContext {
     } catch (e) {
       console.warn(`Could not read file: ${filePath}`, e);
     }
-    const { processed_content, excluded_count, excluded_sections } = strip_excluded_sections(
-      raw,
-      excluded_headings
-    );
+    const { processed_content, excluded_count, excluded_sections } = 
+      strip_excluded_sections(raw, excluded_headings);
     return { processed_content, excluded_count, excluded_sections };
   }
 
@@ -274,19 +314,17 @@ export class SmartContext {
         }
       },
       excluded_headings,
-      () => new Set() // no “current-embeds” knowledge by default; we could expand if needed
+      () => new Set() // no “current-embeds” knowledge by default
     );
 
-    // Remove lines that are exclusively a single included link
+    // Remove lines that are exclusively a link to included file
     raw = remove_included_link_lines(raw, initPaths, (linkText) =>
       this.fs.get_link_target_path(linkText, filePath)
     );
 
-    // finally exclude headings
-    const { processed_content, excluded_count, excluded_sections } = strip_excluded_sections(
-      raw,
-      excluded_headings
-    );
+    // Exclude headings
+    const { processed_content, excluded_count, excluded_sections } = 
+      strip_excluded_sections(raw, excluded_headings);
     return { processed_content, excluded_count, excluded_sections };
   }
 
@@ -309,6 +347,11 @@ export class SmartContext {
       link_depth: {
         name: 'Link depth',
         description: 'Number of link “hops” to follow for “with linked” commands (0 = no links).',
+        type: 'number',
+      },
+      max_linked_files: {
+        name: 'Max linked files',
+        description: 'Limit how many linked files are pulled in BFS expansions (0 = no limit).',
         type: 'number',
       },
       before_prompt: {

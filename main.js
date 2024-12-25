@@ -18,6 +18,7 @@ const DEFAULT_SETTINGS = {
   after_prompt: '',
   link_depth: 1,
   include_file_tree: true,
+  max_linked_files: 0, // 0 means "no limit" by default
 };
 
 export default class SmartContextPlugin extends Plugin {
@@ -53,15 +54,12 @@ export default class SmartContextPlugin extends Plugin {
 
     // 4) Register plugin commands
 
-    // Command: copy folder contents (optionally including subfolders).
-    // This command always opens a modal first, so there's no direct
-    // "pre-check" to skip. We can leave it as a normal callback.
+    // Command: copy folder contents
     this.addCommand({
       id: 'copy-folder-contents',
       name: 'Copy folder contents to clipboard',
       callback: () => {
         new FolderSelectModal(this.app, async (folder) => {
-          // If user cancelled or no folder, do nothing
           if (!folder) return;
           await this.copy_folder_contents(folder, true);
         }).open();
@@ -74,13 +72,9 @@ export default class SmartContextPlugin extends Plugin {
       name: 'Copy visible open files content to clipboard',
       checkCallback: (checking) => {
         const visible_files = this.get_visible_open_files();
-        // If no visible files, disable in the command palette
         if (!visible_files.size) return false;
-
-        // If checking==true, do not run yet; just say "yes, we can run it"
         if (checking) return true;
 
-        // Otherwise, do the real action
         (async () => {
           const { context, stats } = await this.smartContext.build_context({
             mode: 'visible',
@@ -96,7 +90,7 @@ export default class SmartContextPlugin extends Plugin {
       },
     });
 
-    // Command: copy content from all open files (visible or not)
+    // Command: copy content from all open files
     this.addCommand({
       id: 'copy-all-open-files-content',
       name: 'Copy all open files content to clipboard',
@@ -120,7 +114,7 @@ export default class SmartContextPlugin extends Plugin {
       },
     });
 
-    // Command: copy content of visible open files (with linked files)
+    // Command: copy content of visible open files (with linked)
     this.addCommand({
       id: 'copy-visible-open-files-content-with-linked',
       name: 'Copy visible open files content (with linked files) to clipboard',
@@ -136,7 +130,6 @@ export default class SmartContextPlugin extends Plugin {
             initial_files: Array.from(visible_files).map((f) => ({ path: f.path })),
             all_files: await this.get_linked_files(visible_files, this.settings.link_depth),
             active_file_path: this.app.workspace.getActiveFile()?.path ?? '',
-            link_depth: this.settings.link_depth,
           });
           await this.copy_to_clipboard(context);
           this.showStatsNotice(
@@ -165,7 +158,6 @@ export default class SmartContextPlugin extends Plugin {
             initial_files: Array.from(all_files_set).map((f) => ({ path: f.path })),
             all_files: await this.get_linked_files(all_files_set, this.settings.link_depth),
             active_file_path: this.app.workspace.getActiveFile()?.path ?? '',
-            link_depth: this.settings.link_depth,
           });
           await this.copy_to_clipboard(context);
           this.showStatsNotice(
@@ -178,8 +170,7 @@ export default class SmartContextPlugin extends Plugin {
       },
     });
 
-    // Add a right-click context menu option on folders for copying folder contents
-    // (no pre-check needed: user specifically clicks the folder)
+    // Add a right-click context menu option on folders
     this.registerEvent(
       this.app.workspace.on('file-menu', (menu, file) => {
         if (file instanceof TFolder) {
@@ -220,7 +211,6 @@ export default class SmartContextPlugin extends Plugin {
       label: folder.name + ' folder structure',
       folder_structure,
       files: files.map((f) => ({ path: f.path })),
-      link_depth: this.settings.link_depth,
     });
     await this.copy_to_clipboard(context);
     this.showStatsNotice(stats, `${stats.file_count} file(s) in folder`);
@@ -273,7 +263,7 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Recursively gather leaves in the Obsidian workspace. 
+   * Recursively gather leaves in the Obsidian workspace.
    */
   get_all_leaves() {
     const leaves = [];
@@ -352,7 +342,7 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Recursively gather all transitive linked files up to `link_depth` hops.
-   * This effectively merges the original "get_all_linked_files_in_set" with a BFS limit.
+   * Also respects `max_linked_files` if > 0.
    *
    * @param {Set<TFile>} initialFiles
    * @param {number} link_depth
@@ -368,11 +358,17 @@ export default class SmartContextPlugin extends Plugin {
     }
     const queue = [...initialFiles].map((f) => ({ file: f, depth: 0 }));
 
+    const max_files = this.settings.max_linked_files || 0; // 0 means no limit
+
     while (queue.length) {
+      // if we have a limit, bail out if we've reached it
+      if (max_files > 0 && all.size >= max_files) break;
+
       const { file, depth } = queue.shift();
       if (depth >= link_depth) continue;
       const links = await this.get_all_linked_files(file);
       for (const lf of links) {
+        if (max_files > 0 && all.size >= max_files) break;
         if (!all.has(lf.path)) {
           all.set(lf.path, lf);
           queue.push({ file: lf, depth: depth + 1 });
