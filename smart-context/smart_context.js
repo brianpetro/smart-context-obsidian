@@ -35,7 +35,6 @@ import {
 /**
  * @typedef {Object} SmartContextSettings
  * @property {string[]} excluded_headings
- * @property {boolean} skip_exclude_links_in_active_file
  * @property {string} before_prompt
  * @property {string} before_each_prompt
  * @property {string} after_each_prompt
@@ -58,7 +57,6 @@ export class SmartContext {
     /** @type {SmartContextSettings} */
     this.settings = opts.settings || {
       excluded_headings: [],
-      skip_exclude_links_in_active_file: false,
       before_prompt: '',
       before_each_prompt: '',
       after_each_prompt: '',
@@ -194,14 +192,10 @@ export class SmartContext {
           file_count++;
           if (before_each_prompt) content_to_copy += `${before_each_prompt}\n`;
 
-          const skipLinkRemoval =
-            this.settings.skip_exclude_links_in_active_file && file.path === active_file_path;
-
           const { processed_content, excluded_count, excluded_sections } = await this.#process_file_inlined_embeds(
             file.path,
             excluded_headings,
             initPaths,
-            skipLinkRemoval
           );
 
           total_excluded_sections += excluded_count;
@@ -259,7 +253,7 @@ export class SmartContext {
    * Read + inline embedded links + remove link-only lines (unless skipping) + exclude headings.
    * @private
    */
-  async #process_file_inlined_embeds(filePath, excluded_headings, initPaths, skipLinkRemoval) {
+  async #process_file_inlined_embeds(filePath, excluded_headings, initPaths) {
     let raw = '';
     try {
       raw = await this.fs.read(filePath, 'utf-8');
@@ -284,11 +278,9 @@ export class SmartContext {
     );
 
     // Remove lines that are exclusively a single included link
-    if (!skipLinkRemoval) {
-      raw = remove_included_link_lines(raw, initPaths, (linkText) =>
-        this.fs.get_link_target_path(linkText, filePath)
-      );
-    }
+    raw = remove_included_link_lines(raw, initPaths, (linkText) =>
+      this.fs.get_link_target_path(linkText, filePath)
+    );
 
     // finally exclude headings
     const { processed_content, excluded_count, excluded_sections } = strip_excluded_sections(
@@ -307,12 +299,7 @@ export class SmartContext {
       excluded_headings: {
         name: 'Excluded headings',
         description: 'Headings to exclude from copied content (one per line).',
-        type: 'textarea',
-      },
-      skip_exclude_links_in_active_file: {
-        name: 'Skip link-only removal in active note',
-        description: 'If ON, do not remove lines that are only links in the active note.',
-        type: 'toggle',
+        type: 'textarea_array',
       },
       include_file_tree: {
         name: 'Include file tree',

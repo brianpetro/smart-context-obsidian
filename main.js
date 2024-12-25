@@ -1,23 +1,23 @@
 import { Plugin, Notice, SuggestModal, TFolder, PluginSettingTab } from 'obsidian';
 import { SmartFs } from 'smart-file-system/smart_fs.js';
 import { SmartFsObsidianAdapter } from 'smart-file-system/adapters/obsidian.js';
-import { SmartContext } from './smart_context.js';
+import { SmartContext } from './smart-context/smart_context.js';
 import { SmartView } from 'smart-view';
 import { SmartViewObsidianAdapter } from 'smart-view/adapters/obsidian.js';
 import { SmartSettings } from 'smart-settings';
-import { format_excluded_sections } from './utils.js';
+import { format_excluded_sections } from './smart-context/utils.js';
 
 /**
  * Default settings pulled into the plugin if not overridden by the user.
  */
 const DEFAULT_SETTINGS = {
   excluded_headings: [],
-  skip_exclude_links_in_active_file: false,
   before_prompt: '',
   before_each_prompt: '',
   after_each_prompt: '',
   after_prompt: '',
-  link_depth: 0,
+  link_depth: 1,
+  include_file_tree: true,
 };
 
 export default class SmartContextPlugin extends Plugin {
