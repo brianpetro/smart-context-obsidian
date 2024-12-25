@@ -3,6 +3,31 @@
  * These functions are platform-agnostic and do not depend on Obsidian APIs.
  */
 
+// EXAMPLE: Turn this on if you want partial or case-insensitive matches
+const CASE_INSENSITIVE_MATCH = false;
+const PARTIAL_MATCH = false;
+
+/**
+ * Check if a heading_text matches any in excluded_headings.
+ * By default uses strict equality. If partial/case-insensitive is desired,
+ * set the above constants to `true`.
+ */
+function is_excluded_heading(heading_text, excluded_headings) {
+    return !!excluded_headings.find(h => {
+        if (CASE_INSENSITIVE_MATCH) {
+            const headingLower = heading_text.toLowerCase();
+            const excludeLower = h.toLowerCase();
+            return PARTIAL_MATCH
+              ? headingLower.includes(excludeLower)
+              : headingLower === excludeLower;
+        } else {
+            return PARTIAL_MATCH
+              ? heading_text.includes(h)
+              : heading_text === h;
+        }
+    });
+}
+
 /**
  * Strip excluded sections from file content.
  * @param {string} content - Raw file content
@@ -26,6 +51,7 @@ export function strip_excluded_sections(content, excluded_headings) {
     let in_code_block = false;
     let code_block_marker = '';
     let excluded_sections = new Map();
+    let current_excluded_heading = null;
 
     for (let line of lines) {
         // Check for code block start/end
@@ -57,26 +83,34 @@ export function strip_excluded_sections(content, excluded_headings) {
             const hashes = heading_match[1];
             const heading_text = heading_match[2].trim();
 
-            const excluded_heading = excluded_headings.find(h => h === heading_text);
-            if (excluded_heading) {
+            // Determine if heading is in the excluded list
+            if (is_excluded_heading(heading_text, excluded_headings)) {
+                // Start exclusion mode
                 excluded_count++;
+                current_excluded_heading = heading_text;
                 excluded_sections.set(
-                    excluded_heading,
-                    (excluded_sections.get(excluded_heading) || 0) + 1
+                    current_excluded_heading,
+                    (excluded_sections.get(current_excluded_heading) || 0) + 1
                 );
                 exclude_mode = true;
                 exclude_level = hashes.length;
                 continue;
             }
 
+            // If we are currently excluding, check if this heading ends the exclusion
             if (exclude_mode) {
                 const current_level = hashes.length;
                 if (current_level <= exclude_level) {
+                    // End exclusion mode
                     exclude_mode = false;
                     exclude_level = null;
+                    current_excluded_heading = null;
+                    // This heading is outside excluded section, include it
                     result.push(line);
                 }
+                // else do not push
             } else {
+                // Not excluding currently, just add line
                 result.push(line);
             }
         } else {
@@ -102,7 +136,9 @@ export function format_excluded_sections(excluded_sections) {
     if (excluded_sections.size === 0) return '';
     
     const sections = Array.from(excluded_sections.entries())
-        .map(([section, count]) => count === 1 ? `  • "${section}"` : `  • "${section}" (${count}×)`)
+        .map(([section, count]) => 
+          count === 1 ? `  • "${section}"` : `  • "${section}" (${count}×)`
+        )
         .join('\n');
     
     return `:\n${sections}`;
@@ -125,6 +161,7 @@ export function remove_included_link_lines(content, included_file_paths, link_re
 
         const link_text = trimmed.slice(2, -2).split('|')[0].trim();
         const resolved_path = link_resolver(link_text);
+        // If resolved to an included file, remove line
         return !resolved_path || !included_file_paths.has(resolved_path);
     });
 
@@ -133,6 +170,9 @@ export function remove_included_link_lines(content, included_file_paths, link_re
 
 /**
  * Process embedded links in content.
+ * We first collect all embed markers, then replace them in one pass
+ * to avoid conflicts with repeated `result.replace(...)`.
+ *
  * @param {string} content - Raw file content
  * @param {string} current_file_path - Path of current file
  * @param {(linkText: string, currentPath: string) => string|undefined} link_resolver 
@@ -150,35 +190,53 @@ export async function inline_embedded_links(
     embedded_links_resolver
 ) {
     const embedded_link_regex = /!\[\[([^\]]+)\]\]/g;
-    let result = content;
-    let match;
-
-    // Get all embedded files for current file
-    const current_embedded = embedded_links_resolver(current_file_path) || new Set();
     
-    // Process each embedded link
+    // Gather up all the matches first
+    const matches = [];
+    let match;
     while ((match = embedded_link_regex.exec(content)) !== null) {
-        const link_text = match[1].split('|')[0].trim();
+        matches.push({
+            full: match[0],     // "![[something]]"
+            inner: match[1],    // "something"
+            index: match.index  // position in content
+        });
+    }
+
+    if (!matches.length) {
+        return content; // no embedded links
+    }
+
+    // We'll rebuild the output in segments
+    const segments = [];
+    let lastIndex = 0;
+
+    // For embedded links, check if they belong to `current_embedded`
+    const current_embedded = embedded_links_resolver(current_file_path) || new Set();
+
+    for (const m of matches) {
+        // push everything before this match
+        if (m.index > lastIndex) {
+            segments.push(content.slice(lastIndex, m.index));
+        }
+        lastIndex = m.index + m.full.length;
+
+        const link_text = m.inner.split('|')[0].trim();
         const linked_file_path = link_resolver(link_text, current_file_path);
 
         if (!linked_file_path) {
             // File not found
-            result = result.replace(
-                `![[${match[1]}]]`,
-                `> [!embed] Embedded file not found\n> "${link_text}" could not be found`
+            segments.push(
+              `> [!embed] Embedded file not found\n> "${link_text}" could not be found`
             );
             continue;
         }
 
-        // If this is an embedded file for the current file, inline its content
         if (current_embedded.has(linked_file_path)) {
+            // inline its content
             const linked_content_raw = await file_content_resolver(linked_file_path);
-            
-            // Apply exclusions to the embedded content
             const { processed_content, excluded_count, excluded_sections } = 
                 strip_excluded_sections(linked_content_raw, excluded_headings);
-            
-            // Format the content as a blockquote with reference
+
             const formatted_content = processed_content
                 .split('\n')
                 .map(line => line.trim())
@@ -186,24 +244,27 @@ export async function inline_embedded_links(
                 .map(line => `> ${line}`)
                 .join('\n');
 
-            // Add exclusion info if any sections were excluded
             let exclusion_info = '';
             if (excluded_count > 0) {
-                exclusion_info = `\n> [!info] ${excluded_count} section(s) excluded${format_excluded_sections(excluded_sections)}`.replace(/\n/g, '\n> ');
+                exclusion_info =
+                  `\n> [!info] ${excluded_count} section(s) excluded` +
+                  format_excluded_sections(excluded_sections)
+                    .replace(/\n/g, '\n> ');
             }
 
-            // Replace the embed marker with the blockquoted content and reference
-            result = result.replace(
-                `![[${match[1]}]]`,
+            segments.push(
                 `> [!embed] ${linked_file_path}${exclusion_info}\n${formatted_content}`
             );
         } else {
-            // This is a regular link, convert to normal link
-            result = result.replace(
-                `![[${match[1]}]]`,
-                `[[${link_text}]]`
-            );
+            // Convert to a normal link
+            segments.push(`[[${link_text}]]`);
         }
     }
-    return result;
-} 
+
+    // push the remainder
+    if (lastIndex < content.length) {
+        segments.push(content.slice(lastIndex));
+    }
+
+    return segments.join('');
+}

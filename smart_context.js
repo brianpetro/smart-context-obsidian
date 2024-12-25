@@ -1,12 +1,12 @@
 /**
- * @file smart_context_module.js
- * @description Refactored SmartContext module that uses a SmartFs instance.
+ * @file smart_context.js
+ * @description Refactored SmartContext module that uses a SmartFs instance and a settings object.
  */
 
 import {
   strip_excluded_sections,
   remove_included_link_lines,
-  inline_embedded_links
+  inline_embedded_links,
 } from './utils.js';
 
 /**
@@ -17,41 +17,71 @@ import {
 
 /**
  * @typedef {Object} BuildContextOptions
- * @property {string} mode - 'folder' | 'visible' | 'all-open' | 'visible-linked' | 'all-open-linked'
+ * @property {('folder'|'visible'|'all-open'|'visible-linked'|'all-open-linked')} mode
  * @property {string} [label]
  * @property {string} [folder_structure]
- * @property {{ path: string }[]} [files]
- * @property {{ path: string }[]} [initial_files]
- * @property {{ path: string }[]} [all_files]
- * @property {string[]} [excluded_headings]
- * @property {string} [active_file_path] - If `skip_exclude_links_in_active_file` is set, do not strip link-only lines in this file
+ * @property {{path: string}[]} [files]
+ * @property {{path: string}[]} [initial_files]
+ * @property {{path: string}[]} [all_files]
+ * @property {string} [active_file_path]
+ * @property {number} [link_depth]
  * @property {string} [before_prompt]
  * @property {string} [before_each_prompt]
  * @property {string} [after_each_prompt]
  * @property {string} [after_prompt]
+ * @property {string[]} [excluded_headings]
  */
 
 /**
- * A module for building "smart context" from multiple notes. 
- * This class is library-agnostic: it does not rely on Obsidian’s APIs.
+ * @typedef {Object} SmartContextSettings
+ * @property {string[]} excluded_headings
+ * @property {boolean} skip_exclude_links_in_active_file
+ * @property {string} before_prompt
+ * @property {string} before_each_prompt
+ * @property {string} after_each_prompt
+ * @property {string} after_prompt
+ * @property {number} link_depth
+ */
+
+/**
+ * A module for building "smart context" from multiple notes.
+ * This class is library-agnostic: it does not rely on Obsidian’s APIs directly.
  */
 export class SmartContext {
   /**
    * @param {Object} opts
    * @param {SmartContextFs} opts.fs - A SmartFs instance for reading files, resolving links, etc.
-   * @param {string[]} [opts.excluded_headings=[]]
-   * @param {boolean} [opts.skip_exclude_links_in_active_file=false] - If true, do not strip link lines in the active file
+   * @param {SmartContextSettings} opts.settings - The plugin's settings object.
    */
   constructor(opts) {
     this.fs = opts.fs;
-    this.default_excluded_headings = opts.excluded_headings || [];
-    this.skip_exclude_links_in_active_file = !!opts.skip_exclude_links_in_active_file;
+    /** @type {SmartContextSettings} */
+    this.settings = opts.settings || {
+      excluded_headings: [],
+      skip_exclude_links_in_active_file: false,
+      before_prompt: '',
+      before_each_prompt: '',
+      after_each_prompt: '',
+      after_prompt: '',
+      link_depth: 0,
+    };
   }
 
   /**
-   * Build a final string that aggregates the requested files/folders.
+   * Build a final object that aggregates the requested files/folders.
+   *
+   * Returns:
+   * {
+   *   context: string,
+   *   stats: {
+   *     file_count: number,
+   *     total_excluded_sections: number,
+   *     excluded_sections_map: Map<string, number>
+   *   }
+   * }
+   *
    * @param {BuildContextOptions} context_opts
-   * @returns {Promise<string>} The combined string to copy to clipboard.
+   * @returns {Promise<{context: string, stats: { file_count: number, total_excluded_sections: number, excluded_sections_map: Map<string, number>}}>}
    */
   async build_context(context_opts) {
     const {
@@ -61,79 +91,134 @@ export class SmartContext {
       files = [],
       initial_files = [],
       all_files = [],
-      excluded_headings = this.default_excluded_headings,
       active_file_path = '',
+      link_depth = this.settings.link_depth,
 
-      before_prompt = '',
-      before_each_prompt = '',
-      after_each_prompt = '',
-      after_prompt = ''
+      // If user passes them directly, override plugin settings. Otherwise, pull from this.settings.
+      before_prompt = this.settings.before_prompt,
+      before_each_prompt = this.settings.before_each_prompt,
+      after_each_prompt = this.settings.after_each_prompt,
+      after_prompt = this.settings.after_prompt,
     } = context_opts;
 
+    // We'll use the plugin’s settings if no per-command overrides
+    const excluded_headings =
+      context_opts.hasOwnProperty('excluded_headings')
+        ? context_opts.excluded_headings
+        : this.settings.excluded_headings;
+
     let content_to_copy = '';
+
+    // Stats
+    let file_count = 0;
+    let total_excluded_sections = 0;
+    /** @type {Map<string, number>} */
+    let excluded_sections_map = new Map();
 
     // Insert top-level "before_prompt"
     if (before_prompt) {
       content_to_copy += `${before_prompt}\n`;
     }
 
-    // Track excluded sections if needed
-    let total_excluded_sections = 0;
-
-    if (mode === 'folder') {
-      content_to_copy += `${label}:\n${folder_structure}\nFile contents:\n`;
-      for (const file of files) {
-        if (before_each_prompt) {
-          content_to_copy += `${before_each_prompt}\n`;
-        }
-        const processed = await this.#process_file(file.path, excluded_headings);
-        total_excluded_sections += processed.excluded_count;
-        content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed.content}\n-----------------------\n\n`;
-
-        if (after_each_prompt) {
-          content_to_copy += `${after_each_prompt}\n`;
-        }
-      }
-    }
-    else if (mode === 'visible' || mode === 'all-open') {
-      content_to_copy += `${label}:\n`;
-      for (const file of files) {
-        if (before_each_prompt) content_to_copy += `${before_each_prompt}\n`;
-
-        const processed = await this.#process_file(file.path, excluded_headings);
-        total_excluded_sections += processed.excluded_count;
-
-        content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed.content}\n-----------------------\n\n`;
-        if (after_each_prompt) content_to_copy += `${after_each_prompt}\n`;
-      }
-    }
-    else if (mode === 'visible-linked' || mode === 'all-open-linked') {
-      const initPaths = new Set(initial_files.map(f => f.path));
-      const linked_only = all_files.filter(f => !initPaths.has(f.path));
-      
-      if (linked_only.length > 0) {
-        content_to_copy += `Linked files:\n`;
-        for (const lf of linked_only) {
+    switch (mode) {
+      case 'folder': {
+        content_to_copy += `${label}:\n${folder_structure}\nFile contents:\n`;
+        for (const file of files) {
+          file_count++;
           if (before_each_prompt) content_to_copy += `${before_each_prompt}\n`;
+          const { processed_content, excluded_count, excluded_sections } = await this.#process_file(
+            file.path,
+            excluded_headings
+          );
+          total_excluded_sections += excluded_count;
+          excluded_sections.forEach((cnt, sec) => {
+            excluded_sections_map.set(sec, (excluded_sections_map.get(sec) || 0) + cnt);
+          });
 
-          const processed = await this.#process_file(lf.path, excluded_headings);
-          total_excluded_sections += processed.excluded_count;
-
-          content_to_copy += `----------------------\n/${lf.path}\n-----------------------\n${processed.content}\n\n-----------------------\n\n`;
+          content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n-----------------------\n\n`;
           if (after_each_prompt) content_to_copy += `${after_each_prompt}\n`;
         }
+        break;
       }
 
-      content_to_copy += `\n${label}:\n`;
-      for (const file of initial_files) {
-        const skipLinkRemoval = (this.skip_exclude_links_in_active_file && file.path === active_file_path);
-        if (before_each_prompt) content_to_copy += `${before_each_prompt}\n`;
+      case 'visible':
+      case 'all-open': {
+        content_to_copy += `${label}:\n`;
+        for (const file of files) {
+          file_count++;
+          if (before_each_prompt) content_to_copy += `${before_each_prompt}\n`;
+          const { processed_content, excluded_count, excluded_sections } = await this.#process_file(
+            file.path,
+            excluded_headings
+          );
+          total_excluded_sections += excluded_count;
+          excluded_sections.forEach((cnt, sec) => {
+            excluded_sections_map.set(sec, (excluded_sections_map.get(sec) || 0) + cnt);
+          });
 
-        const processed = await this.#process_file_inlined_embeds(file.path, excluded_headings, initPaths, skipLinkRemoval);
-        total_excluded_sections += processed.excluded_count;
+          content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n-----------------------\n\n`;
+          if (after_each_prompt) content_to_copy += `${after_each_prompt}\n`;
+        }
+        break;
+      }
 
-        content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed.content}\n`;
-        if (after_each_prompt) content_to_copy += `${after_each_prompt}\n`;
+      case 'visible-linked':
+      case 'all-open-linked': {
+        // “linked_only” = in all_files but not in initial_files
+        const initPaths = new Set(initial_files.map((f) => f.path));
+        const linked_only = all_files.filter((f) => !initPaths.has(f.path));
+
+        // Process the linked-only files first
+        if (linked_only.length > 0) {
+          content_to_copy += `Linked files:\n`;
+          for (const lf of linked_only) {
+            file_count++;
+            if (before_each_prompt) content_to_copy += `${before_each_prompt}\n`;
+            const { processed_content, excluded_count, excluded_sections } = await this.#process_file(
+              lf.path,
+              excluded_headings
+            );
+            total_excluded_sections += excluded_count;
+            excluded_sections.forEach((cnt, sec) => {
+              excluded_sections_map.set(sec, (excluded_sections_map.get(sec) || 0) + cnt);
+            });
+
+            content_to_copy += `----------------------\n/${lf.path}\n-----------------------\n${processed_content}\n\n-----------------------\n\n`;
+            if (after_each_prompt) content_to_copy += `${after_each_prompt}\n`;
+          }
+        }
+
+        // Then process the initial (visible/all-open) files
+        content_to_copy += `\n${label}:\n`;
+        for (const file of initial_files) {
+          file_count++;
+          if (before_each_prompt) content_to_copy += `${before_each_prompt}\n`;
+
+          const skipLinkRemoval =
+            this.settings.skip_exclude_links_in_active_file && file.path === active_file_path;
+
+          const { processed_content, excluded_count, excluded_sections } = await this.#process_file_inlined_embeds(
+            file.path,
+            excluded_headings,
+            initPaths,
+            skipLinkRemoval
+          );
+
+          total_excluded_sections += excluded_count;
+          excluded_sections.forEach((cnt, sec) => {
+            excluded_sections_map.set(sec, (excluded_sections_map.get(sec) || 0) + cnt);
+          });
+
+          content_to_copy += `----------------------\n/${file.path}\n-----------------------\n${processed_content}\n`;
+          if (after_each_prompt) content_to_copy += `${after_each_prompt}\n`;
+        }
+        break;
+      }
+
+      default: {
+        // Fallback if an unknown mode is passed
+        content_to_copy += '(No valid mode selected.)\n';
+        break;
       }
     }
 
@@ -142,36 +227,47 @@ export class SmartContext {
       content_to_copy += `\n${after_prompt}\n`;
     }
 
-    return content_to_copy;
+    return {
+      context: content_to_copy,
+      stats: {
+        file_count,
+        total_excluded_sections,
+        excluded_sections_map,
+      },
+    };
   }
 
   /**
-   * Basic file read + heading exclusion
+   * Basic file read + heading exclusion only.
    * @private
    */
-  async #process_file(filePath, excluded) {
+  async #process_file(filePath, excluded_headings) {
     let raw = '';
     try {
       raw = await this.fs.read(filePath, 'utf-8');
     } catch (e) {
-      raw = '';
+      console.warn(`Could not read file: ${filePath}`, e);
     }
-    const { processed_content, excluded_count } = strip_excluded_sections(raw, excluded);
-    return { content: processed_content, excluded_count };
+    const { processed_content, excluded_count, excluded_sections } = strip_excluded_sections(
+      raw,
+      excluded_headings
+    );
+    return { processed_content, excluded_count, excluded_sections };
   }
 
   /**
-   * Read + inline embedded links + remove link-only lines (unless skipping) + exclude headings
+   * Read + inline embedded links + remove link-only lines (unless skipping) + exclude headings.
    * @private
    */
-  async #process_file_inlined_embeds(filePath, excluded, initPaths, skipLinkRemoval=false) {
+  async #process_file_inlined_embeds(filePath, excluded_headings, initPaths, skipLinkRemoval) {
     let raw = '';
     try {
       raw = await this.fs.read(filePath, 'utf-8');
     } catch (e) {
-      raw = '';
+      console.warn(`Could not read file: ${filePath}`, e);
     }
-    // inline embedded links
+
+    // Inline any ![[embeds]]
     raw = await inline_embedded_links(
       raw,
       filePath,
@@ -179,70 +275,75 @@ export class SmartContext {
       async (fp) => {
         try {
           return await this.fs.read(fp, 'utf-8');
-        } catch(e) {
+        } catch {
           return '';
         }
       },
-      excluded,
-      // just a stub, returns no actual embedded-file list
-      () => new Set()
+      excluded_headings,
+      () => new Set() // no “current-embeds” knowledge by default; we could expand if needed
     );
 
-    // remove link-only lines
+    // Remove lines that are exclusively a single included link
     if (!skipLinkRemoval) {
-      raw = remove_included_link_lines(
-        raw,
-        initPaths,
-        (linkText) => this.fs.get_link_target_path(linkText, filePath)
+      raw = remove_included_link_lines(raw, initPaths, (linkText) =>
+        this.fs.get_link_target_path(linkText, filePath)
       );
     }
 
-    // exclude headings
-    const { processed_content, excluded_count, excluded_sections } = strip_excluded_sections(raw, excluded);
-    return { content: processed_content, excluded_count, excluded_sections };
+    // finally exclude headings
+    const { processed_content, excluded_count, excluded_sections } = strip_excluded_sections(
+      raw,
+      excluded_headings
+    );
+    return { processed_content, excluded_count, excluded_sections };
   }
 
   /**
-   * Exposes a settings config object for use in SmartView
+   * Expose a settings config object for use in SmartView or manual rendering.
+   * Should use sentence case for the names (Obsidian requires sentence case).
    */
   get settings_config() {
     return {
       excluded_headings: {
-        name: 'Excluded Headings',
-        description: 'Headings to exclude from the copied context. One heading per line.',
+        name: 'Excluded headings',
+        description: 'Headings to exclude from copied content (one per line).',
         type: 'textarea',
-        default: '',
       },
       skip_exclude_links_in_active_file: {
-        name: 'Skip Link-Only Removal in Active Note',
-        description: 'If ON, we do NOT remove link-only lines in the currently active note.',
+        name: 'Skip link-only removal in active note',
+        description: 'If ON, do not remove lines that are only links in the active note.',
         type: 'toggle',
-        default: false,
+      },
+      include_file_tree: {
+        name: 'Include file tree',
+        description: 'If ON, include a file tree in the output.',
+        type: 'toggle',
+      },
+      link_depth: {
+        name: 'Link depth',
+        description: 'Number of link “hops” to follow for “with linked” commands (0 = no links).',
+        type: 'number',
       },
       before_prompt: {
-        name: 'Before Prompt (once)',
-        description: 'Text inserted at the very top of the output.',
+        name: 'Before prompt (once)',
+        description: 'Text inserted at the top of the output.',
         type: 'textarea',
-        default: '',
       },
       before_each_prompt: {
-        name: 'Before Each File',
+        name: 'Before each file',
         description: 'Text inserted before each file’s content.',
         type: 'textarea',
-        default: '',
       },
       after_each_prompt: {
-        name: 'After Each File',
+        name: 'After each file',
         description: 'Text inserted after each file’s content.',
         type: 'textarea',
-        default: '',
       },
       after_prompt: {
-        name: 'After Prompt (once)',
+        name: 'After prompt (once)',
         description: 'Text inserted at the very bottom of the output.',
         type: 'textarea',
-        default: '',
-      }
+      },
     };
   }
 }
