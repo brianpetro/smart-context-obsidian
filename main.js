@@ -17,6 +17,12 @@ import fs from 'fs';
 import path from 'path';
 import { ExternalSelectModal } from './external_select_modal.js';
 
+import {
+  load_ignore_patterns,
+  should_ignore,
+  is_text_file
+} from 'smart-file-system/utils/ignore.js';
+
 /**
  * Default settings pulled into the plugin if not overridden by the user.
  */
@@ -248,13 +254,15 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Copy folder contents (optionally including subfolders).
+   * We gather only "text files" (via is_text_file) from the folder, ignoring any that match
+   * .gitignore/.scignore patterns.
    * @param {TFolder} folder
    * @param {boolean} include_subfolders
    */
   async copy_folder_contents(folder, include_subfolders = true) {
     const files = this.get_files_from_folder(folder, include_subfolders);
     if (!files.length) {
-      new Notice('No Markdown or Canvas files found in the selected folder.');
+      new Notice('No recognized text files found in the selected folder.');
       return;
     }
     const folder_structure = this.generate_folder_structure(folder);
@@ -284,7 +292,8 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Gather all leaves in the workspace and pick only visible .md or .canvas files.
+   * Gather all leaves in the workspace and pick only visible text files.
+   * (We rely on is_text_file to determine if it’s “text.”)
    */
   get_visible_open_files() {
     const leaves = this.get_all_leaves();
@@ -292,7 +301,7 @@ export default class SmartContextPlugin extends Plugin {
     for (const leaf of leaves) {
       if (!this.is_leaf_visible(leaf)) continue;
       const file = leaf.view?.file;
-      if (file && (file.extension === 'md' || file.extension === 'canvas')) {
+      if (file && is_text_file(file.path)) {
         visible_files.add(file);
       }
     }
@@ -300,14 +309,14 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Gather all leaves in the workspace for *any* open .md/.canvas files.
+   * Gather all leaves in the workspace for *any* open text files.
    */
   get_all_open_files() {
     const leaves = this.get_all_leaves();
     const files_set = new Set();
     for (const leaf of leaves) {
       const file = leaf.view?.file;
-      if (file && (file.extension === 'md' || file.extension === 'canvas')) {
+      if (file && is_text_file(file.path)) {
         files_set.add(file);
       }
     }
@@ -352,28 +361,42 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Recursively gather .md/.canvas files from a folder (optionally subfolders).
+   * Recursively gather text files from a folder (optionally subfolders).
+   * Respects .gitignore and .scignore patterns using is_text_file + should_ignore.
    * @param {TFolder} folder
    * @param {boolean} include_subfolders
    * @returns {TFile[]}
    */
   get_files_from_folder(folder, include_subfolders) {
-    const files = [];
+    const results = [];
+    const vault_base = normalizePath(this.app.vault.adapter.basePath);
+
+    // Load ignore patterns from this folder up to the root
+    const ignore_patterns = load_ignore_patterns(path.join(vault_base, folder.path));
+
     const process_folder = (currentFolder) => {
       for (const child of currentFolder.children) {
         if (child instanceof TFolder) {
-          if (include_subfolders) process_folder(child);
-        } else if (child.extension === 'md' || child.extension === 'canvas') {
-          files.push(child);
+          if (include_subfolders) {
+            process_folder(child);
+          }
+        } else {
+          // Check if we skip it
+          const rel = child.path; // relative to the vault root
+          if (!should_ignore(rel, ignore_patterns) && is_text_file(child.path)) {
+            results.push(child);
+          }
         }
       }
     };
     process_folder(folder);
-    return files;
+    return results;
   }
 
   /**
    * Generate a textual folder tree structure for display/clipboard.
+   * Note: We do not do ignoring here since default plugin code enumerates everything,
+   * but you can unify if desired.
    */
   generate_folder_structure(folder, prefix = '') {
     let structure = '';
@@ -386,14 +409,19 @@ export default class SmartContextPlugin extends Plugin {
       return a.name.localeCompare(b.name);
     });
 
-    for (const child of children) {
+    for (let i = 0; i < children.length; i++) {
+      const child = children[i];
+      const is_last = i === children.length - 1;
+      const connector = is_last ? '└── ' : '├── ';
+
       if (child instanceof TFolder) {
-        structure += `${prefix}└── ${child.name}/\n`;
+        structure += `${prefix}${connector}${child.name}/\n`;
         structure += this.generate_folder_structure(child, prefix + '    ');
-      } else if (child.extension === 'md' || child.extension === 'canvas') {
-        structure += `${prefix}└── ${child.name}\n`;
+      } else {
+        structure += `${prefix}${connector}${child.name}\n`;
       }
     }
+
     return structure;
   }
 
@@ -451,10 +479,7 @@ export default class SmartContextPlugin extends Plugin {
           link.link,
           file.path
         );
-        if (
-          linked_file &&
-          (linked_file.extension === 'md' || linked_file.extension === 'canvas')
-        ) {
+        if (linked_file && is_text_file(linked_file.path)) {
           result.add(linked_file);
         }
       }
@@ -467,10 +492,7 @@ export default class SmartContextPlugin extends Plugin {
           embed.link,
           file.path
         );
-        if (
-          linked_file &&
-          (linked_file.extension === 'md' || linked_file.extension === 'canvas')
-        ) {
+        if (linked_file && is_text_file(linked_file.path)) {
           result.add(linked_file);
         }
       }
@@ -479,9 +501,9 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Copy text to the user clipboard, but also check if there's a ```smart-context``` codeblock
+   * Copy text to the user clipboard, also checking if there's a ```smart-context``` codeblock
    * in the active file. If present, parse its lines as paths (or directories) and merge those
-   * files into the final context that we copy.
+   * files into the final context we copy.
    *
    * @param {string} text
    */
@@ -492,10 +514,8 @@ export default class SmartContextPlugin extends Plugin {
         // Check if there's a codeblock for smart-context
         const sc_lines = await this.parse_smart_context_codeblock(active_file);
         if (sc_lines && sc_lines.length) {
-          // Expand lines: if a line is a directory, gather all .md/.canvas respecting .scignore/.gitignore
-          const paths_to_copy = await this.gather_paths_respecting_scignore(
-            sc_lines
-          );
+          // Expand lines: if a line is a directory, gather all text files respecting .scignore/.gitignore
+          const paths_to_copy = await this.gather_paths_respecting_scignore(sc_lines);
 
           if (paths_to_copy.length) {
             // We'll build context from these codeblock paths
@@ -509,7 +529,6 @@ export default class SmartContextPlugin extends Plugin {
             this.showStatsNotice(stats, `${stats.file_count} file(s) from codeblock`);
 
             // Merge that new context with the provided text param
-            // For convenience, let's put the codeblock expansions first, then user text
             text = context + '\n\n' + text;
           }
         }
@@ -549,7 +568,6 @@ export default class SmartContextPlugin extends Plugin {
         continue;
       }
       if (inside_sc_block && line.trim().startsWith('```')) {
-        // closing block fence
         inside_sc_block = false;
         continue;
       }
@@ -564,10 +582,10 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Expand each line in a smart-context codeblock to actual file paths (or directories),
-   * while respecting any .scignore or .gitignore patterns found along the way.
+   * Expand each line in a smart-context codeblock to actual file paths or directories,
+   * while respecting .scignore/.gitignore patterns. Only includes recognized text files.
    * @param {string[]} sc_lines
-   * @returns {Promise<string[]>} array of vault-relative paths
+   * @returns {Promise<string[]>} an array of vault-relative paths
    */
   async gather_paths_respecting_scignore(sc_lines) {
     const vault_base = normalizePath(this.app.vault.adapter.basePath);
@@ -578,19 +596,16 @@ export default class SmartContextPlugin extends Plugin {
       try {
         const stat = fs.statSync(abs);
         if (stat.isDirectory()) {
-          // gather all .md / .canvas ignoring any .scignore/.gitignore patterns
-          const files_in_dir = this.gather_files_in_directory_sc(
-            abs,
-            this.load_ignore_patterns_for_path(abs, vault_base)
-          );
+          // gather all text files ignoring any .scignore/.gitignore patterns
+          const ignore_patterns = load_ignore_patterns(abs);
+          const files_in_dir = this.gather_files_in_directory_sc(abs, ignore_patterns);
           for (const f of files_in_dir) {
             const rel = path.relative(vault_base, f).replace(/\\/g, '/');
             results.add(rel);
           }
         } else {
           // single file
-          const ext = path.extname(line).toLowerCase();
-          if (ext === '.md' || ext === '.canvas') {
+          if (is_text_file(abs)) {
             const rel = path.relative(vault_base, abs).replace(/\\/g, '/');
             results.add(rel);
           }
@@ -604,28 +619,37 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Recursively gather .md or .canvas from `dirPath`, ignoring patterns in ignore_set
-   * (which might come from both .scignore and .gitignore).
+   * Recursively gather recognized text files from `dirPath`,
+   * ignoring patterns in ignore_patterns.
    * @param {string} dirPath
-   * @param {Set<string>} ignore_set
+   * @param {string[]} ignore_patterns
    * @returns {string[]} array of absolute file paths
    */
-  gather_files_in_directory_sc(dirPath, ignore_set) {
+  gather_files_in_directory_sc(dirPath, ignore_patterns) {
     const result = [];
     try {
       const entries = fs.readdirSync(dirPath, { withFileTypes: true });
       for (const entry of entries) {
         const fullPath = path.join(dirPath, entry.name);
-        if (this.is_path_ignored_sc(fullPath, ignore_set)) {
+        const relPath = path.relative(dirPath, fullPath).replace(/\\/g, '/');
+
+        // Check ignoring
+        // We want a relative path from the folder’s root up to the file, so let's do:
+        const localRelPath = path
+          .relative(path.dirname(dirPath), fullPath)
+          .replace(/\\/g, '/');
+        if (
+          should_ignore(fullPath, ignore_patterns) ||
+          should_ignore(relPath, ignore_patterns) ||
+          should_ignore(localRelPath, ignore_patterns)
+        ) {
           continue;
         }
+
         if (entry.isDirectory()) {
-          result.push(
-            ...this.gather_files_in_directory_sc(fullPath, ignore_set)
-          );
+          result.push(...this.gather_files_in_directory_sc(fullPath, ignore_patterns));
         } else {
-          const ext = path.extname(entry.name).toLowerCase();
-          if (ext === '.md' || ext === '.canvas') {
+          if (is_text_file(fullPath)) {
             result.push(fullPath);
           }
         }
@@ -634,68 +658,6 @@ export default class SmartContextPlugin extends Plugin {
       console.warn('Error reading directory for smart-context:', dirPath, err);
     }
     return result;
-  }
-
-  /**
-   * Load ignore patterns (.scignore and .gitignore) if present in this directory
-   * or any parent directories up to vault root. We combine them all into one set.
-   *
-   * Each line is a simple substring match, e.g. "private" or ".secret".
-   * Lines from either file are treated equally.
-   *
-   * @param {string} dirPath
-   * @param {string} vaultBase
-   * @returns {Set<string>}
-   */
-  load_ignore_patterns_for_path(dirPath, vaultBase) {
-    const patterns = new Set();
-    let currentDir = dirPath;
-
-    while (currentDir && currentDir.startsWith(vaultBase)) {
-      for (const ignoreFile of ['.scignore', '.gitignore']) {
-        const ignorePath = path.join(currentDir, ignoreFile);
-        try {
-          const stat = fs.statSync(ignorePath);
-          if (stat.isFile()) {
-            const lines = fs.readFileSync(ignorePath, 'utf-8').split('\n');
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (trimmed) {
-                patterns.add(trimmed);
-              }
-            }
-          }
-        } catch {
-          // no .scignore/.gitignore found here, keep going up
-        }
-      }
-
-      const parent = path.dirname(currentDir);
-      if (!parent || parent === currentDir) {
-        break;
-      }
-      currentDir = parent;
-    }
-
-    return patterns;
-  }
-
-  /**
-   * Determine if a path should be ignored. We do a substring check for each
-   * pattern in ignore_set. If the path contains that pattern, it's ignored.
-   *
-   * @param {string} filePath
-   * @param {Set<string>} ignore_set
-   * @returns {boolean}
-   */
-  is_path_ignored_sc(filePath, ignore_set) {
-    for (const pattern of ignore_set) {
-      // We do a naive substring match
-      if (filePath.includes(pattern)) {
-        return true;
-      }
-    }
-    return false;
   }
 }
 
