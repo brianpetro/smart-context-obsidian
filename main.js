@@ -1,4 +1,11 @@
-import { Plugin, Notice, SuggestModal, TFolder, PluginSettingTab } from 'obsidian';
+import {
+  Plugin,
+  Notice,
+  SuggestModal,
+  TFolder,
+  PluginSettingTab,
+  normalizePath,
+} from 'obsidian';
 import { SmartFs } from 'smart-file-system/smart_fs.js';
 import { SmartFsObsidianAdapter } from 'smart-file-system/adapters/obsidian.js';
 import { SmartContext } from './smart-context/smart_context.js';
@@ -6,6 +13,9 @@ import { SmartView } from 'smart-view';
 import { SmartViewObsidianAdapter } from 'smart-view/adapters/obsidian.js';
 import { SmartSettings } from 'smart-settings';
 import { format_excluded_sections } from './smart-context/utils.js';
+import fs from 'fs';
+import path from 'path';
+import { ExternalSelectModal } from './external_select_modal.js';
 
 /**
  * Default settings pulled into the plugin if not overridden by the user.
@@ -127,8 +137,13 @@ export default class SmartContextPlugin extends Plugin {
           const { context, stats } = await this.smartContext.build_context({
             mode: 'visible-linked',
             label: 'Visible open files',
-            initial_files: Array.from(visible_files).map((f) => ({ path: f.path })),
-            all_files: await this.get_linked_files(visible_files, this.settings.link_depth),
+            initial_files: Array.from(visible_files).map((f) => ({
+              path: f.path,
+            })),
+            all_files: await this.get_linked_files(
+              visible_files,
+              this.settings.link_depth
+            ),
             active_file_path: this.app.workspace.getActiveFile()?.path ?? '',
           });
           await this.copy_to_clipboard(context);
@@ -155,8 +170,13 @@ export default class SmartContextPlugin extends Plugin {
           const { context, stats } = await this.smartContext.build_context({
             mode: 'all-open-linked',
             label: 'All open files',
-            initial_files: Array.from(all_files_set).map((f) => ({ path: f.path })),
-            all_files: await this.get_linked_files(all_files_set, this.settings.link_depth),
+            initial_files: Array.from(all_files_set).map((f) => ({
+              path: f.path,
+            })),
+            all_files: await this.get_linked_files(
+              all_files_set,
+              this.settings.link_depth
+            ),
             active_file_path: this.app.workspace.getActiveFile()?.path ?? '',
           });
           await this.copy_to_clipboard(context);
@@ -166,6 +186,25 @@ export default class SmartContextPlugin extends Plugin {
           );
         })();
 
+        return true;
+      },
+    });
+
+    // NEW COMMAND: open external file modal (improved)
+    this.addCommand({
+      id: 'open-external-file-browser',
+      name: 'Open External File Browser',
+      checkCallback: (checking) => {
+        // Only allow on desktop
+        if (this.app.isMobile) {
+          if (!checking) {
+            new Notice('This command is only available on desktop.');
+          }
+          return false;
+        }
+        if (!checking) {
+          this.open_external_file_modal();
+        }
         return true;
       },
     });
@@ -188,6 +227,19 @@ export default class SmartContextPlugin extends Plugin {
 
     // 5) Add plugin settings tab
     this.addSettingTab(new SmartContextSettingTab(this.app, this));
+  }
+
+  /**
+   * Open our ExternalFileModal with the folder containing the vault as initial scope.
+   */
+  open_external_file_modal() {
+    // The Obsidian vault directory path
+    const vaultBasePath = normalizePath(this.app.vault.adapter.basePath);
+    // The folder containing the vault
+    const parentFolder = path.dirname(vaultBasePath);
+
+    const modal = new ExternalSelectModal(this.app, parentFolder, vaultBasePath);
+    modal.open();
   }
 
   onunload() {
@@ -290,7 +342,11 @@ export default class SmartContextPlugin extends Plugin {
       return leaf.containerEl && leaf.containerEl.offsetParent !== null;
     }
     if ('activeTab' in parent) {
-      return parent.activeTab === leaf && leaf.containerEl && leaf.containerEl.offsetParent !== null;
+      return (
+        parent.activeTab === leaf &&
+        leaf.containerEl &&
+        leaf.containerEl.offsetParent !== null
+      );
     }
     return leaf.containerEl && leaf.containerEl.offsetParent !== null;
   }
@@ -303,16 +359,16 @@ export default class SmartContextPlugin extends Plugin {
    */
   get_files_from_folder(folder, include_subfolders) {
     const files = [];
-    const processFolder = (currentFolder) => {
+    const process_folder = (currentFolder) => {
       for (const child of currentFolder.children) {
         if (child instanceof TFolder) {
-          if (include_subfolders) processFolder(child);
+          if (include_subfolders) process_folder(child);
         } else if (child.extension === 'md' || child.extension === 'canvas') {
           files.push(child);
         }
       }
     };
-    processFolder(folder);
+    process_folder(folder);
     return files;
   }
 
@@ -323,7 +379,8 @@ export default class SmartContextPlugin extends Plugin {
     let structure = '';
     const children = folder.children.sort((a, b) => {
       // Folders first, then files
-      if (a instanceof TFolder && b instanceof TFolder) return a.name.localeCompare(b.name);
+      if (a instanceof TFolder && b instanceof TFolder)
+        return a.name.localeCompare(b.name);
       if (a instanceof TFolder && !(b instanceof TFolder)) return -1;
       if (!(a instanceof TFolder) && b instanceof TFolder) return 1;
       return a.name.localeCompare(b.name);
@@ -361,7 +418,6 @@ export default class SmartContextPlugin extends Plugin {
     const max_files = this.settings.max_linked_files || 0; // 0 means no limit
 
     while (queue.length) {
-      // if we have a limit, bail out if we've reached it
       if (max_files > 0 && all.size >= max_files) break;
 
       const { file, depth } = queue.shift();
@@ -391,8 +447,14 @@ export default class SmartContextPlugin extends Plugin {
     // normal [[links]]
     if (cache.links) {
       for (const link of cache.links) {
-        const linked_file = this.app.metadataCache.getFirstLinkpathDest(link.link, file.path);
-        if (linked_file && (linked_file.extension === 'md' || linked_file.extension === 'canvas')) {
+        const linked_file = this.app.metadataCache.getFirstLinkpathDest(
+          link.link,
+          file.path
+        );
+        if (
+          linked_file &&
+          (linked_file.extension === 'md' || linked_file.extension === 'canvas')
+        ) {
           result.add(linked_file);
         }
       }
@@ -401,8 +463,14 @@ export default class SmartContextPlugin extends Plugin {
     // ![[embeds]]
     if (cache.embeds) {
       for (const embed of cache.embeds) {
-        const linked_file = this.app.metadataCache.getFirstLinkpathDest(embed.link, file.path);
-        if (linked_file && (linked_file.extension === 'md' || linked_file.extension === 'canvas')) {
+        const linked_file = this.app.metadataCache.getFirstLinkpathDest(
+          embed.link,
+          file.path
+        );
+        if (
+          linked_file &&
+          (linked_file.extension === 'md' || linked_file.extension === 'canvas')
+        ) {
           result.add(linked_file);
         }
       }
@@ -411,11 +479,43 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Copy text to the user clipboard, with an Electron fallback.
+   * Copy text to the user clipboard, but also check if there's a ```smart-context``` codeblock
+   * in the active file. If present, parse its lines as paths (or directories) and merge those
+   * files into the final context that we copy.
+   *
    * @param {string} text
    */
   async copy_to_clipboard(text) {
     try {
+      const active_file = this.app.workspace.getActiveFile();
+      if (active_file) {
+        // Check if there's a codeblock for smart-context
+        const sc_lines = await this.parse_smart_context_codeblock(active_file);
+        if (sc_lines && sc_lines.length) {
+          // Expand lines: if a line is a directory, gather all .md/.canvas respecting .scignore/.gitignore
+          const paths_to_copy = await this.gather_paths_respecting_scignore(
+            sc_lines
+          );
+
+          if (paths_to_copy.length) {
+            // We'll build context from these codeblock paths
+            const { context, stats } = await this.smartContext.build_context({
+              mode: 'folder', // reusing "folder" style so it says "File contents:"
+              label: 'Paths from smart-context',
+              files: paths_to_copy.map((p) => ({ path: p })),
+            });
+
+            // Show a notice about the codeblock expansions
+            this.showStatsNotice(stats, `${stats.file_count} file(s) from codeblock`);
+
+            // Merge that new context with the provided text param
+            // For convenience, let's put the codeblock expansions first, then user text
+            text = context + '\n\n' + text;
+          }
+        }
+      }
+
+      // Now we do the actual copy
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
       } else {
@@ -428,6 +528,174 @@ export default class SmartContextPlugin extends Plugin {
       console.error('Failed to copy text:', err);
       new Notice('Failed to copy.');
     }
+  }
+
+  /**
+   * Parse the active file's content to find lines in a ```smart-context``` codeblock.
+   * Returns an array of strings (one per line inside the code block).
+   * @param {import("obsidian").TFile} file
+   * @returns {Promise<string[]>}
+   */
+  async parse_smart_context_codeblock(file) {
+    const content = await this.app.vault.read(file);
+    const lines = content.split('\n');
+
+    let inside_sc_block = false;
+    const sc_lines = [];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.trim().startsWith('```smart-context')) {
+        inside_sc_block = true;
+        continue;
+      }
+      if (inside_sc_block && line.trim().startsWith('```')) {
+        // closing block fence
+        inside_sc_block = false;
+        continue;
+      }
+      if (inside_sc_block) {
+        if (line.trim()) {
+          sc_lines.push(line.trim());
+        }
+      }
+    }
+
+    return sc_lines;
+  }
+
+  /**
+   * Expand each line in a smart-context codeblock to actual file paths (or directories),
+   * while respecting any .scignore or .gitignore patterns found along the way.
+   * @param {string[]} sc_lines
+   * @returns {Promise<string[]>} array of vault-relative paths
+   */
+  async gather_paths_respecting_scignore(sc_lines) {
+    const vault_base = normalizePath(this.app.vault.adapter.basePath);
+    const results = new Set();
+
+    for (const line of sc_lines) {
+      const abs = path.join(vault_base, line);
+      try {
+        const stat = fs.statSync(abs);
+        if (stat.isDirectory()) {
+          // gather all .md / .canvas ignoring any .scignore/.gitignore patterns
+          const files_in_dir = this.gather_files_in_directory_sc(
+            abs,
+            this.load_ignore_patterns_for_path(abs, vault_base)
+          );
+          for (const f of files_in_dir) {
+            const rel = path.relative(vault_base, f).replace(/\\/g, '/');
+            results.add(rel);
+          }
+        } else {
+          // single file
+          const ext = path.extname(line).toLowerCase();
+          if (ext === '.md' || ext === '.canvas') {
+            const rel = path.relative(vault_base, abs).replace(/\\/g, '/');
+            results.add(rel);
+          }
+        }
+      } catch (err) {
+        console.warn(`Skipping invalid path: ${line}`, err);
+      }
+    }
+
+    return Array.from(results);
+  }
+
+  /**
+   * Recursively gather .md or .canvas from `dirPath`, ignoring patterns in ignore_set
+   * (which might come from both .scignore and .gitignore).
+   * @param {string} dirPath
+   * @param {Set<string>} ignore_set
+   * @returns {string[]} array of absolute file paths
+   */
+  gather_files_in_directory_sc(dirPath, ignore_set) {
+    const result = [];
+    try {
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+        if (this.is_path_ignored_sc(fullPath, ignore_set)) {
+          continue;
+        }
+        if (entry.isDirectory()) {
+          result.push(
+            ...this.gather_files_in_directory_sc(fullPath, ignore_set)
+          );
+        } else {
+          const ext = path.extname(entry.name).toLowerCase();
+          if (ext === '.md' || ext === '.canvas') {
+            result.push(fullPath);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Error reading directory for smart-context:', dirPath, err);
+    }
+    return result;
+  }
+
+  /**
+   * Load ignore patterns (.scignore and .gitignore) if present in this directory
+   * or any parent directories up to vault root. We combine them all into one set.
+   *
+   * Each line is a simple substring match, e.g. "private" or ".secret".
+   * Lines from either file are treated equally.
+   *
+   * @param {string} dirPath
+   * @param {string} vaultBase
+   * @returns {Set<string>}
+   */
+  load_ignore_patterns_for_path(dirPath, vaultBase) {
+    const patterns = new Set();
+    let currentDir = dirPath;
+
+    while (currentDir && currentDir.startsWith(vaultBase)) {
+      for (const ignoreFile of ['.scignore', '.gitignore']) {
+        const ignorePath = path.join(currentDir, ignoreFile);
+        try {
+          const stat = fs.statSync(ignorePath);
+          if (stat.isFile()) {
+            const lines = fs.readFileSync(ignorePath, 'utf-8').split('\n');
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (trimmed) {
+                patterns.add(trimmed);
+              }
+            }
+          }
+        } catch {
+          // no .scignore/.gitignore found here, keep going up
+        }
+      }
+
+      const parent = path.dirname(currentDir);
+      if (!parent || parent === currentDir) {
+        break;
+      }
+      currentDir = parent;
+    }
+
+    return patterns;
+  }
+
+  /**
+   * Determine if a path should be ignored. We do a substring check for each
+   * pattern in ignore_set. If the path contains that pattern, it's ignored.
+   *
+   * @param {string} filePath
+   * @param {Set<string>} ignore_set
+   * @returns {boolean}
+   */
+  is_path_ignored_sc(filePath, ignore_set) {
+    for (const pattern of ignore_set) {
+      // We do a naive substring match
+      if (filePath.includes(pattern)) {
+        return true;
+      }
+    }
+    return false;
   }
 }
 
@@ -447,9 +715,11 @@ class SmartContextSettingTab extends PluginSettingTab {
     // Merge plugin’s SmartContext settings_config
     const config = this.plugin.smartContext.settings_config;
 
-    this.smartView.render_settings(config, { scope: this.plugin }).then((frag) => {
-      containerEl.appendChild(frag);
-    });
+    this.smartView
+      .render_settings(config, { scope: this.plugin })
+      .then((frag) => {
+        containerEl.appendChild(frag);
+      });
   }
 }
 
