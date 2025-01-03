@@ -64,11 +64,12 @@ By copying a set of files (including linked references), you can easily provide 
   2. A fuzzy suggest modal opens, showing files and folders _outside_ your Obsidian vault.
   3. The first item in the list (`<UP ONE DIRECTORY>`) takes you up one directory level.
   4. Press **CTRL + Enter** or the **Right Arrow** key on a folder to open it in place (refreshing the modal’s scope).
-  5. Selecting a file or folder inserts its vault-relative path into a `smart-context` codeblock (explained below).  
+  5. Press **SHIFT + Enter** when selecting a file or folder to insert its path **while keeping the modal open**.  
+     - This is useful if you want to insert multiple file or folder paths at once.
+  6. Selecting a file (with standard Enter or SHIFT + Enter) inserts its vault-relative path into a `smart-context` codeblock (explained below).  
      - If the `smart-context` codeblock doesn’t exist in your active file, it is created right below your current cursor line.
      - If it does exist, new paths are appended to the block.
-  6. If you select a file, its relative path (including file extension) is inserted. If you select a folder, its relative path is inserted as well (using `../` if needed).
-  7. Navigation instructions appear at the top of the modal for reference.
+  7. If you select a folder, its relative path is inserted as well (paths are relative to the vault root).
   8. A notice appears in Obsidian confirming the inserted path.
 
 Since this feature uses Node’s `fs` library, it will only work on Obsidian Desktop. It returns false on mobile devices.

@@ -1,3 +1,9 @@
+/**
+ * @file external_select_modal.js
+ * @description FuzzySuggestModal subclass for browsing outside the vault. 
+ * Added SHIFT+ENTER support to insert paths while keeping the modal open.
+ */
+
 import {
   Notice,
   FuzzySuggestModal,
@@ -6,6 +12,7 @@ import {
 } from 'obsidian';
 import fs from 'fs';
 import path from 'path';
+
 /**
  * @typedef {Object} FileItem
  * @property {string} fullPath - The absolute path to the file or folder
@@ -61,6 +68,13 @@ export class ExternalSelectModal extends FuzzySuggestModal {
     this.currentScope = initialScope;
     this.vaultPath = vaultPath;
 
+    /**
+     * When true, we override the base-class close() to keep the modal open.
+     * This is set in SHIFT+ENTER scenarios.
+     * @type {boolean}
+     */
+    this.preventClose = false;
+
     // Provide usage instructions
     this.setInstructions([
       {
@@ -72,23 +86,50 @@ export class ExternalSelectModal extends FuzzySuggestModal {
         purpose: 'Open folder'
       },
       {
+        command: 'Shift+Enter',
+        purpose: 'Insert path and keep this modal open'
+      },
+      {
         command: 'Esc / ←',
         purpose: 'Close'
       }
     ]);
 
-    // Keydown to handle arrow-right or ctrl+enter for opening directories
+    // Keydown to handle arrow-right, ctrl+enter, or shift+enter
     this.inputEl.addEventListener('keydown', (e) => {
+      // Right arrow => forcibly open directory
       if (e.key === 'ArrowRight') {
         e.preventDefault();
-        // Attempt opening selected directory
-        this.selectActiveSuggestion(e, true); // pass a custom param to open directory forcibly
-      } else if (e.key === 'Enter' && Keymap.isModEvent(e)) {
-        e.preventDefault();
-        // On ctrl+enter, do the same as arrow right
         this.selectActiveSuggestion(e, true);
       }
+      // Ctrl+Enter => open directory as well
+      else if (e.key === 'Enter' && Keymap.isModEvent(e)) {
+        e.preventDefault();
+        this.selectActiveSuggestion(e, true);
+      }
+      // Shift+Enter => insert path but DO NOT close the modal
+      else if (e.key === 'Enter' && e.shiftKey) {
+        e.preventDefault();
+        this.preventClose = true;
+        // Pass false so we treat it like a normal "insert path" flow
+        this.selectActiveSuggestion(e, false);
+      }
     });
+  }
+
+  /**
+   * Override close() so SHIFT+ENTER can keep the modal open.
+   * If this.preventClose is true for that selection, skip closing.
+   * The next selection might not hold shift, so we reset preventClose after skipping once.
+   */
+  close() {
+    if (this.preventClose) {
+      // Let SHIFT+ENTER keep it open exactly once; reset so 
+      // if user does normal ENTER next time, the modal can close.
+      this.preventClose = false;
+      return;
+    }
+    super.close();
   }
 
   /**
@@ -128,18 +169,14 @@ export class ExternalSelectModal extends FuzzySuggestModal {
    * Called when the user chooses an item.
    * - If user selects "<UP ONE DIRECTORY>", we re-open in parent scope.
    * - If `openDir` param is true, attempt to open directories even if it’s a normal Enter press.
-   * - Otherwise, insert the path into "smart-context" code block if it’s a file.
+   * - Otherwise, insert the path into "smart-context" code block if it’s a file or folder.
    * @param {FileItem} item
    * @param {MouseEvent | KeyboardEvent} evt
    * @param {boolean} [openDir=false]
    */
   onChooseItem(item, evt, openDir = false) {
-    // Support param from selectActiveSuggestion override
-    if (typeof evt === 'boolean') {
-      openDir = evt;
-      evt = null;
-    }
-
+    // If the user triggered SHIFT+ENTER, we can detect it from the event
+    const shiftHeld = evt instanceof KeyboardEvent ? evt.shiftKey : false;
     const ctrlHeld = evt ? Keymap.isModEvent(evt) : false;
 
     // 1) If the user picked "<UP ONE DIRECTORY>", just navigate up
@@ -149,7 +186,7 @@ export class ExternalSelectModal extends FuzzySuggestModal {
       return;
     }
 
-    // 2) If it's a directory (or forced to openDir) => re-open in that folder
+    // 2) If it's a directory (or forced to openDir)
     if (item.isDirectory && (ctrlHeld || openDir)) {
       this.currentScope = item.fullPath;
       this.open();
@@ -171,6 +208,8 @@ export class ExternalSelectModal extends FuzzySuggestModal {
         } else {
           new Notice(`Inserted file path: ${relPath}`);
         }
+        // SHIFT+ENTER logic is already handled by preventClose 
+        // so we do not re-open the modal here explicitly.
       })
       .catch((err) => {
         new Notice(`Error inserting path: ${err}`);
