@@ -269,6 +269,7 @@ export class SmartContext {
         file_count,
         total_excluded_sections,
         excluded_sections_map,
+        char_count: content_to_copy.length,
       },
     };
   }

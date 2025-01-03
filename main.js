@@ -281,6 +281,10 @@ export default class SmartContextPlugin extends Plugin {
    */
   showStatsNotice(stats, filesMsg) {
     let noticeMsg = `Copied to clipboard! (${filesMsg})`;
+    const char_count = stats.char_count < 100000
+      ? stats.char_count
+      : `~${Math.round(stats.char_count / 1000)}k`;
+    noticeMsg += `, ${char_count} chars`;
     if (stats.total_excluded_sections > 0) {
       noticeMsg += `, ${stats.total_excluded_sections} section(s) excluded`;
       const formatted = format_excluded_sections(stats.excluded_sections_map);
