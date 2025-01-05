@@ -103,18 +103,25 @@ export class ExternalSelectModal extends FuzzySuggestModal {
       // SHIFT+ENTER => forcibly open directory
       if (e.key === 'Enter' && e.shiftKey) {
         e.preventDefault();
-        this.selectActiveSuggestion(e, true);
+        this.openDir = true;
+        this.selectActiveSuggestion(e);
       }
       // Right arrow => forcibly open directory
       else if (e.key === 'ArrowRight') {
         e.preventDefault();
-        this.selectActiveSuggestion(e, true);
+        this.openDir = true;
+        this.selectActiveSuggestion(e);
       }
       // Ctrl+Enter => insert path but keep modal open
       else if (e.key === 'Enter' && Keymap.isModEvent(e)) {
         e.preventDefault();
         this.preventClose = true;
-        this.selectActiveSuggestion(e, false);
+        this.openDir = false;
+        this.selectActiveSuggestion(e);
+      }
+      else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        this.selectActiveSuggestion(e);
       }
       // Normal Enter => insert path and close
       // (Handled by base class's onChooseItem or fallback with selectActiveSuggestion)
@@ -146,7 +153,7 @@ export class ExternalSelectModal extends FuzzySuggestModal {
     if (this.currentScope !== root) {
       items.push({
         fullPath: path.join(this.currentScope, '..'),
-        displayName: '<UP ONE DIRECTORY>',
+        displayName: '..',
         isDirectory: true,
       });
     }
@@ -186,9 +193,10 @@ export class ExternalSelectModal extends FuzzySuggestModal {
    * @param {MouseEvent | KeyboardEvent} evt
    * @param {boolean} [openDir=false]
    */
-  onChooseItem(item, evt, openDir = false) {
+  onChooseItem(item, evt, openDir = this.openDir) {
+    console.log({item, evt, openDir})
     // If the user picked "<UP ONE DIRECTORY>", just navigate up
-    if (item.displayName === '<UP ONE DIRECTORY>') {
+    if (item.displayName === '..' || evt.key === 'ArrowLeft') {
       this.currentScope = path.join(this.currentScope, '..');
       this.open();
       return;
