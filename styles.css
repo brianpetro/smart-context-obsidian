@@ -1,1 +1,4 @@
-/* can't be empty */
+.sc-modal-suggestion-has-icon {
+  display: flex;
+  justify-content: space-between;
+}
