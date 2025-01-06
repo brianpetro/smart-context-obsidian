@@ -128,6 +128,11 @@ export class ExternalSelectModal extends FuzzySuggestModal {
     });
   }
 
+  open() {
+    this.openDir = false;
+    super.open();
+  }
+
   /**
    * Override close() so Ctrl+ENTER can keep the modal open.
    * If this.preventClose is true, skip closing exactly once.
