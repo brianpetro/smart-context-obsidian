@@ -30,7 +30,8 @@ import {
  * @property {string} [after_each_prompt]
  * @property {string} [after_prompt]
  * @property {string[]} [excluded_headings]
- * @property {number} [max_linked_files] // newly recognized bounding setting
+ * @property {number} [max_linked_files]
+ * @property {boolean} [skip_before_prompt] // <--- New option to suppress the before_prompt
  */
 
 /**
@@ -90,12 +91,13 @@ export class SmartContext {
    *   stats: {
    *     file_count: number,
    *     total_excluded_sections: number,
-   *     excluded_sections_map: Map<string, number>
+   *     excluded_sections_map: Map<string, number>,
+   *     char_count: number
    *   }
    * }
    *
    * @param {BuildContextOptions} context_opts
-   * @returns {Promise<{context: string, stats: { file_count: number, total_excluded_sections: number, excluded_sections_map: Map<string, number>}}>}
+   * @returns {Promise<{context: string, stats: { file_count: number, total_excluded_sections: number, excluded_sections_map: Map<string, number>, char_count: number}}>}
    */
   async build_context(context_opts) {
     const {
@@ -108,11 +110,12 @@ export class SmartContext {
       active_file_path = '',
       link_depth = this.settings.link_depth,
       max_linked_files = this.settings.max_linked_files,
-
       before_prompt = this.settings.before_prompt,
       before_each_prompt = this.settings.before_each_prompt,
       after_each_prompt = this.settings.after_each_prompt,
       after_prompt = this.settings.after_prompt,
+      // New optional flag to skip inserting 'before_prompt'
+      skip_before_prompt = false,
     } = context_opts;
 
     const excluded_headings =
@@ -132,8 +135,8 @@ export class SmartContext {
     /** @type {Map<string, number>} */
     let excluded_sections_map = new Map();
 
-    // Insert top-level "before_prompt"
-    if (before_prompt) {
+    // Insert top-level "before_prompt", unless skipped
+    if (!skip_before_prompt && before_prompt) {
       content_to_copy += `${before_prompt}\n`;
     }
 
@@ -195,8 +198,8 @@ export class SmartContext {
 
       case 'visible-linked':
       case 'all-open-linked': {
-        const initPaths = new Set(initial_files.map((f) => f.path));
-        const linked_only = all_files.filter((f) => !initPaths.has(f.path));
+        const init_paths = new Set(initial_files.map((f) => f.path));
+        const linked_only = all_files.filter((f) => !init_paths.has(f.path));
 
         // Process the linked-only files first
         if (linked_only.length > 0) {
@@ -236,7 +239,7 @@ export class SmartContext {
 
           // Inline embeds for initial files
           const { processed_content, excluded_count, excluded_sections } =
-            await this.#process_file_inlined_embeds(file.path, excluded_headings, initPaths);
+            await this.#process_file_inlined_embeds(file.path, excluded_headings, init_paths);
 
           total_excluded_sections += excluded_count;
           excluded_sections.forEach((cnt, sec) => {
@@ -285,13 +288,13 @@ export class SmartContext {
     } catch (e) {
       console.warn(`Could not read file: ${filePath}`, e);
     }
-    const { processed_content, excluded_count, excluded_sections } = 
+    const { processed_content, excluded_count, excluded_sections } =
       strip_excluded_sections(raw, excluded_headings);
     return { processed_content, excluded_count, excluded_sections };
   }
 
   /**
-   * Read + inline embedded links + remove link-only lines (unless skipping) + exclude headings.
+   * Read + inline embedded links + remove link-only lines + exclude headings.
    * @private
    */
   async #process_file_inlined_embeds(filePath, excluded_headings, initPaths) {
@@ -315,7 +318,7 @@ export class SmartContext {
         }
       },
       excluded_headings,
-      () => new Set() // no “current-embeds” knowledge by default
+      () => new Set()
     );
 
     // Remove lines that are exclusively a link to included file
@@ -324,7 +327,7 @@ export class SmartContext {
     );
 
     // Exclude headings
-    const { processed_content, excluded_count, excluded_sections } = 
+    const { processed_content, excluded_count, excluded_sections } =
       strip_excluded_sections(raw, excluded_headings);
     return { processed_content, excluded_count, excluded_sections };
   }

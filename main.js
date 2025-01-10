@@ -65,7 +65,7 @@ export default class SmartContextPlugin extends Plugin {
     // 3) Create the SmartContext instance
     this.smartContext = new SmartContext({
       fs: this.smart_fs,
-      settings: this.settings, // plugin’s settings object
+      settings: this.settings,
     });
 
     // 4) Register plugin commands
@@ -239,11 +239,8 @@ export default class SmartContextPlugin extends Plugin {
    * Open our ExternalFileModal with the folder containing the vault as initial scope.
    */
   open_external_file_modal() {
-    // The Obsidian vault directory path
     const vaultBasePath = normalizePath(this.app.vault.adapter.basePath);
-    // The folder containing the vault
     const parentFolder = path.dirname(vaultBasePath);
-
     const modal = new ExternalSelectModal(this.app, parentFolder, vaultBasePath);
     modal.open();
   }
@@ -254,7 +251,7 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Copy folder contents (optionally including subfolders).
-   * We gather only "text files" (via is_text_file) from the folder, ignoring any that match
+   * We gather only text files from the folder, ignoring any that match
    * .gitignore/.scignore patterns.
    * @param {TFolder} folder
    * @param {boolean} include_subfolders
@@ -281,9 +278,10 @@ export default class SmartContextPlugin extends Plugin {
    */
   showStatsNotice(stats, filesMsg) {
     let noticeMsg = `Copied to clipboard! (${filesMsg})`;
-    const char_count = stats.char_count < 100000
-      ? stats.char_count
-      : `~${Math.round(stats.char_count / 1000)}k`;
+    const char_count =
+      stats.char_count < 100000
+        ? stats.char_count
+        : `~${Math.round(stats.char_count / 1000)}k`;
     noticeMsg += `, ${char_count} chars`;
     if (stats.total_excluded_sections > 0) {
       noticeMsg += `, ${stats.total_excluded_sections} section(s) excluded`;
@@ -297,7 +295,6 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Gather all leaves in the workspace and pick only visible text files.
-   * (We rely on is_text_file to determine if it’s “text.”)
    */
   get_visible_open_files() {
     const leaves = this.get_all_leaves();
@@ -385,8 +382,7 @@ export default class SmartContextPlugin extends Plugin {
             process_folder(child);
           }
         } else {
-          // Check if we skip it
-          const rel = child.path; // relative to the vault root
+          const rel = child.path;
           if (!should_ignore(rel, ignore_patterns) && is_text_file(child.path)) {
             results.push(child);
           }
@@ -399,13 +395,10 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Generate a textual folder tree structure for display/clipboard.
-   * Note: We do not do ignoring here since default plugin code enumerates everything,
-   * but you can unify if desired.
    */
   generate_folder_structure(folder, prefix = '') {
     let structure = '';
     const children = folder.children.sort((a, b) => {
-      // Folders first, then files
       if (a instanceof TFolder && b instanceof TFolder)
         return a.name.localeCompare(b.name);
       if (a instanceof TFolder && !(b instanceof TFolder)) return -1;
@@ -447,7 +440,7 @@ export default class SmartContextPlugin extends Plugin {
     }
     const queue = [...initialFiles].map((f) => ({ file: f, depth: 0 }));
 
-    const max_files = this.settings.max_linked_files || 0; // 0 means no limit
+    const max_files = this.settings.max_linked_files || 0;
 
     while (queue.length) {
       if (max_files > 0 && all.size >= max_files) break;
@@ -505,10 +498,8 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Copy text to the user clipboard, also checking if there's a ```smart-context``` codeblock
-   * in the active file. If present, parse its lines as paths (or directories) and merge those
-   * files into the final context we copy.
-   *
+   * Copy text to the user clipboard, then merge codeblock content if it exists.
+   * Visible open files appear first; codeblock content appended after.
    * @param {string} text
    */
   async copy_to_clipboard(text) {
@@ -518,22 +509,22 @@ export default class SmartContextPlugin extends Plugin {
         // Check if there's a codeblock for smart-context
         const sc_lines = await this.parse_smart_context_codeblock(active_file);
         if (sc_lines && sc_lines.length) {
-          // Expand lines: if a line is a directory, gather all text files respecting .scignore/.gitignore
+          // Expand lines: if a line is a directory, gather all text files (respecting ignores)
           const paths_to_copy = await this.gather_paths_respecting_scignore(sc_lines);
 
           if (paths_to_copy.length) {
-            // We'll build context from these codeblock paths
+            // Build context from these codeblock paths but skip "before_prompt"
             const { context, stats } = await this.smartContext.build_context({
-              mode: 'folder', // reusing "folder" style so it says "File contents:"
+              mode: 'folder',
               label: 'Paths from smart-context',
               files: paths_to_copy.map((p) => ({ path: p })),
+              skip_before_prompt: true,
             });
 
-            // Show a notice about the codeblock expansions
             this.showStatsNotice(stats, `${stats.file_count} file(s) from codeblock`);
 
-            // Merge that new context with the provided text param
-            text = context + '\n\n' + text;
+            // Append codeblock context after the visible/all-open context
+            text = text + '\n\n' + context;
           }
         }
       }
@@ -542,7 +533,7 @@ export default class SmartContextPlugin extends Plugin {
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
       } else {
-        // Fallback for Electron (desktop)
+        // For Electron (desktop)
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { clipboard } = require('electron');
         clipboard.writeText(text);
@@ -555,7 +546,6 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Parse the active file's content to find lines in a ```smart-context``` codeblock.
-   * Returns an array of strings (one per line inside the code block).
    * @param {import("obsidian").TFile} file
    * @returns {Promise<string[]>}
    */
@@ -589,7 +579,7 @@ export default class SmartContextPlugin extends Plugin {
    * Expand each line in a smart-context codeblock to actual file paths or directories,
    * while respecting .scignore/.gitignore patterns. Only includes recognized text files.
    * @param {string[]} sc_lines
-   * @returns {Promise<string[]>} an array of vault-relative paths
+   * @returns {Promise<string[]>}
    */
   async gather_paths_respecting_scignore(sc_lines) {
     const vault_base = normalizePath(this.app.vault.adapter.basePath);
@@ -600,7 +590,7 @@ export default class SmartContextPlugin extends Plugin {
       try {
         const stat = fs.statSync(abs);
         if (stat.isDirectory()) {
-          // gather all text files ignoring any .scignore/.gitignore patterns
+          // gather all text files ignoring any .scignore/.gitignore
           const ignore_patterns = load_ignore_patterns(abs);
           const files_in_dir = this.gather_files_in_directory_sc(abs, ignore_patterns);
           for (const f of files_in_dir) {
@@ -637,8 +627,7 @@ export default class SmartContextPlugin extends Plugin {
         const fullPath = path.join(dirPath, entry.name);
         const relPath = path.relative(dirPath, fullPath).replace(/\\/g, '/');
 
-        // Check ignoring
-        // We want a relative path from the folder’s root up to the file, so let's do:
+        // We check ignoring for multiple forms
         const localRelPath = path
           .relative(path.dirname(dirPath), fullPath)
           .replace(/\\/g, '/');
@@ -678,7 +667,6 @@ class SmartContextSettingTab extends PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    // Merge plugin’s SmartContext settings_config
     const config = this.plugin.smartContext.settings_config;
 
     this.smartView
