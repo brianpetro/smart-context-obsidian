@@ -1,7 +1,6 @@
 import {
   Plugin,
   Notice,
-  SuggestModal,
   TFolder,
   PluginSettingTab,
   normalizePath,
@@ -22,6 +21,8 @@ import {
   should_ignore,
   is_text_file
 } from 'smart-file-system/utils/ignore.js';
+import { FolderSelectModal } from './folder_select_modal.js';
+import { ContextSelectModal } from './context_select_modal.js';
 
 /**
  * Default settings pulled into the plugin if not overridden by the user.
@@ -212,6 +213,15 @@ export default class SmartContextPlugin extends Plugin {
           this.open_external_file_modal();
         }
         return true;
+      },
+    });
+
+    this.addCommand({
+      id: 'open-context-select-modal',
+      name: 'Build Context',
+      callback: () => {
+        const modal = new ContextSelectModal(this.app, this);
+        modal.open();
       },
     });
 
@@ -502,10 +512,10 @@ export default class SmartContextPlugin extends Plugin {
    * Visible open files appear first; codeblock content appended after.
    * @param {string} text
    */
-  async copy_to_clipboard(text) {
+  async copy_to_clipboard(text, include_active_file_context = true) {
     try {
       const active_file = this.app.workspace.getActiveFile();
-      if (active_file) {
+      if (active_file && include_active_file_context) {
         // Check if there's a codeblock for smart-context
         const sc_lines = await this.parse_smart_context_codeblock(active_file);
         if (sc_lines && sc_lines.length) {
@@ -661,7 +671,7 @@ class SmartContextSettingTab extends PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
-    this.smartView = new SmartView({ adapter: SmartViewObsidianAdapter });
+    this.smart_view = new SmartView({ adapter: SmartViewObsidianAdapter });
   }
 
   display() {
@@ -669,7 +679,7 @@ class SmartContextSettingTab extends PluginSettingTab {
     containerEl.empty();
     const config = this.plugin.smartContext.settings_config;
 
-    this.smartView
+    this.smart_view
       .render_settings(config, { scope: this.plugin })
       .then((frag) => {
         containerEl.appendChild(frag);
@@ -677,37 +687,3 @@ class SmartContextSettingTab extends PluginSettingTab {
   }
 }
 
-/**
- * Modal that lists all folders for the user to pick from.
- */
-class FolderSelectModal extends SuggestModal {
-  constructor(app, onChoose) {
-    super(app);
-    this.onChoose = onChoose;
-  }
-
-  getAllFolders(rootFolder, folders = []) {
-    folders.push(rootFolder);
-    for (const child of rootFolder.children) {
-      if (child instanceof TFolder) {
-        this.getAllFolders(child, folders);
-      }
-    }
-    return folders;
-  }
-
-  getSuggestions(query) {
-    const folders = this.getAllFolders(this.app.vault.getRoot());
-    return folders.filter((folder) =>
-      folder.path.toLowerCase().includes(query.toLowerCase())
-    );
-  }
-
-  renderSuggestion(folder, el) {
-    el.createEl('div', { text: folder.path });
-  }
-
-  onChooseSuggestion(folder) {
-    this.onChoose(folder);
-  }
-}
