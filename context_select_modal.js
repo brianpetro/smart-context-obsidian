@@ -44,9 +44,7 @@ export class ContextSelectModal extends FuzzySuggestModal {
     }
     this.render_pills();
     this.inputEl.addEventListener('blur', () => {
-      console.log('blur');
       this.inputEl.focus();
-      console.log('focus');
     });
   }
   getItems() {
