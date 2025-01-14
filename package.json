@@ -24,6 +24,7 @@
   },
   "homepage": "https://smartconnections.app",
   "dependencies": {
+    "smart-collections": "file:../jsbrains/smart-collections",
     "smart-file-system": "file:../jsbrains/smart-fs",
     "smart-settings": "file:../jsbrains/smart-settings",
     "smart-view": "file:../jsbrains/smart-view",

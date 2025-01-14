@@ -531,15 +531,13 @@ export default class SmartContextPlugin extends Plugin {
           // gather all text files ignoring any .scignore/.gitignore
           const ignore_patterns = load_ignore_patterns(abs);
           const files_in_dir = this.gather_files_in_directory_sc(abs, ignore_patterns);
-          for (const f of files_in_dir) {
-            const rel = path.relative(vault_base, f).replace(/\\/g, '/');
-            results.add(rel);
+          for (const abs_path of files_in_dir) {
+            results.add(abs_path);
           }
         } else {
           // single file
           if (is_text_file(abs)) {
-            const rel = path.relative(vault_base, abs).replace(/\\/g, '/');
-            results.add(rel);
+            results.add(abs);
           }
         }
       } catch (err) {
@@ -600,23 +598,20 @@ class SmartContextSettingTab extends PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
+    this.env = plugin.env;
   }
 
   display() {
     const { containerEl } = this;
     containerEl.empty();
-
-    containerEl.createEl('h2', { text: 'Smart Context Settings' });
-
-    // Example barebones setting
-    const linkDepthSetting = containerEl.createEl('div', { cls: 'setting-item' });
-    linkDepthSetting.createEl('div', { text: 'Link Depth' });
-    const input = linkDepthSetting.createEl('input', { type: 'number' });
-    input.value = String(this.plugin.settings?.link_depth ?? 0);
-    input.onchange = (evt) => {
-      const val = parseInt(evt.target.value, 10) || 0;
-      this.plugin.settings.link_depth = val;
-      this.plugin.saveData(this.plugin.settings);
-    };
+    Object.entries(this.plugin.env.smart_contexts.settings_config).forEach(([setting, config]) => {
+      const setting_html = this.env.smart_view.render_setting_html({
+        setting,
+        ...config,
+      });
+      const frag = this.env.smart_view.create_doc_fragment(setting_html);
+      containerEl.appendChild(frag);
+    });
+    this.env.smart_view.render_setting_components(containerEl, {scope: this.plugin.env.smart_contexts});
   }
 }
