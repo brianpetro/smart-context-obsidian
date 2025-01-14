@@ -7,10 +7,7 @@ import {
 } from 'obsidian';
 import { SmartFs } from 'smart-file-system/smart_fs.js';
 import { SmartFsObsidianAdapter } from 'smart-file-system/adapters/obsidian.js';
-import { SmartContext } from './smart-context/smart_context.js';
-import { SmartView } from 'smart-view';
 import { SmartViewObsidianAdapter } from 'smart-view/adapters/obsidian.js';
-import { SmartSettings } from 'smart-settings';
 import { format_excluded_sections } from './smart-context/utils.js';
 import fs from 'fs';
 import path from 'path';
@@ -23,53 +20,55 @@ import {
 } from 'smart-file-system/utils/ignore.js';
 import { FolderSelectModal } from './folder_select_modal.js';
 import { ContextSelectModal } from './context_select_modal.js';
-
-/**
- * Default settings pulled into the plugin if not overridden by the user.
- */
-const DEFAULT_SETTINGS = {
-  excluded_headings: [],
-  before_prompt: '',
-  before_each_prompt: '',
-  after_each_prompt: '',
-  after_prompt: '',
-  link_depth: 1,
-  include_file_tree: true,
-  max_linked_files: 0, // 0 means "no limit" by default
-};
+import { wait_for_smart_env_then_init } from "obsidian-smart-env";
 
 export default class SmartContextPlugin extends Plugin {
-  async onload() {
-    console.log('Loading SmartContextPlugin...');
-
-    // 1) Use SmartSettings to load existing plugin settings
-    await SmartSettings.create(this, {
-      load: async () => {
-        const loadedData = await this.loadData();
-        return Object.assign({}, DEFAULT_SETTINGS, loadedData);
+  smart_env_config = {
+    collections: {
+      smart_contexts: {
+        class: SmartContexts,
+        data_adapter: ajson_data_adapter,
       },
-      save: async (settings) => {
-        await this.saveData(settings);
-      },
-    });
-
-    // 2) Setup a SmartFs instance
-    this.smart_fs = new SmartFs(
-      { main: this },
-      {
+    },
+    item_types: {
+      SmartContext,
+    },
+    modules: {
+      smart_fs: {
+        class: SmartFs,
         adapter: SmartFsObsidianAdapter,
-        fs_path: '',
-        exclude_patterns: [],
-      }
-    );
+      },
+    },
+  };
 
-    // 3) Create the SmartContext instance
-    this.smartContext = new SmartContext({
-      fs: this.smart_fs,
-      settings: this.settings,
+  async onload() {
+    console.log('Loading SmartContextPlugin2...');
+    // Attach environment config
+    wait_for_smart_env_then_init(this, this.smart_env_config).then(() => {
+      this.register_commands();
+      // Add a right-click context menu option on folders
+      this.registerEvent(
+        this.app.workspace.on('file-menu', (menu, file) => {
+          if (file instanceof TFolder) {
+            menu.addItem((item) => {
+              item
+                .setTitle('Copy folder contents to clipboard')
+                .setIcon('documents')
+                .onClick(async () => {
+                  await this.copy_folder_contents(file, true);
+                });
+            });
+          }
+        })
+      );
+      // 5) Add plugin settings tab
+      this.addSettingTab(new SmartContextSettingTab(this.app, this));
+
+      console.log('SmartContextPlugin loaded');
     });
+  }
 
-    // 4) Register plugin commands
+  register_commands() {
 
     // Command: copy folder contents
     this.addCommand({
@@ -225,24 +224,6 @@ export default class SmartContextPlugin extends Plugin {
       },
     });
 
-    // Add a right-click context menu option on folders
-    this.registerEvent(
-      this.app.workspace.on('file-menu', (menu, file) => {
-        if (file instanceof TFolder) {
-          menu.addItem((item) => {
-            item
-              .setTitle('Copy folder contents to clipboard')
-              .setIcon('documents')
-              .onClick(async () => {
-                await this.copy_folder_contents(file, true);
-              });
-          });
-        }
-      })
-    );
-
-    // 5) Add plugin settings tab
-    this.addSettingTab(new SmartContextSettingTab(this.app, this));
   }
 
   /**
