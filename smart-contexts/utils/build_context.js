@@ -92,35 +92,35 @@ export async function build_context(opts = {}) {
   }
 
   // Process links (secondary)
-  for (const [sourceKey, linkData] of Object.entries(links)) {
-    if (!Array.isArray(linkData) || linkData.length < 2) continue;
+  for (const [link_key, linkData] of Object.entries(links)) {
+    if (!linkData) continue;
     stats.link_count++;
 
-    const [linkedKey, linkContent] = linkData;
+    const {to, from, content, type, depth} = linkData;
 
+    let item_key;
+    if(to?.[0]) item_key = to[0];
+    else if(from?.[0]) item_key = from[0];
+
+    const var_replacements = {
+      LINK_PATH: link_key,
+      LINK_NAME: link_key.substring(link_key.lastIndexOf('/') + 1),
+      LINK_ITEM_PATH: item_key,
+      LINK_ITEM_NAME: item_key.substring(item_key.lastIndexOf('/') + 1),
+      LINK_TYPE: type?.[0],
+      LINK_DEPTH: depth?.[0],
+    };
     // Insert <before_link>
     if (before_link) {
-      content_accumulator += replace_link_placeholders(before_link, {
-        LINK_PATH: sourceKey,
-        LINK_NAME: sourceKey.substring(sourceKey.lastIndexOf('/') + 1),
-        LINK_ITEM_PATH: linkedKey,
-        LINK_ITEM_NAME: linkedKey.substring(linkedKey.lastIndexOf('/') + 1),
-        LINK_TYPE: inlinks ? 'IN-LINK' : 'OUT-LINK',
-      }) + '\n';
+      content_accumulator += replace_link_placeholders(before_link, var_replacements) + '\n';
     }
 
     // Append link content
-    content_accumulator += linkContent.trim() + '\n';
+    content_accumulator += content.trim() + '\n';
 
     // Insert <after_link>
     if (after_link) {
-      content_accumulator += replace_link_placeholders(after_link, {
-        LINK_PATH: sourceKey,
-        LINK_NAME: sourceKey.substring(sourceKey.lastIndexOf('/') + 1),
-        LINK_ITEM_PATH: linkedKey,
-        LINK_ITEM_NAME: linkedKey.substring(linkedKey.lastIndexOf('/') + 1),
-        LINK_TYPE: inlinks ? 'IN-LINK' : 'OUT-LINK',
-      }) + '\n';
+      content_accumulator += replace_link_placeholders(after_link, var_replacements) + '\n';
     }
   }
 

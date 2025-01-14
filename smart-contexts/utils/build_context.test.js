@@ -28,20 +28,20 @@ test('Given items, When building context, Then merges them without excluding con
 
 test('Given links, When building context, Then merges them with placeholders replaced', async (t) => {
   const links = {
-    'sourceA.md': ['linkedA.md', 'Linked content from A'],
-    'sourceB.md': ['linkedB.md', 'Linked content from B'],
+    'linkedA.md': {from: ['sourceA.md'], content: 'Linked content from A', type: ['INLINK'], depth: [1]},
+    'linkedB.md': {from: ['sourceB.md'], content: 'Linked content from B', type: ['INLINK'], depth: [1]},
   };
 
   const { context, stats } = await build_context({
     links,
-    before_link: '[LINK from {{LINK_NAME}} to {{LINK_ITEM_NAME}} ({{LINK_TYPE}})]',
+    before_link: '[LINK from {{LINK_ITEM_NAME}} to {{LINK_NAME}} ({{LINK_TYPE}})]',
     after_link: '---',
     inlinks: true,
   });
 
-  t.true(context.includes('[LINK from sourceA.md to linkedA.md (IN-LINK)]'), 'Uses placeholders for link A');
+  t.true(context.includes('[LINK from sourceA.md to linkedA.md (INLINK)]'), 'Uses placeholders for link A');
   t.true(context.includes('Linked content from A'), 'Appends link content A');
-  t.true(context.includes('[LINK from sourceB.md to linkedB.md (IN-LINK)]'), 'Uses placeholders for link B');
+  t.true(context.includes('[LINK from sourceB.md to linkedB.md (INLINK)]'), 'Uses placeholders for link B');
   t.true(context.includes('Linked content from B'), 'Appends link content B');
   t.is(stats.item_count, 0, 'No items used, only links');
   t.is(stats.link_count, 2, 'Two links processed');
@@ -52,7 +52,7 @@ test('Given items and links, When building context, Then merges them all', async
     'main.md': 'Main content.\n#excluded heading not stripped\nLine after heading.',
   };
   const links = {
-    'main.md': ['other.md', 'Other content. Possibly excluded if done externally.'],
+    'main.md': {to: ['other.md'], content: 'Other content. Possibly excluded if done externally.', type: ['OUTLINK'], depth: [1]},
   };
 
   const { context, stats } = await build_context({

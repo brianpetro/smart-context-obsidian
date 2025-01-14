@@ -45,26 +45,15 @@ export class SmartContext extends CollectionItem {
    * @returns {Promise<Object>} The result from build_context (e.g. { context, stats }).
    */
   async compile(opts = {}) {
-    // 1) Merge settings
     const merged = {
-      ...this.collection.settings,
-      ...opts,
       items: {},
       links: {},
+      ...this.collection.settings,
+      ...opts,
     };
+    await this.process_items(merged);
 
-    // 2) Add this.data.items{} into merged.items
-    for (const [some_path_or_key, flag] of Object.entries(this.data.items || {})) {
-      if (!flag) continue;
-      // Typically would fetch content from a source or FS. Placeholder here:
-      merged.items[some_path_or_key] = `Content for ${some_path_or_key}`;
-    }
-
-    // 3) Optionally follow links up to merged.link_depth
-    if (merged.link_depth > 0) {
-      const discovered_links = this.get_links(merged.link_depth, merged.inlinks);
-      Object.assign(merged.links, discovered_links);
-    }
+    if(merged.link_depth > 0) await this.process_links(merged);
 
     // 4) Exclusions or parse blocks if desired
     await respect_exclusions(merged);
@@ -74,21 +63,93 @@ export class SmartContext extends CollectionItem {
     return result;
   }
 
-  /**
-   * get_links(depth, inlinks)
-   * Example stub method that might parse or BFS links from items.
-   * Return an object of link -> [linkedKey, linkContent, linkType?].
-   * 
-   * @param {number} depth - link depth to follow
-   * @param {boolean} inlinks - whether to include in-links
-   * @returns {Object} For example: { '/path/to/item': ['/path/to/other', 'CONTENT', 'OUT-LINK'] }
-   */
-  get_links(depth, inlinks = false) {
-    if (!depth) return {};
-    // Example: return empty object or dummy data
-    // Real implementation might BFS or parse embedded references from each item
-    return {};
+  async get_ref(key){
+    if(key.endsWith('.md')) return this.env.smart_sources.get(key)
+    else if(key.includes('#')) return this.env.smart_blocks.get(key)
+    return null;
   }
+  async process_items(merged){
+    // 2) Add this.data.items{} into merged.items as item_refs
+    for (const [key_or_path, flag] of Object.entries(this.data.items || {})) {
+      let ref = await this.get_ref(key_or_path);
+      if(!ref) continue;
+      let content = await ref?.read();
+      merged.items[key_or_path] = content;
+    }
+  }
+  async process_links(merged){
+    let links = {};
+    const max_depth = merged.link_depth;
+    for(const item_key of Object.keys(merged.items)){
+      const item_ref = await this.get_ref(item_key);
+      if(!item_ref) continue;
+      if(item_ref.outdated){
+        await item_ref.import(); // updates outlinks property
+      }
+      const outlinks = await this.build_links_object_from_keys(item_ref.outlinks, 'OUTLINK', 1);
+      this.merge_links_object(links, item_key, outlinks);
+      if(merged.inlinks){
+        const inlinks = await this.build_links_object_from_keys(item_ref.inlinks, 'INLINK', 1);
+        this.merge_links_object(links, item_key, inlinks);
+      }
+
+      for(let curr_depth = 1; curr_depth <= max_depth; curr_depth++){
+        const link_keys = Object.keys(links).filter(link_key => links[link_key].depth.includes(curr_depth));
+        for(const link_key of link_keys){
+          const link_ref = await this.get_ref(link_key);
+          if(!link_ref) continue;
+          const link_outlinks = await this.build_links_object_from_keys(
+            link_ref.outlinks.filter(l => l !== item_key),
+            'OUTLINK',
+            curr_depth + 1
+          );
+          this.merge_links_object(links, item_key, link_outlinks);
+          if(merged.inlinks){
+            const link_inlinks = await this.build_links_object_from_keys(
+              link_ref.inlinks.filter(l => l !== item_key),
+              'INLINK',
+              curr_depth + 1
+            );
+            this.merge_links_object(links, item_key, link_inlinks);
+          }
+        }
+      }
+    }
+    merged.links = links;
+  }
+  merge_links_object(links_obj, item_key, links_array){
+    links_array.forEach(link => {
+      let direction = 'to';
+      if(link.type === 'INLINK') direction = 'from';
+      if(!links_obj[link.link_key]){
+        links_obj[link.link_key] = {
+          content: link.content,
+          type: [link.type],
+          depth: [link.depth],
+        }
+        links_obj[link.link_key][direction] = [item_key];
+      }else{
+        links_obj[link.link_key][direction].push(item_key);
+        links_obj[link.link_key].type.push(link.type);
+        links_obj[link.link_key].depth.push(link.depth);
+      }
+    });
+  }
+
+  async build_links_object_from_keys(keys, link_type = 'OUTLINK', depth = 1){
+    const links = [];
+    for(const link_key of keys){
+      const link_ref = await this.get_ref(link_key);
+      if(link_ref) {
+        const content = await link_ref.read();
+        links.push({link_key, content, type: link_type, depth});
+      }else{
+        // links.push({link_key, content: '', type: 'MISSING', depth});
+      }
+    }
+    return links;
+  }
+
   /**
    * A key for the context, typically user-defined or auto from items. 
    * Falls back to murmur hash if none set.
