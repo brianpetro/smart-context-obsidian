@@ -44,7 +44,7 @@ test('Should also strip headings from link content if links exist', async t => {
       'normal.md': '# Hidden\nexcluded\n# Visible\nretained'
     },
     links: {
-      'source.md': ['linkedKey.md', '# Hidden\nexcluded link content\n# Show\nkept link content'],
+      'linkedKey.md': {from: ['source.md'], content: '# Hidden\nexcluded link content\n# Show\nkept link content', type: ['OUTLINK'], depth: [1]},
     }
   };
 
@@ -53,9 +53,9 @@ test('Should also strip headings from link content if links exist', async t => {
   const finalItem = opts.items['normal.md'];
   t.false(finalItem.includes('excluded'), 'Excluded heading in normal item removed');
   t.true(finalItem.includes('retained'), 'Non-excluded remains in normal item');
-  const [lk, finalLink] = opts.links['source.md'];
-  t.is(lk, 'linkedKey.md', 'Link key unchanged');
-  t.false(finalLink.includes('excluded link content'), 'Excluded heading in link content removed');
-  t.true(finalLink.includes('kept link content'), 'Non-excluded link content remains');
+  const link_obj = opts.links['linkedKey.md'];
+  t.is(link_obj.from[0], 'source.md', 'Link key unchanged');
+  t.false(link_obj.content.includes('excluded link content'), 'Excluded heading in link content removed');
+  t.true(link_obj.content.includes('kept link content'), 'Non-excluded link content remains');
   t.is(opts.exclusions['Hidden'], 2, 'Hidden heading was excluded twice');
 });

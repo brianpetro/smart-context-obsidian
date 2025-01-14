@@ -37,12 +37,10 @@ export async function respect_exclusions(opts) {
   }
 
   // Optionally process links if they also contain headings. Usually links are short, but shown here if needed.
-  for (const [srcKey, linkData] of Object.entries(opts.links || {})) {
-    // linkData is [linkedKey, linkContent]
-    if (!Array.isArray(linkData) || linkData.length < 2) continue;
-    const [lk, linkContent] = linkData;
-    const [new_link_content, exclusions] = strip_excluded_headings(linkContent, excluded_list);
-    opts.links[srcKey] = [lk, new_link_content];
+  for (const [link_key, link_obj] of Object.entries(opts.links || {})) {
+    const {content} = link_obj;
+    const [new_link_content, exclusions] = strip_excluded_headings(content, excluded_list);
+    opts.links[link_key].content = new_link_content;
     exclusions.forEach(h => {
       if(!opts.exclusions) opts.exclusions = {};
       if(!opts.exclusions[h]) opts.exclusions[h] = 0;

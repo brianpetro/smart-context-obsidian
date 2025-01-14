@@ -111,17 +111,17 @@ export class ContextSelectModal extends FuzzySuggestModal {
   async submit() {
     console.log('submit', this.selected_items);
     // TODO: build the context and copy to clipboard
-    const { context, stats } = await this.plugin.smartContext.build_context({
-      mode: 'all-open',
-      label: 'All open files',
-      files: this.selected_items.map((f) => ({
-        path: f.file.path,
-      })),
+    const context_item = await this.plugin.env.smart_contexts.create_or_update({
+      items: this.selected_items.reduce((acc, f) => {
+        acc[f.file.path] = true;
+        return acc;
+      }, {}),
     });
-    await this.plugin.copy_to_clipboard(context, false);
+    const { context, stats } = await context_item.compile();
+    await this.plugin.copy_to_clipboard(context);
     this.plugin.showStatsNotice(
       stats,
-      `${stats.file_count} file(s) total (selected)`
+      `${this.selected_items.length} file(s) selected`
     );
   }
 }

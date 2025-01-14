@@ -78,7 +78,7 @@ export class SmartContext extends CollectionItem {
     }
   }
   async process_links(merged){
-    let links = {};
+    let links = merged.links || {};
     const max_depth = merged.link_depth;
     for(const item_key of Object.keys(merged.items)){
       const item_ref = await this.get_ref(item_key);
