@@ -36,3 +36,12 @@
 .sc-selected-pill-icon {
   margin-left: 6px;
 }
+
+.setting-explanation {
+
+  /* should be easy to highlight and copy */
+  & code {
+    cursor: text;
+    user-select: all;
+  }
+}

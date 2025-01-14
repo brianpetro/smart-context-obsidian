@@ -1,138 +1,147 @@
 # Smart Context Plugin for Obsidian
 
-**Smart Context** is an Obsidian plugin that helps you copy contents from folders and open files to your clipboard, with advanced configuration options—such as excluding specific heading sections. This streamlined copy functionality is particularly useful if you regularly work with AI tools like ChatGPT. You can quickly gather multiple files’ contents and feed them as "context" into ChatGPT to improve its understanding and responses.
-
-By copying a set of files (including linked references), you can easily provide ChatGPT with a holistic set of project notes, research materials, or documentation, enabling it to give you more context-aware suggestions, summaries, or to generate more accurate answers.
+**Smart Context** is an Obsidian plugin that helps you copy contents from folders, open files, multiple selected notes, and even external file paths to your clipboard, with advanced configuration—such as excluding specific heading sections or ignoring entire files via `.gitignore` or `.scignore`. This is particularly useful when working with AI tools like ChatGPT, letting you feed large sets of project notes, research, or documentation as "context" to improve AI responses and accuracy.
 
 ---
 
 ## Features
 
-- **Copy Folder Contents:**  
-  Copy all Markdown and Canvas files from a selected folder to your clipboard, including a tree-like folder structure and their contents. This enables you to quickly provide entire project contexts to AI models at once.
+- **Copy Folder Contents**  
+  Copy all Markdown (and Canvas) files from a selected folder to your clipboard, optionally including the folder tree. This is perfect for quickly giving AI models an entire project's context.
 
-- **Copy Visible Open Files:**  
-  Copies content from only the currently visible open files. For instance, if you have multiple panes open with different notes, you can easily provide just those visible notes to ChatGPT, helping it understand your current focus area.
+- **Copy Visible Open Files**  
+  Copies content from only the currently visible open files, so you can provide precisely the subset of notes you’re focused on to ChatGPT or other tools.
 
-- **Copy All Open Files:**  
-  Copies content from all open files in the workspace, regardless of visibility. Perfect for quickly gathering a broad context or a research set to feed into ChatGPT at once.
+- **Copy All Open Files**  
+  Copies content from every open file in the workspace (regardless of visibility). This is a fast way to gather everything you have open at once.
 
-- **Exclude Sections by Heading:**  
-  Configure specific headings that should be excluded from the copied output. This is helpful if you have confidential or irrelevant sections (e.g., “Secret”) that you don’t want to share with ChatGPT or other tools.
+- **Exclude Sections by Heading**  
+  Configure specific headings (glob patterns) to exclude. For example, headings named "Secret" or "Confidential" can automatically be removed before the content is copied.
 
-- **Copy With Linked Files:**  
-  For either visible or all open files, there are commands to also include any files linked within them. This lets you provide ChatGPT with an entire knowledge graph subset—an interconnected set of notes—giving the AI a more comprehensive understanding of your vault’s context.
+- **Ignore Certain Files**  
+  Place a `.scignore` or `.gitignore` in your vault or subfolders. Files matching those patterns (e.g., large low-relevance files, secret notes) will be skipped when you copy folder contents or gather external references.
 
-- **Visual Notifications and Summaries:**  
-  After copying, you’ll see a notification summarizing how many files were copied and how many sections were excluded. This helps you verify the integrity of the context before feeding it into an AI model.
+- **Copy With Linked Files**  
+  Extend your context by also including notes that your currently open files link to (recursively), building a more complete knowledge graph subset for the AI.
+
+- **Build Context (Multiple File Selection)**  
+  A dedicated **"Build Context"** command opens a modal to pick multiple vault notes in a single session. Each selected note appears as a "pill," and you can keep choosing more until you click **"Build Context"**. This then compiles and copies all selected files into a single context string.
+
+- **External File Browser (Desktop Only)**  
+  Browse files and folders _outside_ of your Obsidian vault. You can insert their paths into a `smart-context` codeblock in your active note. Useful when referencing external documents or folders.
+
+- **Visual Notifications and Summaries**  
+  After copying, the plugin shows a notice summarizing how many files were copied, how many sections were excluded, and more.
 
 ---
 
 ## Usage
 
-**The following commands are available via the Command Palette (`Ctrl/Cmd + P`):**
+### Main Commands (Command Palette)
 
-1. **Copy Folder Contents to Clipboard**  
-   - A modal appears allowing you to select a folder.  
-   - Confirms to copy the folder’s structure and contents.  
-   - Useful for providing a large context (e.g., an entire project’s files) to ChatGPT.
+1. **Build Context (Multiple File Selection)**  
+   - Opens a modal listing your vault’s notes.  
+   - Each time you press 'Enter' on a suggestion, that note is added as a pill above the input.  
+   - Press the **"Build Context"** button (or hit 'Esc') once finished selecting.  
+   - The chosen notes are merged, respecting any excluded headings and ignoring patterns, then copied to your clipboard.
 
-2. **Copy Visible Open Files Content to Clipboard**  
-   - Only the content from currently visible (active) panes is copied.  
-   - Great for focused prompts—copy just the notes you’re working on.
+2. **Copy Folder Contents to Clipboard**  
+   - Prompts you to pick a folder.  
+   - Gathers all recognized text files, merges them into a single output, and copies to the clipboard.  
+   - Respects `.scignore` or `.gitignore` patterns within that folder to skip certain files.
 
-3. **Copy All Open Files Content to Clipboard**  
-   - Copies content from all open files, providing a broad context.  
-   - Ideal for feeding multiple related notes to ChatGPT at once.
+3. **Copy Visible Open Files Content to Clipboard**  
+   - Copies only the content from currently visible (active) panes.
 
-4. **Copy Visible Open Files Content (With Linked Files) to Clipboard**  
-   - Copies both the currently visible open files and all files they link to (recursively).  
-   - Perfect for giving ChatGPT a richer, connected context from your vault.
+4. **Copy All Open Files Content to Clipboard**  
+   - Copies content from every open file in the workspace.
 
-5. **Copy All Open Files Content (With Linked Files) to Clipboard**  
-   - Like above but starts with all open files plus their linked references.  
-   - Ideal for providing ChatGPT with a complete knowledge graph excerpt.
+5. **Copy Visible Open Files Content (With Linked Files) to Clipboard**  
+   - Same as #3 but also includes files they link to (recursively).
 
-**Context Menu on Folders**  
-- Right-click on a folder in the File Explorer.  
-- Select **"Copy folder contents to clipboard"** for a quick one-step copy.
+6. **Copy All Open Files Content (With Linked Files) to Clipboard**  
+   - Same as #4 but also includes files they link to (recursively).
+
+7. **Open External File Browser**  
+   - Desktop-only command.  
+   - Lets you navigate above or outside your vault and insert external file/folder paths into a `smart-context` codeblock.
+
+### Context Menu on Folders
+- Right-click a folder in Obsidian’s File Explorer.  
+- Select **"Copy folder contents to clipboard"** to quickly gather the folder's files.
 
 ---
 
 ## External File Browser (Desktop Only)
 
-- **Open External File Browser**  
-  1. Run **"Open External File Browser"** from the Command Palette.  
-  2. A fuzzy suggest modal opens, showing files and folders _outside_ your Obsidian vault.
-     - Folder names end with a slash (e.g., `Documents/`) to distinguish them from files.
-  3. The first item in the list (`..`) takes you up one directory level.  
-  4. **Navigation and Selection Shortcuts:**  
-     - **Right Arrow** or **Shift + Enter**: Open (drill into) the selected directory.  
-     - **Enter**: Insert the selected file/folder path into the active file’s `smart-context` codeblock **and close** the modal.  
-     - **Ctrl + Enter**: Insert the path **but keep the modal open** for additional selections.  
-     - **Left Arrow**: Go back to the previous directory.  
-     - **Esc**: Close the modal.  
-  5. Selecting a file (using Enter or Ctrl+Enter) inserts its vault-relative path into a `smart-context` codeblock:
-     - If the `smart-context` codeblock doesn’t exist in your active file, it is created right below your current cursor line.
-     - If it does exist, new paths are appended to the block.
-  6. Selecting a folder inserts that folder’s relative path as well (including the slash if desired).  
-  7. A notice appears in Obsidian confirming the inserted path.
-  8. This feature uses Node’s `fs` library, so it only works on Obsidian Desktop. On mobile, the command is unavailable.
+When you run **"Open External File Browser"**:
+1. A modal appears, starting in the vault’s parent folder.
+2. Navigate by:
+   - **Right Arrow** or **Shift + Enter**: Open (drill into) the selected directory.
+   - **Enter**: Insert the selected file/folder path into the active file's `smart-context` block **and close** the modal.
+   - **Ctrl + Enter**: Insert the path **but keep the modal open**, letting you select multiple external paths.
+   - **Arrow Left**: Go up a directory (or pick `..`).
+   - **Esc**: Close the modal.
+
+Any inserted paths appear in a `smart-context` codeblock within the active note, so the plugin can pull them in later during a copy command.
 
 ---
 
 ## Using `smart-context` Codeblocks
 
-A `smart-context` codeblock is a code-fenced section within your active file:
+A codeblock like this:
 
 <pre><code>```smart-context
-path/to/someFolder
+folderA/subFolder
 path/to/someFile.md
 ```
 </code></pre>
 
-When you run any **copy** command (e.g., **"Copy Folder Contents to Clipboard"**), the plugin checks if the _active file_ contains a `smart-context` codeblock. If it does, all paths listed inside that codeblock are included in the copied context. That means you can declare extra paths or entire folders that you want to include, regardless of which vault notes or commands you select.
-
-- **Folder Paths**: If you specify a directory (e.g., `path/to/myFolder`), the plugin includes all `.md` and `.canvas` files from that folder—respecting `.scignore` or `.gitignore` patterns if present in that directory.  
-- **File Paths**: If you specify a single file (e.g., `exampleNote.md`), it will be pulled in directly.  
-- **Automatic Creation**: Selecting a file or folder from the External File Browser command will create or append lines to this codeblock, making it easy to gather external references all in one place.  
-- **Inline with Main Context**: The final text you copy to the clipboard merges these `smart-context` references with whatever else you’re copying (e.g., open files, folder contents, etc.).
+- **Folder Paths**: If a path is a directory, the plugin includes all recognized text files within it (respecting `.scignore` or `.gitignore`).
+- **File Paths**: A line referencing a single `.md` or `.canvas` is included as well.
+- **Automatic Creation**: If no `smart-context` codeblock exists in your note, selecting a file or folder in the External File Browser or the “Build Context” modal automatically creates one (or appends more paths).
+- **Merged with Main Context**: Whenever you run a **copy** command, the plugin merges any paths in your `smart-context` codeblock with your chosen set of notes/folders.
 
 ---
 
 ## Settings
 
-In **Settings → Community Plugins → Smart Context**, you’ll find the following options:
+In **Settings → Community Plugins → Smart Context**, you can configure:
 
-- **Excluded Headings** (array of strings)  
-  Headings to exclude from copied content (e.g., “Secret”).
+- **Excluded Headings**  
+  Array of headings (supports glob patterns, e.g., "*Secret*") to remove from the copied text.
+  
+- **Link Depth**  
+  How many "hops" of linked files to follow for "with linked" commands.
+  
+- **In-links**  
+  Whether to also include notes that link *into* your currently selected file(s).
+  
+- **Ignore Patterns**  
+  By placing `.scignore` or `.gitignore` in folders, the plugin can skip large or irrelevant files automatically.
 
-- **Link Depth** (number)  
-  Defines how many link “hops” to follow for “with linked” copy commands. For instance, if `link_depth = 2`, a file linking to another, which links to another, will be included.
+- **Before / After Context**  
+  Custom text inserted at the very beginning or end of the final copied content. Can use placeholders like `{{FILE_TREE}}`.
 
-- **Include File Tree** (toggle)  
-  If ON, includes a file tree in the output for “Copy Folder Contents.”
+- **Before / After Each Item**  
+  Text inserted before/after each primary file’s content. Can use placeholders including:
+  - `{{ITEM_PATH}}`
+  - `{{ITEM_NAME}}`
+  - `{{ITEM_EXT}}` (e.g., "md", "canvas", "js", etc.)
 
-- **Max Linked Files** (number, default 0 = no limit)  
-  Caps how many files are pulled in (BFS expansions) when using “with linked” commands.
-
-- **Before Prompt (once)** (text)  
-  Inserts text at the top of the final copied content. Can include placeholders like `{{FILE_PATH}}` or `{{FILE_NAME}}`.
-
-- **Before Each File** (text)  
-  Inserts text right before each file’s content is appended (e.g., `<context path="{{FILE_PATH}}">`).
-
-- **After Each File** (text)  
-  Inserts text immediately after each file’s content.
-
-- **After Prompt (once)** (text)  
-  Inserts text at the very bottom of the final copied content (often used for closing remarks or markdown delimiters).
+- **Before / After Each Link**  
+  Text inserted before/after each *linked* file’s content. Can use placeholders including:
+  - `{{LINK_PATH}}`
+  - `{{LINK_NAME}}`
+  - `{{LINK_TYPE}}` (e.g., "OUTLINK", "INLINK")
+  - `{{LINK_ITEM_PATH}}`
+  - `{{LINK_ITEM_NAME}}`
 
 ---
 
 ## Formatting
 
-Copied content follows a structured format. For instance, for a folder:
+When you copy folder contents, open files, or build a custom set of notes, the output might look like:
 
 ```
 <folder_name> Folder Structure:
@@ -146,7 +155,7 @@ File Contents:
 -----------------------
 ```
 
-And for open files:
+For open or selected files, the format is similar:
 
 ```
 Open Files Contents:
@@ -157,11 +166,11 @@ Open Files Contents:
 -----------------------
 ```
 
+These sections can also include your custom “before/after” text, placeholders, or any heading exclusions you defined.
+
 ---
 
 ## Example
-
-If you have a file with the following content:
 
 ```
 # Notes
@@ -174,16 +183,10 @@ This should be excluded.
 This will be included.
 ```
 
-And you’ve configured the excluded heading as `Secret`, the **“Secret”** section won’t appear in the clipboard output.
+If you set "Secret" as an excluded heading, the **"Secret"** section won't appear when you copy this file’s contents. If you also had `*.pdf` in a `.scignore`, any PDF files in that same directory would be skipped entirely.
 
 ---
 
 ## Contributing
 
-Feel free to open issues or submit pull requests to improve this plugin.
-
----
-
-## License
-
-This plugin is distributed under the [MIT License](LICENSE).
+Feel free to open issues or submit pull requests. This plugin uses the [MIT License](LICENSE).

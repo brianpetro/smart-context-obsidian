@@ -28,7 +28,7 @@ import {
 import { wait_for_smart_env_then_init } from 'obsidian-smart-env';
 
 // Import the new collection
-import { SmartContexts } from './smart-contexts/smart_contexts.js';
+import { SmartContexts, SmartContext } from 'smart-contexts';
 
 export default class SmartContextPlugin extends Plugin {
   /**
@@ -38,13 +38,10 @@ export default class SmartContextPlugin extends Plugin {
     collections: {
       smart_contexts: {
         class: SmartContexts,
-        // For example, if storing them or customizing:
-        // data_adapter: ajson_data_adapter,
       },
     },
     item_types: {
-      // The base item type is SmartContext, but collection creation handles it internally
-      // There's no direct custom item here unless we add new item classes
+      SmartContext
     },
     modules: {
       smart_fs: {
@@ -273,20 +270,14 @@ export default class SmartContextPlugin extends Plugin {
     }
     const folder_structure = this.generate_folder_structure(folder);
 
-    // Build items object from the folder's files
-    const items_obj = {};
+    const items = {};
     for (const f of files) {
-      items_obj[f.path] = true;
+      items[f.path] = true;
     }
 
-    const sc_item = this.env.smart_contexts.create_or_update({
-      items: items_obj,
-      link_depth: this.settings.link_depth,
-      // Could also pass any other settings like inlinks, etc.
-    });
+    const sc_item = this.env.smart_contexts.create_or_update({ items });
+    const { context, stats } = await sc_item.compile({ link_depth: 0 });
 
-    const { context, stats } = await sc_item.compile();
-    // Insert a small label or the folder structure at the top if desired
     const final_context = `${folder.name} folder structure:\n${folder_structure}\n\n${context}`;
 
     await this.copy_to_clipboard(final_context);

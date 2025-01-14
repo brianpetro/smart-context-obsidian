@@ -29,7 +29,8 @@
     "smart-settings": "file:../jsbrains/smart-settings",
     "smart-view": "file:../jsbrains/smart-view",
     "smart-blocks": "file:../jsbrains/smart-blocks",
-    "obsidian-smart-env": "file:../obsidian-smart-env"
+    "obsidian-smart-env": "file:../obsidian-smart-env",
+    "smart-contexts": "file:../jsbrains/smart-contexts"
   },
   "devDependencies": {
     "archiver": "^7.0.1",
