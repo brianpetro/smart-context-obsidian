@@ -54,32 +54,31 @@ export default class SmartContextPlugin extends Plugin {
   async onload() {
     console.log('Loading SmartContextPlugin2...');
 
-    // 1) Initialize the environment and attach the new SmartContexts collection
-    await wait_for_smart_env_then_init(this, this.smart_env_config);
+    // Should NOT await this, but instead use a callback/then to complete initialization (prevent blocking initial load)
+    wait_for_smart_env_then_init(this, this.smart_env_config).then(() => {
+      this.register_commands();
+  
+      this.registerEvent(
+        this.app.workspace.on('file-menu', (menu, file) => {
+          if (file instanceof TFolder) {
+            menu.addItem((item) => {
+              item
+                .setTitle('Copy folder contents to clipboard')
+                .setIcon('documents')
+                .onClick(async () => {
+                  await this.copy_folder_contents(file, true);
+                });
+            });
+          }
+        })
+      );
+  
+      // 4) Plugin settings tab
+      this.addSettingTab(new SmartContextSettingTab(this.app, this));
+  
+      console.log('SmartContextPlugin loaded');
+    });
 
-    // 2) Register commands
-    this.register_commands();
-
-    // 3) Register the folder context-menu integration
-    this.registerEvent(
-      this.app.workspace.on('file-menu', (menu, file) => {
-        if (file instanceof TFolder) {
-          menu.addItem((item) => {
-            item
-              .setTitle('Copy folder contents to clipboard')
-              .setIcon('documents')
-              .onClick(async () => {
-                await this.copy_folder_contents(file, true);
-              });
-          });
-        }
-      })
-    );
-
-    // 4) Plugin settings tab
-    this.addSettingTab(new SmartContextSettingTab(this.app, this));
-
-    console.log('SmartContextPlugin loaded');
   }
 
   onunload() {
