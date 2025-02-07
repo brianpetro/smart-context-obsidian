@@ -2,7 +2,12 @@
  * main.js
  * @fileoverview
  * Updated Obsidian plugin entry point for Smart Context,
- * now using the new `smart-contexts/SmartContexts` approach.
+ * with simplified ignoring logic:
+ *   - Only check for .scignore/.gitignore at the root
+ *     of each folder listed in the codeblock.
+ *   - For each file under that folder, compute the
+ *     relative path from the folder root and do a
+ *     single "should_ignore" check using those patterns.
  ******************************************************/
 
 import {
@@ -90,7 +95,6 @@ export default class SmartContextPlugin extends Plugin {
    * now updated to use the new SmartContexts collection approach.
    */
   register_commands() {
-
     // Command: copy folder contents
     this.addCommand({
       id: 'copy-folder-contents',
@@ -353,11 +357,16 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Recursively gather text files from a folder (optionally subfolders).
+   * This is used by the right-click "Copy folder contents" feature.
+   * This method has no advanced ignoring beyond the top-level folder's .scignore/.gitignore,
+   * because it checks only once at folder.path.
    */
   get_files_from_folder(folder, include_subfolders) {
     const results = [];
     const vault_base = normalizePath(this.app.vault.adapter.basePath);
     const folder_abs_path = path.join(vault_base, folder.path);
+
+    // Load patterns from the folder root only
     const ignore_patterns = load_ignore_patterns(folder_abs_path);
 
     const process_folder = (currentFolder) => {
@@ -367,8 +376,10 @@ export default class SmartContextPlugin extends Plugin {
             process_folder(child);
           }
         } else {
-          const rel = child.path;
-          if (!should_ignore(rel, ignore_patterns) && is_text_file(rel)) {
+          // We'll do a simpler approach using the child's path relative to the selected "folder".
+          // If the selected "folder" is the "rootFolder", we want "child.path" minus "folder.path".
+          const rel = this.get_relative_path(child.path, folder.path);
+          if (!should_ignore(rel, ignore_patterns) && is_text_file(child.path)) {
             results.push(child);
           }
         }
@@ -406,7 +417,6 @@ export default class SmartContextPlugin extends Plugin {
     return structure;
   }
 
-
   /**
    * Copy text to clipboard, optionally merging with any codeblock context from the active file.
    */
@@ -436,15 +446,10 @@ export default class SmartContextPlugin extends Plugin {
           : `~${Math.round(stats.char_count / 1000)}k`;
       noticeMsg += `, ${char_count} chars`;
 
-      // If your code merges `exclusions` or similar, you can handle them here:
-      // e.g. if (stats.exclusions) { ... }
-
-      // The new "respect_exclusions" approach has a stats.exclusions map if used
       if (stats.exclusions) {
         const total_excluded = Object.values(stats.exclusions).reduce((p, c) => p + c, 0);
         if (total_excluded > 0) {
           noticeMsg += `, ${total_excluded} section(s) excluded`;
-          // or format them similarly
         }
       }
     }
@@ -460,10 +465,16 @@ export default class SmartContextPlugin extends Plugin {
     const modal = new ExternalSelectModal(this.app, parentFolder, vaultBasePath);
     modal.open();
   }
+
   /**
-   * Parse the active file's content to find lines in a ```smart-context``` codeblock.
+   * Parse the file's content for lines in a ```smart-context``` codeblock,
+   * returning an object shaped like { [absPath]: { content, depth, ...} }.
+   * 
+   * Checking only one .scignore/.gitignore at each folder root
+   * when the user references a directory.
+   *
    * @param {import("obsidian").TFile} file
-   * @returns {Promise<Object>} links object to add to the opts for context.compile()
+   * @returns {Promise<Object>} links object for context.compile({ links })
    */
   async parse_smart_context_codeblock(file) {
     const content = await this.app.vault.read(file);
@@ -487,14 +498,21 @@ export default class SmartContextPlugin extends Plugin {
         }
       }
     }
-    if(!sc_lines.length) return [];
-    
+    if (!sc_lines.length) return [];
+
     const paths = await this.gather_paths_respecting_scignore(sc_lines);
 
+    // Build a "links" record so each external file can be used in compile()
     const links = {};
-    for(const path of paths){
-      links[path] = {
-        content: fs.readFileSync(path, 'utf8'),
+    for (const absPath of paths) {
+      let fileContent = '';
+      try {
+        fileContent = fs.readFileSync(absPath, 'utf8');
+      } catch (e) {
+        console.warn(`Failed reading external path: ${absPath}`, e);
+      }
+      links[absPath] = {
+        content: fileContent,
         depth: [1],
         from: [file.path],
         type: 'OUTLINK-EXTERNAL',
@@ -504,10 +522,10 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Expand each line in a smart-context codeblock to actual file paths or directories,
-   * while respecting .scignore/.gitignore patterns. Only includes recognized text files.
-   * @param {string[]} sc_lines
-   * @returns {Promise<string[]>}
+   * For each line:
+   *   - If it's a file => check if text => add
+   *   - If it's a directory => load .scignore/.gitignore from that folder root,
+   *       recursively gather subfiles, ignoring patterns by relative path
    */
   async gather_paths_respecting_scignore(sc_lines) {
     const vault_base = normalizePath(this.app.vault.adapter.basePath);
@@ -517,15 +535,24 @@ export default class SmartContextPlugin extends Plugin {
       const abs = path.join(vault_base, line);
       try {
         const stat = fs.statSync(abs);
+        if (!stat) continue;
+
         if (stat.isDirectory()) {
-          // gather all text files ignoring any .scignore/.gitignore
+          // 1) Load the .scignore/.gitignore from this directory
           const ignore_patterns = load_ignore_patterns(abs);
-          const files_in_dir = this.gather_files_in_directory_sc(abs, ignore_patterns);
-          for (const abs_path of files_in_dir) {
-            results.add(abs_path);
+
+          // 2) Collect all subfiles (DFS)
+          const allFiles = this.collect_all_files(abs);
+          // 3) For each file, check ignoring
+          for (const f of allFiles) {
+            // relative path from this folder
+            const rel = path.relative(abs, f).replace(/\\/g, '/');
+            if (!should_ignore(rel, ignore_patterns) && is_text_file(f)) {
+              results.add(f);
+            }
           }
         } else {
-          // single file
+          // Single file
           if (is_text_file(abs)) {
             results.add(abs);
           }
@@ -539,44 +566,43 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Recursively gather recognized text files from `dirPath`,
-   * ignoring patterns in ignore_patterns.
-   * @param {string} dirPath
-   * @param {string[]} ignore_patterns
-   * @returns {string[]} array of absolute file paths
+   * Recursively gather all files (absolute paths) under `dirPath` (DFS).
+   * No ignoring. The top-level ignore patterns are used later.
    */
-  gather_files_in_directory_sc(dirPath, ignore_patterns) {
-    const result = [];
-    try {
-      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dirPath, entry.name);
-        const relPath = path.relative(dirPath, fullPath).replace(/\\/g, '/');
+  collect_all_files(dirPath) {
+    const filePaths = [];
+    const stack = [dirPath];
 
-        // We check ignoring for multiple forms
-        const localRelPath = path
-          .relative(path.dirname(dirPath), fullPath)
-          .replace(/\\/g, '/');
-        if (
-          should_ignore(fullPath, ignore_patterns) ||
-          should_ignore(relPath, ignore_patterns) ||
-          should_ignore(localRelPath, ignore_patterns)
-        ) {
-          continue;
-        }
-
-        if (entry.isDirectory()) {
-          result.push(...this.gather_files_in_directory_sc(fullPath, ignore_patterns));
-        } else {
-          if (is_text_file(fullPath)) {
-            result.push(fullPath);
+    while (stack.length) {
+      const current = stack.pop();
+      try {
+        const entries = fs.readdirSync(current, { withFileTypes: true });
+        for (const e of entries) {
+          const fullPath = path.join(current, e.name);
+          if (e.isDirectory()) {
+            stack.push(fullPath);
+          } else {
+            filePaths.push(fullPath);
           }
         }
+      } catch (err) {
+        console.warn('Error reading directory for collect_all_files:', current, err);
       }
-    } catch (err) {
-      console.warn('Error reading directory for smart-context:', dirPath, err);
     }
-    return result;
+    return filePaths;
+  }
+
+  /**
+   * Utility to find the relative path from `folderPath` to `childPath`.
+   * E.g. folderPath="folderA" childPath="folderA/sub/file.md" => "sub/file.md"
+   */
+  get_relative_path(childPath, folderPath) {
+    // Because childPath includes the entire vault structure, we only want the part after "folderPath".
+    // The simplest approach: remove the folderPath from the front of childPath. But be mindful of trailing slashes
+    // We can rely on Obsidian's path library or do a direct substring approach:
+    return path
+      .relative(folderPath, childPath)
+      .replace(/\\/g, '/');
   }
 }
 
