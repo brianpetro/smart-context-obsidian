@@ -1,6 +1,6 @@
 {
   "name": "smart-context-obsidian",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "type": "module",
   "description": "Copy folder contents (Markdown & Canvas files) to the clipboard with a Smart Context approach.",
   "scripts": {
