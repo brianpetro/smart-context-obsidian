@@ -27,12 +27,14 @@ import {
 
 import { wait_for_smart_env_then_init } from 'obsidian-smart-env';
 
+import { SmartEnv } from 'smart-environment/obsidian.js';
 import { ContextSelectModal } from './context_select_modal.js';
 import { ExternalSelectModal } from './external_select_modal.js';
 import { FolderSelectModal } from './folder_select_modal.js';
 import { LinkDepthModal } from './link_depth_modal.js';
 
 import { SmartContexts, SmartContext } from 'smart-contexts';
+import { AjsonMultiFileCollectionDataAdapter } from 'smart-collections/adapters/ajson_multi_file.js';
 
 export default class SmartContextPlugin extends Plugin {
   /**
@@ -42,6 +44,7 @@ export default class SmartContextPlugin extends Plugin {
     collections: {
       smart_contexts: {
         class: SmartContexts,
+        data_adapter: AjsonMultiFileCollectionDataAdapter
       },
     },
     item_types: {
@@ -59,30 +62,30 @@ export default class SmartContextPlugin extends Plugin {
     console.log('Loading SmartContextPlugin...');
 
     // Initialize environment after Obsidian is ready
-    wait_for_smart_env_then_init(this, this.smart_env_config).then(() => {
-      this.register_commands();
+    await SmartEnv.create(this, this.smart_env_config);
 
-      // Right-click menu for folders
-      this.registerEvent(
-        this.app.workspace.on('file-menu', (menu, file) => {
-          if (file instanceof TFolder) {
-            menu.addItem((item) => {
-              item
-                .setTitle('Copy folder contents to clipboard')
-                .setIcon('documents')
-                .onClick(async () => {
-                  await this.open_folder_depth_modal(file);
-                });
-            });
-          }
-        })
-      );
+    this.register_commands();
 
-      // Settings tab
-      this.addSettingTab(new SmartContextSettingTab(this.app, this));
+    // Right-click menu for folders
+    this.registerEvent(
+      this.app.workspace.on('file-menu', (menu, file) => {
+        if (file instanceof TFolder) {
+          menu.addItem((item) => {
+            item
+              .setTitle('Copy folder contents to clipboard')
+              .setIcon('documents')
+              .onClick(async () => {
+                await this.open_folder_depth_modal(file);
+              });
+          });
+        }
+      })
+    );
 
-      console.log('SmartContextPlugin loaded');
-    });
+    // Settings tab
+    this.addSettingTab(new SmartContextSettingTab(this.app, this));
+
+    console.log('SmartContextPlugin loaded');
   }
 
   onunload() {
