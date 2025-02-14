@@ -22,7 +22,6 @@ import {
   is_text_file
 } from 'smart-file-system/utils/ignore.js';
 
-import { wait_for_smart_env_then_init } from 'obsidian-smart-env';
 import { SmartEnv } from 'smart-environment/obsidian.js';
 
 import { ContextSelectModal } from './context_select_modal.js';
