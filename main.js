@@ -2,9 +2,6 @@
  * main.js
  * @fileoverview
  * Obsidian plugin entry point for Smart Context.
- * - All "copy" commands open a LinkDepthModal, but we also
- *   always parse 'smart-context' codeblocks in each file
- *   (regardless of link depth) to gather references.
  ******************************************************/
 
 import {
@@ -26,8 +23,8 @@ import {
 } from 'smart-file-system/utils/ignore.js';
 
 import { wait_for_smart_env_then_init } from 'obsidian-smart-env';
-
 import { SmartEnv } from 'smart-environment/obsidian.js';
+
 import { ContextSelectModal } from './context_select_modal.js';
 import { ExternalSelectModal } from './external_select_modal.js';
 import { FolderSelectModal } from './folder_select_modal.js';
@@ -66,7 +63,7 @@ export default class SmartContextPlugin extends Plugin {
 
     this.register_commands();
 
-    // Right-click menu for folders
+    // Right-click menu for folders (changed: compile at depth=0 without modal)
     this.registerEvent(
       this.app.workspace.on('file-menu', (menu, file) => {
         if (file instanceof TFolder) {
@@ -75,7 +72,7 @@ export default class SmartContextPlugin extends Plugin {
               .setTitle('Copy folder contents to clipboard')
               .setIcon('documents')
               .onClick(async () => {
-                await this.open_folder_depth_modal(file);
+                await this.copy_folder_without_modal(file);
               });
           });
         }
@@ -93,14 +90,20 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Register commands:
-   *  - Copy current note (opens link depth modal)
-   *  - Copy visible open files (opens link depth modal)
-   *  - Copy all open files (opens link depth modal)
-   *  - Copy folder contents (opens link depth modal)
-   *  - External file browser
-   *  - Build context (multiple note selection)
+   * Helper to return a path relative to parent_path.
+   * If child_path matches or is within parent_path, remove the parent portion.
+   * Otherwise returns child_path unchanged.
    */
+  get_relative_path(child_path, parent_path) {
+    if (child_path === parent_path) return '';
+    if (!child_path.startsWith(parent_path)) {
+      return child_path;
+    }
+    let rel = child_path.slice(parent_path.length);
+    if (rel.startsWith('/')) rel = rel.slice(1);
+    return rel;
+  }
+
   register_commands() {
     // Command: copy current note
     this.addCommand({
@@ -112,17 +115,15 @@ export default class SmartContextPlugin extends Plugin {
         if (checking) return true;
 
         (async () => {
-          // Start with the single active file
           const itemsSet = new Set([ activeFile.path ]);
-          // Expand codeblocks inside that file (or newly added ones):
           await this.expand_items_with_codeblocks(itemsSet);
-          // Then pass to the SmartContext
+
           const items_obj = {};
-          for (const path of itemsSet) {
-            items_obj[path] = true;
+          for (const p of itemsSet) {
+            items_obj[p] = true;
           }
           const sc_item = this.env.smart_contexts.create_or_update({ items: items_obj });
-          // Open link depth modal
+          // open link depth modal
           new LinkDepthModal(this.app, this, sc_item).open();
         })();
 
@@ -144,7 +145,6 @@ export default class SmartContextPlugin extends Plugin {
           for (const f of visible_files) {
             itemsSet.add(f.path);
           }
-          // Expand codeblocks
           await this.expand_items_with_codeblocks(itemsSet);
 
           const items_obj = {};
@@ -173,7 +173,6 @@ export default class SmartContextPlugin extends Plugin {
           for (const f of all_files_set) {
             itemsSet.add(f.path);
           }
-          // Expand codeblocks
           await this.expand_items_with_codeblocks(itemsSet);
 
           const items_obj = {};
@@ -188,14 +187,14 @@ export default class SmartContextPlugin extends Plugin {
       },
     });
 
-    // Command: copy folder contents
+    // Command: copy folder contents (opens a FolderSelectModal, but still auto depth=0 on pick)
     this.addCommand({
       id: 'copy-folder-contents-with-depth',
-      name: 'Copy folder contents (pick link depth)',
+      name: 'Copy folder contents (no modal, depth=0)',
       callback: () => {
         new FolderSelectModal(this.app, async (folder) => {
           if (!folder) return;
-          await this.open_folder_depth_modal(folder);
+          await this.copy_folder_without_modal(folder);
         }).open();
       },
     });
@@ -230,10 +229,10 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * "Copy folder contents" flow. Then open LinkDepthModal.
-   * This also expands codeblocks in each file found.
+   * New method to copy folder contents at depth=0, without a modal.
+   * Gathers files, expands any codeblock references, compiles with link_depth=0, copies to clipboard.
    */
-  async open_folder_depth_modal(folder) {
+  async copy_folder_without_modal(folder) {
     const files = this.get_files_from_folder(folder, true);
     if (!files.length) {
       new Notice('No recognized text files found in the selected folder.');
@@ -243,24 +242,22 @@ export default class SmartContextPlugin extends Plugin {
     for (const f of files) {
       itemsSet.add(f.path);
     }
-    // Expand codeblocks
     await this.expand_items_with_codeblocks(itemsSet);
 
     const items_obj = {};
     for (const p of itemsSet) {
       items_obj[p] = true;
     }
+
     const sc_item = this.env.smart_contexts.create_or_update({ items: items_obj });
-    new LinkDepthModal(this.app, this, sc_item).open();
+    const { context, stats } = await sc_item.compile({ link_depth: 0 });
+
+    await this.copy_to_clipboard(context);
+    this.showStatsNotice(stats, `Folder: ${folder.path}`);
   }
 
   /**
    * Expand item set by parsing '```smart-context' blocks in each file.
-   * Each path from the codeblock can be:
-   *  - A single file => add to itemsSet
-   *  - A directory => recursively gather subfiles (respecting .scignore/.gitignore)
-   *
-   * We do BFS: each time we find a new file from a codeblock, we parse that file too.
    */
   async expand_items_with_codeblocks(itemsSet) {
     const queue = Array.from(itemsSet);
@@ -271,15 +268,11 @@ export default class SmartContextPlugin extends Plugin {
       if (processed.has(filePath)) continue;
       processed.add(filePath);
 
-      // read the file content
       let fileEntry = this.app.vault.getAbstractFileByPath(filePath);
-      // If it doesn't exist in vault or isn't a TFile, skip
       if (!fileEntry || !('extension' in fileEntry)) continue;
-
       const content = await this.app.vault.read(fileEntry);
       const codeblockPaths = this.parse_smart_context_codeblock_lines(content);
 
-      // For each path => if directory => gather subfiles => else single file
       for (const linePath of codeblockPaths) {
         const abs = path.join(
           normalizePath(this.app.vault.adapter.basePath),
@@ -290,7 +283,6 @@ export default class SmartContextPlugin extends Plugin {
           if (!stat) continue;
 
           if (stat.isDirectory()) {
-            // gather subfiles respecting .scignore/.gitignore
             const subPaths = this.gather_directory_files(abs);
             for (const sp of subPaths) {
               if (!itemsSet.has(sp)) {
@@ -299,12 +291,9 @@ export default class SmartContextPlugin extends Plugin {
               }
             }
           } else {
-            // single file
-            const vaultRel = path.relative(
-              normalizePath(this.app.vault.adapter.basePath),
-              abs
-            ).replace(/\\/g, '/');
-
+            const vaultRel = path
+              .relative(normalizePath(this.app.vault.adapter.basePath), abs)
+              .replace(/\\/g, '/');
             if (!itemsSet.has(vaultRel)) {
               itemsSet.add(vaultRel);
               queue.push(vaultRel);
@@ -318,8 +307,7 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Parse out lines inside ```smart-context codeblocks in the file content.
-   * Returns an array of raw lines, which might be file or folder references.
+   * Parse out lines inside ```smart-context codeblocks
    */
   parse_smart_context_codeblock_lines(content) {
     const lines = content.split('\n');
@@ -343,7 +331,7 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * BFS gather all text files under a directory 'absDir' respecting .scignore/.gitignore.
+   * BFS gather text files under 'absDir' respecting .scignore/.gitignore.
    */
   gather_directory_files(absDir) {
     const results = [];
@@ -357,20 +345,23 @@ export default class SmartContextPlugin extends Plugin {
         for (const e of entries) {
           const fullPath = path.join(current, e.name);
           if (e.isDirectory()) {
-            // see if we ignore the folder's name
-            const rel = path.relative(absDir, fullPath).replace(/\\/g, '/');
+            const rel = path
+              .relative(absDir, fullPath)
+              .replace(/\\/g, '/');
             if (!should_ignore(rel, ignore_patterns)) {
               stack.push(fullPath);
             }
           } else {
-            // check ignore & extension
-            const rel = path.relative(absDir, fullPath).replace(/\\/g, '/');
+            const rel = path
+              .relative(absDir, fullPath)
+              .replace(/\\/g, '/');
             if (!should_ignore(rel, ignore_patterns) && is_text_file(fullPath)) {
-              // convert back to vault-relative
-              const vaultRel = path.relative(
-                normalizePath(this.app.vault.adapter.basePath),
-                fullPath
-              ).replace(/\\/g, '/');
+              const vaultRel = path
+                .relative(
+                  normalizePath(this.app.vault.adapter.basePath),
+                  fullPath
+                )
+                .replace(/\\/g, '/');
               results.push(vaultRel);
             }
           }
@@ -383,7 +374,7 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Collect only *visible* open files.
+   * Collect only visible open files.
    */
   get_visible_open_files() {
     const leaves = this.get_all_leaves();
@@ -452,16 +443,11 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Recursively gather text files from a folder (optionally subfolders).
-   * This is used by the right-click "Copy folder contents" feature.
-   * This method has no advanced ignoring beyond the top-level folder's .scignore/.gitignore,
-   * because it checks only once at folder.path.
    */
   get_files_from_folder(folder, include_subfolders) {
     const results = [];
     const vault_base = normalizePath(this.app.vault.adapter.basePath);
     const folder_abs_path = path.join(vault_base, folder.path);
-
-    // Load patterns from the folder root only
     const ignore_patterns = load_ignore_patterns(folder_abs_path);
 
     const process_folder = (currentFolder) => {
@@ -471,8 +457,6 @@ export default class SmartContextPlugin extends Plugin {
             process_folder(child);
           }
         } else {
-          // We'll do a simpler approach using the child's path relative to the selected "folder".
-          // If the selected "folder" is the "rootFolder", we want "child.path" minus "folder.path".
           const rel = this.get_relative_path(child.path, folder.path);
           if (!should_ignore(rel, ignore_patterns) && is_text_file(child.path)) {
             results.push(child);
@@ -484,9 +468,8 @@ export default class SmartContextPlugin extends Plugin {
     return results;
   }
 
-
   /**
-   * Copy text to clipboard, optionally merging with any codeblock context from the active file.
+   * Copy text to clipboard.
    */
   async copy_to_clipboard(text) {
     try {
@@ -503,7 +486,7 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Show user-facing notice summarizing stats after copying.
+   * Show user-facing notice summarizing stats.
    */
   showStatsNotice(stats, contextMsg) {
     let noticeMsg = `Copied to clipboard! (${contextMsg})`;
@@ -549,7 +532,6 @@ class SmartContextSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    // Render each setting (collection-based)
     Object.entries(this.plugin.env.smart_contexts.settings_config).forEach(([setting, config]) => {
       const setting_html = this.env.smart_view.render_setting_html({
         setting,
