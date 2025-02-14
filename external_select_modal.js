@@ -85,7 +85,7 @@ export class ExternalSelectModal extends FuzzySuggestModal {
         purpose: 'Insert path and close'
       },
       {
-        command: 'Ctrl+Enter',
+        command: '⌘/Ctrl + Enter',
         purpose: 'Insert path (stay open)'
       },
       {
