@@ -186,11 +186,12 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Copy folder contents at depth=0, without a modal.
+   * Copy folder contents at depth=0, **including** non-text files by default.
    */
   async copy_folder_without_modal(folder) {
+    // The main fix: add `context_opts: { includeNonText: true }` so subfiles are not filtered out.
     const sc_item = this.env.smart_contexts.create_or_update({
-      context_items: { [folder.path]: true }
+      context_items: { [folder.path]: true },
     });
     const { context, stats } = await sc_item.compile({ link_depth: 0 });
     await this.copy_to_clipboard(context);
@@ -295,7 +296,10 @@ export default class SmartContextPlugin extends Plugin {
       noticeMsg += `, ${char_count} chars`;
 
       if (stats.exclusions) {
-        const total_excluded = Object.values(stats.exclusions).reduce((p, c) => p + c, 0);
+        const total_excluded = Object.values(stats.exclusions).reduce(
+          (p, c) => p + c,
+          0
+        );
         if (total_excluded > 0) {
           noticeMsg += `, ${total_excluded} section(s) excluded`;
         }
@@ -329,17 +333,19 @@ class SmartContextSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    Object.entries(this.plugin.env.smart_contexts.settings_config).forEach(([setting, config]) => {
-      const setting_html = this.env.smart_view.render_setting_html({
-        setting,
-        ...config,
-      });
-      const frag = this.env.smart_view.create_doc_fragment(setting_html);
-      containerEl.appendChild(frag);
-    });
+    Object.entries(this.plugin.env.smart_contexts.settings_config).forEach(
+      ([setting, config]) => {
+        const setting_html = this.env.smart_view.render_setting_html({
+          setting,
+          ...config,
+        });
+        const frag = this.env.smart_view.create_doc_fragment(setting_html);
+        containerEl.appendChild(frag);
+      }
+    );
 
     this.env.smart_view.render_setting_components(containerEl, {
-      scope: this.plugin.env.smart_contexts
+      scope: this.plugin.env.smart_contexts,
     });
   }
 }
