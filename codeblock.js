@@ -67,7 +67,6 @@ async function list_files_recursive(dir_path, ignore_patterns, ignored_patterns_
       const full_path = path.join(current_path, entry.name);
       const relative_path = path.relative(dir_path, full_path).replace(/\\/g, '/');
       if (should_ignore(relative_path, ignore_patterns, ignored_patterns_matched)) {
-        console.log('should_ignore', full_path);
         continue;
       }
       if (entry.isDirectory()) {
@@ -191,7 +190,6 @@ export async function parse_codeblock(fileContent, basePath, options = {}) {
   const items = {};
   let external_chars = 0;
 
-  console.log('unique_paths', unique_paths);
   for (const ext_path of unique_paths) {
     const content = await fs.readFile(ext_path, 'utf-8');
     items[ext_path] = {
