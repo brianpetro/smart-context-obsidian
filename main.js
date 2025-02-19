@@ -11,13 +11,11 @@ import {
   PluginSettingTab,
   normalizePath,
 } from 'obsidian';
-import fs from 'fs';
 import path from 'path';
 
 import { SmartFs } from 'smart-file-system/smart_fs.js';
 import { SmartFsObsidianAdapter } from 'smart-file-system/adapters/obsidian.js';
 import {
-  load_ignore_patterns,
   should_ignore,
   is_text_file
 } from 'smart-file-system/utils/ignore.js';
@@ -62,7 +60,7 @@ export default class SmartContextPlugin extends Plugin {
 
     this.register_commands();
 
-    // Right-click menu for folders (changed: compile at depth=0 without modal)
+    // Right-click menu for folders
     this.registerEvent(
       this.app.workspace.on('file-menu', (menu, file) => {
         if (file instanceof TFolder) {
@@ -90,8 +88,6 @@ export default class SmartContextPlugin extends Plugin {
 
   /**
    * Helper to return a path relative to parent_path.
-   * If child_path matches or is within parent_path, remove the parent portion.
-   * Otherwise returns child_path unchanged.
    */
   get_relative_path(child_path, parent_path) {
     if (child_path === parent_path) return '';
@@ -115,13 +111,12 @@ export default class SmartContextPlugin extends Plugin {
 
         (async () => {
           const itemsSet = new Set([ activeFile.path ]);
-          await this.expand_items_with_codeblocks(itemsSet);
 
           const items_obj = {};
           for (const p of itemsSet) {
             items_obj[p] = true;
           }
-          const sc_item = this.env.smart_contexts.create_or_update({ items: items_obj });
+          const sc_item = this.env.smart_contexts.create_or_update({ context_items: items_obj });
           // open link depth modal
           new LinkDepthModal(this.app, this, sc_item).open();
         })();
@@ -144,13 +139,12 @@ export default class SmartContextPlugin extends Plugin {
           for (const f of visible_files) {
             itemsSet.add(f.path);
           }
-          await this.expand_items_with_codeblocks(itemsSet);
 
           const items_obj = {};
           for (const p of itemsSet) {
             items_obj[p] = true;
           }
-          const sc_item = this.env.smart_contexts.create_or_update({ items: items_obj });
+          const sc_item = this.env.smart_contexts.create_or_update({ context_items: items_obj });
           new LinkDepthModal(this.app, this, sc_item).open();
         })();
 
@@ -168,17 +162,13 @@ export default class SmartContextPlugin extends Plugin {
         if (checking) return true;
 
         (async () => {
-          const itemsSet = new Set();
-          for (const f of all_files_set) {
-            itemsSet.add(f.path);
-          }
-          await this.expand_items_with_codeblocks(itemsSet);
+          const itemsSet = new Set(all_files_set.map(f => f.path));
 
           const items_obj = {};
           for (const p of itemsSet) {
             items_obj[p] = true;
           }
-          const sc_item = this.env.smart_contexts.create_or_update({ items: items_obj });
+          const sc_item = this.env.smart_contexts.create_or_update({ context_items: items_obj });
           new LinkDepthModal(this.app, this, sc_item).open();
         })();
 
@@ -186,7 +176,7 @@ export default class SmartContextPlugin extends Plugin {
       },
     });
 
-    // Command: copy folder contents (opens a FolderSelectModal, but still auto depth=0 on pick)
+    // Command: copy folder contents
     this.addCommand({
       id: 'copy-folder-contents-with-depth',
       name: 'Copy folder contents (no modal, depth=0)',
@@ -228,148 +218,15 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * New method to copy folder contents at depth=0, without a modal.
-   * Gathers files, expands any codeblock references, compiles with link_depth=0, copies to clipboard.
+   * Copy folder contents at depth=0, without a modal.
    */
   async copy_folder_without_modal(folder) {
-    const files = this.get_files_from_folder(folder, true);
-    if (!files.length) {
-      new Notice('No recognized text files found in the selected folder.');
-      return;
-    }
-    const itemsSet = new Set();
-    for (const f of files) {
-      itemsSet.add(f.path);
-    }
-    await this.expand_items_with_codeblocks(itemsSet);
-
-    const items_obj = {};
-    for (const p of itemsSet) {
-      items_obj[p] = true;
-    }
-
-    const sc_item = this.env.smart_contexts.create_or_update({ items: items_obj });
+    const sc_item = this.env.smart_contexts.create_or_update({
+      context_items: { [folder.path]: true }
+    });
     const { context, stats } = await sc_item.compile({ link_depth: 0 });
-
     await this.copy_to_clipboard(context);
     this.showStatsNotice(stats, `Folder: ${folder.path}`);
-  }
-
-  /**
-   * Expand item set by parsing '```smart-context' blocks in each file.
-   */
-  async expand_items_with_codeblocks(itemsSet) {
-    const queue = Array.from(itemsSet);
-    const processed = new Set();
-
-    while (queue.length) {
-      const filePath = queue.shift();
-      if (processed.has(filePath)) continue;
-      processed.add(filePath);
-
-      let fileEntry = this.app.vault.getAbstractFileByPath(filePath);
-      if (!fileEntry || !('extension' in fileEntry)) continue;
-      const content = await this.app.vault.read(fileEntry);
-      const codeblockPaths = this.parse_smart_context_codeblock_lines(content);
-
-      for (const linePath of codeblockPaths) {
-        const abs = path.join(
-          normalizePath(this.app.vault.adapter.basePath),
-          linePath
-        );
-        try {
-          const stat = fs.statSync(abs);
-          if (!stat) continue;
-
-          if (stat.isDirectory()) {
-            const subPaths = this.gather_directory_files(abs);
-            for (const sp of subPaths) {
-              if (!itemsSet.has(sp)) {
-                itemsSet.add(sp);
-                queue.push(sp);
-              }
-            }
-          } else {
-            const vaultRel = path
-              .relative(normalizePath(this.app.vault.adapter.basePath), abs)
-              .replace(/\\/g, '/');
-            if (!itemsSet.has(vaultRel)) {
-              itemsSet.add(vaultRel);
-              queue.push(vaultRel);
-            }
-          }
-        } catch (err) {
-          console.warn(`Skipping invalid path from codeblock: ${linePath}`, err);
-        }
-      }
-    }
-  }
-
-  /**
-   * Parse out lines inside ```smart-context codeblocks
-   */
-  parse_smart_context_codeblock_lines(content) {
-    const lines = content.split('\n');
-    let inside = false;
-    const results = [];
-    for (const line of lines) {
-      if (line.trimStart().startsWith('```smart-context')) {
-        inside = true;
-        continue;
-      }
-      if (inside && line.trimStart().startsWith('```')) {
-        inside = false;
-        continue;
-      }
-      if (inside) {
-        const ref = line.trim();
-        if (ref) results.push(ref);
-      }
-    }
-    return results;
-  }
-
-  /**
-   * BFS gather text files under 'absDir' respecting .scignore/.gitignore.
-   */
-  gather_directory_files(absDir) {
-    const results = [];
-    const ignore_patterns = load_ignore_patterns(absDir);
-    const stack = [absDir];
-
-    while (stack.length) {
-      const current = stack.pop();
-      try {
-        const entries = fs.readdirSync(current, { withFileTypes: true });
-        for (const e of entries) {
-          const fullPath = path.join(current, e.name);
-          if (e.isDirectory()) {
-            const rel = path
-              .relative(absDir, fullPath)
-              .replace(/\\/g, '/');
-            if (!should_ignore(rel, ignore_patterns)) {
-              stack.push(fullPath);
-            }
-          } else {
-            const rel = path
-              .relative(absDir, fullPath)
-              .replace(/\\/g, '/');
-            if (!should_ignore(rel, ignore_patterns) && is_text_file(fullPath)) {
-              const vaultRel = path
-                .relative(
-                  normalizePath(this.app.vault.adapter.basePath),
-                  fullPath
-                )
-                .replace(/\\/g, '/');
-              results.push(vaultRel);
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Error reading directory:', current, err);
-      }
-    }
-    return results;
   }
 
   /**
@@ -389,7 +246,7 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Collect all open files in the workspace (regardless of visibility).
+   * Collect all open files in the workspace.
    */
   get_all_open_files() {
     const leaves = this.get_all_leaves();
@@ -438,33 +295,6 @@ export default class SmartContextPlugin extends Plugin {
       );
     }
     return leaf.containerEl && leaf.containerEl.offsetParent !== null;
-  }
-
-  /**
-   * Recursively gather text files from a folder (optionally subfolders).
-   */
-  get_files_from_folder(folder, include_subfolders) {
-    const results = [];
-    const vault_base = normalizePath(this.app.vault.adapter.basePath);
-    const folder_abs_path = path.join(vault_base, folder.path);
-    const ignore_patterns = load_ignore_patterns(folder_abs_path);
-
-    const process_folder = (currentFolder) => {
-      for (const child of currentFolder.children) {
-        if (child instanceof TFolder) {
-          if (include_subfolders) {
-            process_folder(child);
-          }
-        } else {
-          const rel = this.get_relative_path(child.path, folder.path);
-          if (!should_ignore(rel, ignore_patterns) && is_text_file(child.path)) {
-            results.push(child);
-          }
-        }
-      }
-    };
-    process_folder(folder);
-    return results;
   }
 
   /**
