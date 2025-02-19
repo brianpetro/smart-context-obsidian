@@ -15,48 +15,58 @@ import {
 } from 'obsidian';
 import fs from 'fs';
 import path from 'path';
+import { should_ignore } from 'smart-file-system/utils/ignore.js';
 
 /**
  * @typedef {Object} FileItem
  * @property {string} fullPath - The absolute path to the file or folder
- * @property {string} displayName - The filename or folder name
- * @property {boolean} isDirectory - Whether this item is a directory
+ * @property {string} relativePath - The path relative to `rootPath` (so subfolders appear as "sub1/sub2/file.txt")
+ * @property {boolean} isDirectory
  */
 
 /**
  * Convert an absolute path to a vault-relative path, using ../ if needed.
- * @param {string} vaultPath - The path to the vault folder, absolute.
- * @param {string} targetPath - The absolute path we want to reference.
- * @returns {string} A relative path from the vault root, using ../ as needed.
  */
 function get_relative_path_to_vault(vaultPath, targetPath) {
   const relativePath = path.relative(vaultPath, targetPath);
-  // On Windows, path.relative uses backslashes. Obsidian typically handles forward slashes well.
   return relativePath.replace(/\\/g, '/');
 }
 
 /**
- * List immediate children of `directoryPath`.
- * If the directory doesn't exist or is not readable, returns empty array.
- * @param {string} directoryPath
+ * Recursively gather children up to a specified depth limit, storing `relativePath` for display.
+ * @param {string} directoryPath - The absolute path of the folder where we start
+ * @param {string} rootPath - The same as `directoryPath` for level=0, stays constant for recursion
+ * @param {number} currentDepth - The current depth in recursion
+ * @param {number} maxDepth - The maximum depth to include
  * @returns {FileItem[]}
  */
-function list_directory_contents(directoryPath) {
-  const results = [];
+function list_directory_contents_up_to_depth(directoryPath, rootPath, currentDepth = 0, maxDepth = 2) {
+  const items = [];
+  if (currentDepth > maxDepth) return items;
+  let children;
   try {
-    const entries = fs.readdirSync(directoryPath, { withFileTypes: true });
-    for (const dirent of entries) {
-      const fullPath = path.join(directoryPath, dirent.name);
-      results.push({
-        fullPath,
-        displayName: dirent.name,
-        isDirectory: dirent.isDirectory(),
-      });
-    }
-  } catch (err) {
-    console.warn('Error reading directory:', directoryPath, err);
+    children = fs.readdirSync(directoryPath, { withFileTypes: true });
+  } catch (_) {
+    return items;
   }
-  return results;
+  for (const dirent of children) {
+    const fullPath = path.join(directoryPath, dirent.name);
+    const relativePath = path.relative(rootPath, fullPath).replace(/\\/g, '/');
+    const isDirectory = dirent.isDirectory();
+    if (should_ignore(relativePath, ['.git', 'node_modules', 'package-lock.json'])) {
+      continue;
+    }
+    items.push({
+      fullPath,
+      relativePath,
+      isDirectory
+    });
+    if (isDirectory && (currentDepth + 1) <= maxDepth) {
+      const subItems = list_directory_contents_up_to_depth(fullPath, rootPath, currentDepth + 1, maxDepth);
+      items.push(...subItems);
+    }
+  }
+  return items;
 }
 
 export class ExternalSelectModal extends FuzzySuggestModal {
@@ -71,60 +81,36 @@ export class ExternalSelectModal extends FuzzySuggestModal {
     this.currentScope = initialScope;
     this.vaultPath = vaultPath;
 
-    /**
-     * When true, we override the base-class close() to keep the modal open.
-     * This is set when user triggers Ctrl+Enter (insert while keeping open).
-     * @type {boolean}
-     */
-    this.preventClose = false;
+    this.preventClose = false; // allows Ctrl+ENTER insertion without closing
 
-    // Provide usage instructions
+    // Show usage instructions in the modal
     this.setInstructions([
-      {
-        command: 'Enter',
-        purpose: 'Insert path and close'
-      },
-      {
-        command: '⌘/Ctrl + Enter',
-        purpose: 'Insert path (stay open)'
-      },
-      {
-        command: 'Shift+Enter / →',
-        purpose: 'Open directory'
-      },
-      {
-        command: 'Esc / ←',
-        purpose: 'Close'
-      }
+      { command: 'Enter', purpose: 'Insert path and close' },
+      { command: '⌘/Ctrl + Enter', purpose: 'Insert path (stay open)' },
+      { command: 'Shift+Enter / →', purpose: 'Open directory' },
+      { command: 'Esc / ←', purpose: 'Close' }
     ]);
 
-    // Keydown to handle SHIFT+ENTER, CTRL+ENTER, RIGHT arrow
+    // Keydown logic
     this.inputEl.addEventListener('keydown', (e) => {
-      // SHIFT+ENTER => forcibly open directory
       if (e.key === 'Enter' && e.shiftKey) {
         e.preventDefault();
         this.openDir = true;
         this.selectActiveSuggestion(e);
-      }
-      // Right arrow => forcibly open directory
-      else if (e.key === 'ArrowRight') {
+      } else if (e.key === 'ArrowRight') {
         e.preventDefault();
         this.openDir = true;
         this.selectActiveSuggestion(e);
-      }
-      // Ctrl+Enter => insert path but keep modal open
-      else if (e.key === 'Enter' && Keymap.isModEvent(e)) {
+      } else if (e.key === 'Enter' && Keymap.isModEvent(e)) {
         e.preventDefault();
         this.preventClose = true;
         this.openDir = false;
         this.selectActiveSuggestion(e);
-      }
-      else if (e.key === 'ArrowLeft') {
+      } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         this.selectActiveSuggestion(e);
       }
-      // Normal Enter => insert path and close
-      // (Handled by base class's onChooseItem or fallback with selectActiveSuggestion)
+      // Normal Enter => default behavior from base class
     });
   }
 
@@ -132,11 +118,6 @@ export class ExternalSelectModal extends FuzzySuggestModal {
     this.openDir = false;
     super.open();
   }
-
-  /**
-   * Override close() so Ctrl+ENTER can keep the modal open.
-   * If this.preventClose is true, skip closing exactly once.
-   */
   close() {
     if (this.preventClose) {
       this.preventClose = false;
@@ -146,89 +127,75 @@ export class ExternalSelectModal extends FuzzySuggestModal {
   }
 
   /**
-   * Gather the directory items for fuzzy searching.
-   * We'll always add a "Go up a folder" (..) item at the top if not at root.
+   * Gather items up to depth=2 under this.currentScope.
+   * Also add '..' if not at system root.
    * @returns {FileItem[]}
    */
   getItems() {
     const items = [];
     const { root } = path.parse(this.currentScope);
 
-    // If not at a filesystem root, add a special "parent directory" item
+    // If not at a filesystem root, add a special parent directory item
     if (this.currentScope !== root) {
       items.push({
         fullPath: path.join(this.currentScope, '..'),
-        displayName: '..',
-        isDirectory: true,
+        relativePath: '..',
+        isDirectory: true
       });
     }
-
-    // Now read the current directory
-    const listing = list_directory_contents(this.currentScope);
-    listing.forEach((item) => items.push(item));
+    // Now gather everything up to depth=2 from currentScope
+    //  rootPath is currentScope so relativePath is all subfolders from there
+    const listing = list_directory_contents_up_to_depth(this.currentScope, this.currentScope, 0, 2);
+    items.push(...listing);
     return items;
   }
 
   /**
-   * Display name in the suggestion list.
-   * @param {FileItem} item
-   * @returns {string}
+   * Display text in the suggestions.
+   * We'll show `item.relativePath`.
    */
   getItemText(item) {
-    return item.displayName;
+    return item.relativePath + (item.isDirectory ? '/' : '');
   }
-  renderSuggestion({item}, el) {
+
+  renderSuggestion({ item }, el) {
     const text_el = el.createEl('span');
     text_el.setText(this.getItemText(item));
-    if(item.isDirectory) {
+    if (item.isDirectory) {
       el.addClass('sc-modal-suggestion-has-icon');
       const icon_el = el.createEl('span');
-      // add directory icon
       setIcon(icon_el, 'folder');
     }
     return el;
   }
 
   /**
-   * Called when the user chooses an item.
-   * - If user selects "<UP ONE DIRECTORY>", we re-open in parent scope.
-   * - If `openDir` is true, attempt to open directories (Shift+Enter, Right Arrow, or Ctrl+Enter if folder).
-   * - Otherwise, insert the path into "smart-context" code block if it’s a file or folder.
-   * @param {FileItem} item
-   * @param {MouseEvent | KeyboardEvent} evt
-   * @param {boolean} [openDir=false]
+   * Called when user picks an item from the list.
    */
   onChooseItem(item, evt, openDir = this.openDir) {
-    console.log({item, evt, openDir})
-    // If the user picked "<UP ONE DIRECTORY>", just navigate up
-    if (item.displayName === '..' || evt.key === 'ArrowLeft') {
+    console.log({ item, evt, openDir });
+    const isUpOne = (item.relativePath === '..' || evt.key === 'ArrowLeft');
+    if (isUpOne) {
       this.currentScope = path.join(this.currentScope, '..');
       this.open();
       return;
     }
-
-    // If it's a directory and user indicated openDir, navigate in
     if (item.isDirectory && openDir) {
       this.currentScope = item.fullPath;
       this.open();
       return;
     }
 
-    // Otherwise, insert the path (folder or file) into the active file's "smart-context" codeblock
+    // Otherwise, insert the path
     const activeFile = this.app.workspace.getActiveFile();
     if (!activeFile) {
       new Notice('No active file is open.');
       return;
     }
     const relPath = get_relative_path_to_vault(this.vaultPath, item.fullPath);
-
     this.insert_into_smart_context(activeFile, relPath)
       .then(() => {
-        if (item.isDirectory) {
-          new Notice(`Inserted folder path: ${relPath}`);
-        } else {
-          new Notice(`Inserted file path: ${relPath}`);
-        }
+        new Notice(`Inserted ${item.isDirectory ? 'folder' : 'file'} path: ${relPath}`);
       })
       .catch((err) => {
         new Notice(`Error inserting path: ${err}`);
@@ -236,25 +203,17 @@ export class ExternalSelectModal extends FuzzySuggestModal {
   }
 
   /**
-   * Insert (or append) `relPath` into a codeblock named `smart-context` in the given file.
-   * If that codeblock does not exist, we insert it on a new line immediately below the cursor.
-   * If it does exist, we append one line before the closing fence.
-   * @param {import("obsidian").TFile} file
-   * @param {string} relPath
+   * Insert or append `relPath` into a ```smart-context codeblock in the current file.
    */
   async insert_into_smart_context(file, relPath) {
     const content = await this.app.vault.read(file);
     const lines = content.split('\n');
+    let startIdx = -1, endIdx = -1;
 
-    let startIdx = -1;
-    let endIdx = -1;
-
-    // find code fence for ```smart-context
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (line.startsWith('```smart-context')) {
         startIdx = i;
-        // find matching fence
         for (let j = i + 1; j < lines.length; j++) {
           if (lines[j].trim().startsWith('```')) {
             endIdx = j;
@@ -264,27 +223,23 @@ export class ExternalSelectModal extends FuzzySuggestModal {
         break;
       }
     }
-
     if (startIdx === -1) {
-      // codeblock doesn't exist: insert at line below cursor, or fallback to bottom
+      // No block => insert new codeblock below the cursor or at bottom
       const mdView = this.app.workspace.getActiveViewOfType(MarkdownView);
       if (!mdView || mdView.file !== file) {
-        // Just append at bottom if we can't match the current editor
         lines.push('```smart-context');
         lines.push(relPath);
         lines.push('```');
       } else {
         const editor = mdView.editor;
         const cursorLine = editor.getCursor().line;
-        // Insert a new code block at cursorLine+1
         const insertPos = cursorLine + 1;
         lines.splice(insertPos, 0, '```smart-context', relPath, '```');
       }
     } else {
-      // There's an existing code block; insert one line above the closing fence
+      // We have an existing block => insert above the closing fence
       lines.splice(endIdx, 0, relPath);
     }
-
     const newContent = lines.join('\n');
     await this.app.vault.modify(file, newContent);
   }
