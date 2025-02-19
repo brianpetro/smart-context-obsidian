@@ -105,21 +105,11 @@ export default class SmartContextPlugin extends Plugin {
       id: 'copy-current-note-with-depth',
       name: 'Copy current note to clipboard',
       checkCallback: (checking) => {
-        const activeFile = this.app.workspace.getActiveFile();
-        if (!activeFile) return false;
+        const base_items = [this.app.workspace.getActiveFile()];
+        if (!base_items.length) return false;
         if (checking) return true;
 
-        (async () => {
-          const itemsSet = new Set([ activeFile.path ]);
-
-          const items_obj = {};
-          for (const p of itemsSet) {
-            items_obj[p] = true;
-          }
-          const sc_item = this.env.smart_contexts.create_or_update({ context_items: items_obj });
-          // open link depth modal
-          new LinkDepthModal(this.app, this, sc_item).open();
-        })();
+        new LinkDepthModal(this, base_items).open();
 
         return true;
       },
@@ -130,24 +120,11 @@ export default class SmartContextPlugin extends Plugin {
       id: 'copy-visible-open-files',
       name: 'Copy visible open files (pick link depth)',
       checkCallback: (checking) => {
-        const visible_files = this.get_visible_open_files();
-        if (!visible_files.size) return false;
+        const base_items = this.get_visible_open_files();
+        if (!base_items.size) return false;
         if (checking) return true;
 
-        (async () => {
-          const itemsSet = new Set();
-          for (const f of visible_files) {
-            itemsSet.add(f.path);
-          }
-
-          const items_obj = {};
-          for (const p of itemsSet) {
-            items_obj[p] = true;
-          }
-          const sc_item = this.env.smart_contexts.create_or_update({ context_items: items_obj });
-          new LinkDepthModal(this.app, this, sc_item).open();
-        })();
-
+        new LinkDepthModal(this, base_items).open();
         return true;
       },
     });
@@ -157,20 +134,11 @@ export default class SmartContextPlugin extends Plugin {
       id: 'copy-all-open-files',
       name: 'Copy all open files (pick link depth)',
       checkCallback: (checking) => {
-        const all_files_set = this.get_all_open_files();
-        if (!all_files_set.size) return false;
+        const base_items = this.get_all_open_files();
+        if (!base_items.size) return false;
         if (checking) return true;
 
-        (async () => {
-          const itemsSet = new Set(all_files_set.map(f => f.path));
-
-          const items_obj = {};
-          for (const p of itemsSet) {
-            items_obj[p] = true;
-          }
-          const sc_item = this.env.smart_contexts.create_or_update({ context_items: items_obj });
-          new LinkDepthModal(this.app, this, sc_item).open();
-        })();
+        new LinkDepthModal(this, base_items).open();
 
         return true;
       },

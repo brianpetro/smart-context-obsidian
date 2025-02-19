@@ -9,6 +9,7 @@
  */
 
 import { SuggestModal, Notice } from 'obsidian';
+import { parse_codeblock } from './codeblock.js';
 
 /**
  * Approximate tokens by dividing char_count by 4.
@@ -40,10 +41,11 @@ export class LinkDepthModal extends SuggestModal {
    * @param {any} sc_item - The SmartContext item to compile
    * @param {number[]} depth_range - e.g. [0,1,2,3,4,5]
    */
-  constructor(app, plugin, sc_item, depth_range = [0,1,2,3,4,5]) {
-    super(app);
+  constructor(plugin, base_items, depth_range = [0,1,2,3,4,5]) {
+    super(plugin.app);
     this.plugin = plugin;
-    this.sc_item = sc_item;
+    this.env = plugin.env;
+    this.base_items = base_items;
     this.depth_range = depth_range;
 
     /** @type {DepthInfo[]} */
@@ -53,15 +55,30 @@ export class LinkDepthModal extends SuggestModal {
   }
 
   async onOpen() {
+    const context_items = {};
+    for (const p of this.base_items) {
+      context_items[p.path] = true;
+    }
+    const sc_item = this.env.smart_contexts.create_or_update({ context_items });
+    this.external_items = {};
+    this.external_char_count = 0;
+    for (const p of this.base_items) {
+      const base_content = await this.app.vault.cachedRead(p);
+      const result = await parse_codeblock(base_content, this.app.vault.adapter.basePath);
+      console.log('result', result);
+      this.external_items = { ...this.external_items, ...result.items };
+      this.external_char_count += result.external_chars;
+    }
+    console.log('external_items', this.external_items);
     // 1) Always compute depth=0 fresh
-    const { context: zeroContext, stats: zeroStats } =
-      await this.sc_item.compile({ link_depth: 0 });
-    const zeroTokens = approximate_tokens(zeroStats.char_count);
+    const { context: zeroContext, stats: zeroStats } = await sc_item.compile({ link_depth: 0 });
+    this.zero_char_count = zeroStats.char_count + this.external_char_count;
+    this.zero_tokens = approximate_tokens(this.zero_char_count);
 
     // 2) Access existing cache from sc_item.meta.depth_cache
     //    We'll store { depth0_token_count, depths_info } there.
-    const cache = this.sc_item?.meta?.depth_cache || null;
-    const isCacheValid = cache && (cache.depth0_token_count === zeroTokens);
+    const cache = sc_item?.meta?.depth_cache || null;
+    const isCacheValid = cache && (cache.depth0_token_count === this.zero_tokens);
 
     // 3) If cache is valid, reuse. Otherwise, recalc everything
     if (isCacheValid) {
@@ -69,8 +86,8 @@ export class LinkDepthModal extends SuggestModal {
       this.depths_info = cache.depths_info;
     } else {
       // Clear old cache if any
-      if (this.sc_item?.meta) {
-        this.sc_item.meta.depth_cache = null;
+      if (sc_item?.meta) {
+        sc_item.meta.depth_cache = null;
       }
       this.depths_info = [];
 
@@ -82,15 +99,16 @@ export class LinkDepthModal extends SuggestModal {
             depth: d,
             label: `Depth ${d} (not calculated)`,
             token_count: 0,
-            context: '',
+            sc_item,
             stats: {},
           });
           continue;
         }
 
-        const { context, stats } = await this.sc_item.compile({ link_depth: d });
-        const tokens = approximate_tokens(stats.char_count);
-        let label = `Depth ${d} (${Math.round(stats.char_count/1000)}k chars, ${Math.round(tokens/1000)}k tokens)`;
+        const { stats } = await sc_item.compile({ link_depth: d });
+        const total_chars = stats.char_count + this.external_char_count;
+        const tokens = approximate_tokens(total_chars);
+        let label = `Depth ${d} (${Math.round(total_chars/1000)}k chars, ${Math.round(tokens/1000)}k tokens)`;
         if (tokens > 50000) {
           label += ' [exceeds 50k; stopping further]';
           stopFurther = true;
@@ -99,15 +117,15 @@ export class LinkDepthModal extends SuggestModal {
           depth: d,
           label,
           token_count: tokens,
-          context,
+          sc_item,
           stats,
         });
       }
 
       // Store new cache
-      if (this.sc_item?.meta) {
-        this.sc_item.meta.depth_cache = {
-          depth0_token_count: zeroTokens,
+      if (sc_item?.meta) {
+        sc_item.meta.depth_cache = {
+          depth0_token_count: this.zero_tokens,
           depths_info: this.depths_info,
         };
       }
@@ -134,13 +152,10 @@ export class LinkDepthModal extends SuggestModal {
    * Already compiled => just copy `item.context`.
    */
   async onChooseSuggestion(item) {
-    if (!item.context) {
-      new Notice('No context was calculated for that depth.');
-      return;
-    }
-    await this.plugin.copy_to_clipboard(item.context);
+    const { context, stats } = await item.sc_item.compile({ link_depth: item.depth, items: this.external_items });
+    await this.plugin.copy_to_clipboard(context);
     this.plugin.showStatsNotice(
-      item.stats,
+      stats,
       `Depth ${item.depth} selected`
     );
     new Notice('Copied context to clipboard!');

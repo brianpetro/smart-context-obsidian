@@ -57,5 +57,7 @@ esbuild.build({
     release_file_paths.forEach(file_path => {
       fs.copyFileSync(file_path, path.join(destDir, path.basename(file_path)));
     });
+    // add .hotreload
+    fs.writeFileSync(path.join(destDir, '.hotreload'), '');
   }
 }).catch(() => process.exit(1));
