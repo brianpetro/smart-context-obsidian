@@ -96,10 +96,12 @@ export class LinkDepthModal extends SuggestModal {
 
         const { stats } = await sc_item.compile({ link_depth: d });
         const total_chars = stats.char_count;
-        const tokens = approximate_tokens(total_chars);
+        const total_tokens = approximate_tokens(total_chars);
 
-        let label = `Depth ${d} (${Math.round(total_chars / 1000)}k chars, ${Math.round(tokens / 1000)}k tokens)`;
-        if (tokens > 50000) {
+        const chars = total_chars > 10000 ? `${Math.round(total_chars / 1000)}k` : total_chars;
+        const tokens = total_tokens > 10000 ? `${Math.round(total_tokens / 1000)}k` : total_tokens;
+        let label = `Depth ${d} (${chars} chars, ${tokens} tokens)`;
+        if (total_tokens > 50000) {
           label += ' [exceeds 50k; stopping further]';
           stopFurther = true;
         }
