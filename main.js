@@ -31,6 +31,7 @@ import { MarkdownSourceContentAdapter } from "smart-sources/adapters/markdown_so
 import smart_source from "smart-sources/smart_source.js";
 
 export default class SmartContextPlugin extends Plugin {
+  LinkDepthModal = LinkDepthModal;
   /**
    * Plugin-level config for hooking up "smart_env" modules.
    */
@@ -155,7 +156,7 @@ export default class SmartContextPlugin extends Plugin {
         if (!base_items.length) return false;
         if (checking) return true;
 
-        new LinkDepthModal(this, base_items).open();
+        new this.LinkDepthModal(this, base_items).open();
 
         return true;
       },
@@ -170,7 +171,7 @@ export default class SmartContextPlugin extends Plugin {
         if (!base_items.size) return false;
         if (checking) return true;
 
-        new LinkDepthModal(this, base_items).open();
+        new this.LinkDepthModal(this, base_items).open();
         return true;
       },
     });
@@ -184,7 +185,7 @@ export default class SmartContextPlugin extends Plugin {
         if (!base_items.size) return false;
         if (checking) return true;
 
-        new LinkDepthModal(this, base_items).open();
+        new this.LinkDepthModal(this, base_items).open();
 
         return true;
       },
