@@ -120,7 +120,7 @@ esbuild.build({
   console.log('Build complete');
   const release_file_paths = [manifest_path, styles_path, main_path];
   for(let vault of destination_vaults) {
-    const destDir = path.join(process.cwd(), '..', vault, '.obsidian', 'plugins', 'sample-name');
+    const destDir = path.join(process.cwd(), '..', vault, '.obsidian', 'plugins', 'smart-context');
     console.log(`Copying files to ${destDir}`);
     fs.mkdirSync(destDir, { recursive: true });
     // create .hotreload file if it doesn't exist
