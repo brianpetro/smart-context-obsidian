@@ -9,7 +9,6 @@
  */
 
 import { SuggestModal, Notice } from 'obsidian';
-import { parse_codeblock } from './codeblock.js';
 
 /**
  * Approximate tokens by dividing char_count by 4.
@@ -31,14 +30,14 @@ function approximate_tokens(charCount) {
 
 /**
  * A simple SuggestModal that displays link depth options (0..N), along with
- * an approximate token count and text snippet. On selection, the item is
- * compiled with that depth and copied to clipboard.
+ * an approximate token count. On selection, the item is compiled with that
+ * depth and copied to clipboard.
  */
 export class LinkDepthModal extends SuggestModal {
   /**
    * @param {import("obsidian").App} app
    * @param {import("./main").default} plugin
-   * @param {any} sc_item - The SmartContext item to compile
+   * @param {any[]} base_items - An array of TFiles or similar, each with a .path
    * @param {number[]} depth_range - e.g. [0,1,2,3,4,5]
    */
   constructor(plugin, base_items, depth_range = [0,1,2,3,4,5]) {
@@ -55,24 +54,16 @@ export class LinkDepthModal extends SuggestModal {
   }
 
   async onOpen() {
+    // Gather base items into a single SmartContext item
     const context_items = {};
     for (const p of this.base_items) {
       context_items[p.path] = true;
     }
     const sc_item = this.env.smart_contexts.create_or_update({ context_items });
-    this.external_items = {};
-    this.external_char_count = 0;
-    for (const p of this.base_items) {
-      const base_content = await this.app.vault.cachedRead(p);
-      const result = await parse_codeblock(base_content, this.app.vault.adapter.basePath);
-      console.log('result', result);
-      this.external_items = { ...this.external_items, ...result.items };
-      this.external_char_count += result.external_chars;
-    }
-    console.log('external_items', this.external_items);
+
     // 1) Always compute depth=0 fresh
     const { context: zeroContext, stats: zeroStats } = await sc_item.compile({ link_depth: 0 });
-    this.zero_char_count = zeroStats.char_count + this.external_char_count;
+    this.zero_char_count = zeroStats.char_count;
     this.zero_tokens = approximate_tokens(this.zero_char_count);
 
     // 2) Access existing cache from sc_item.meta.depth_cache
@@ -82,10 +73,8 @@ export class LinkDepthModal extends SuggestModal {
 
     // 3) If cache is valid, reuse. Otherwise, recalc everything
     if (isCacheValid) {
-      // Reuse entire array of DepthInfo from cache
       this.depths_info = cache.depths_info;
     } else {
-      // Clear old cache if any
       if (sc_item?.meta) {
         sc_item.meta.depth_cache = null;
       }
@@ -100,33 +89,34 @@ export class LinkDepthModal extends SuggestModal {
             label: `Depth ${d} (not calculated)`,
             token_count: 0,
             sc_item,
-            stats: {},
+            stats: {}
           });
           continue;
         }
 
         const { stats } = await sc_item.compile({ link_depth: d });
-        const total_chars = stats.char_count + this.external_char_count;
+        const total_chars = stats.char_count;
         const tokens = approximate_tokens(total_chars);
-        let label = `Depth ${d} (${Math.round(total_chars/1000)}k chars, ${Math.round(tokens/1000)}k tokens)`;
+
+        let label = `Depth ${d} (${Math.round(total_chars / 1000)}k chars, ${Math.round(tokens / 1000)}k tokens)`;
         if (tokens > 50000) {
           label += ' [exceeds 50k; stopping further]';
           stopFurther = true;
         }
+
         this.depths_info.push({
           depth: d,
           label,
           token_count: tokens,
           sc_item,
-          stats,
+          stats
         });
       }
 
-      // Store new cache
       if (sc_item?.meta) {
         sc_item.meta.depth_cache = {
           depth0_token_count: this.zero_tokens,
-          depths_info: this.depths_info,
+          depths_info: this.depths_info
         };
       }
     }
@@ -136,28 +126,32 @@ export class LinkDepthModal extends SuggestModal {
 
   /**
    * The suggestions to display (one per depth).
+   * @param {string} query
    */
   getSuggestions(query) {
-    // We won't do fuzzy filtering by the user query,
-    // just show all depths in order.
+    // Show all depths in order, ignoring user query.
     return this.depths_info;
   }
 
+  /**
+   * Renders each depth option in the suggestion list.
+   * @param {DepthInfo} item
+   * @param {HTMLElement} el
+   */
   renderSuggestion(item, el) {
     el.createDiv({ text: item.label });
   }
 
   /**
    * Called when user picks a depth info item.
-   * Already compiled => just copy `item.context`.
+   * Re-compile at that depth and copy result to clipboard.
+   * @param {DepthInfo} item
    */
   async onChooseSuggestion(item) {
-    const { context, stats } = await item.sc_item.compile({ link_depth: item.depth, items: this.external_items });
+    const { context, stats } = await item.sc_item.compile({ link_depth: item.depth });
     await this.plugin.copy_to_clipboard(context);
-    this.plugin.showStatsNotice(
-      stats,
-      `Depth ${item.depth} selected`
-    );
+
+    this.plugin.showStatsNotice(stats, `Depth ${item.depth} selected`);
     new Notice('Copied context to clipboard!');
   }
 }

@@ -8,7 +8,6 @@ import {
   Plugin,
   Notice,
   TFolder,
-  PluginSettingTab,
   normalizePath,
 } from 'obsidian';
 import path from 'path';
@@ -22,13 +21,12 @@ import {
 
 import { SmartEnv } from 'smart-environment/obsidian.js';
 
-import { ContextSelectModal } from './context_select_modal.js';
 import { ExternalSelectModal } from './external_select_modal.js';
-import { FolderSelectModal } from './folder_select_modal.js';
 import { LinkDepthModal } from './link_depth_modal.js';
 
 import { SmartContexts, SmartContext } from 'smart-contexts';
 import { AjsonMultiFileCollectionDataAdapter } from 'smart-collections/adapters/ajson_multi_file.js';
+import { SmartContextSettingTab } from './settings.js';
 
 export default class SmartContextPlugin extends Plugin {
   /**
@@ -141,46 +139,6 @@ export default class SmartContextPlugin extends Plugin {
         new LinkDepthModal(this, base_items).open();
 
         return true;
-      },
-    });
-
-    // Command: copy folder contents
-    this.addCommand({
-      id: 'copy-folder-contents-with-depth',
-      name: 'Copy folder contents (no modal, depth=0)',
-      callback: () => {
-        new FolderSelectModal(this.app, async (folder) => {
-          if (!folder) return;
-          await this.copy_folder_without_modal(folder);
-        }).open();
-      },
-    });
-
-    // External file browser
-    this.addCommand({
-      id: 'open-external-file-browser',
-      name: 'Open External File Browser',
-      checkCallback: (checking) => {
-        if (this.app.isMobile) {
-          if (!checking) {
-            new Notice('This command is only available on desktop.');
-          }
-          return false;
-        }
-        if (!checking) {
-          this.open_external_file_modal();
-        }
-        return true;
-      },
-    });
-
-    // Build context (multiple file selection)
-    this.addCommand({
-      id: 'open-context-select-modal',
-      name: 'Build Context (pick multiple vault notes)',
-      callback: () => {
-        const modal = new ContextSelectModal(this.app, this);
-        modal.open();
       },
     });
   }
@@ -308,44 +266,6 @@ export default class SmartContextPlugin extends Plugin {
     new Notice(noticeMsg);
   }
 
-  /**
-   * External file browser from vault's parent folder (desktop only).
-   */
-  open_external_file_modal() {
-    const vaultBasePath = normalizePath(this.app.vault.adapter.basePath);
-    const parentFolder = path.dirname(vaultBasePath);
-    const modal = new ExternalSelectModal(this.app, parentFolder, vaultBasePath);
-    modal.open();
-  }
 }
 
-/**
- * A simple plugin settings tab that delegates config to the env.smart_view system.
- */
-class SmartContextSettingTab extends PluginSettingTab {
-  constructor(app, plugin) {
-    super(app, plugin);
-    this.plugin = plugin;
-    this.env = plugin.env;
-  }
 
-  display() {
-    const { containerEl } = this;
-    containerEl.empty();
-
-    Object.entries(this.plugin.env.smart_contexts.settings_config).forEach(
-      ([setting, config]) => {
-        const setting_html = this.env.smart_view.render_setting_html({
-          setting,
-          ...config,
-        });
-        const frag = this.env.smart_view.create_doc_fragment(setting_html);
-        containerEl.appendChild(frag);
-      }
-    );
-
-    this.env.smart_view.render_setting_components(containerEl, {
-      scope: this.plugin.env.smart_contexts,
-    });
-  }
-}
