@@ -76,6 +76,24 @@ export default class SmartContextPlugin extends Plugin {
         adapter: SmartFsObsidianAdapter,
       },
     },
+    default_settings: {
+      smart_contexts: {
+        templates: {
+          '-1': {
+            before: '{{FILE_TREE}}'
+          },
+          '0': {
+            before: '{{ITEM_PATH}}\n```{{ITEM_EXT}}',
+            after: '```'
+          },
+          '1': {
+            before: 'LINK: {{ITEM_NAME}}\n```{{ITEM_EXT}}',
+            after: '```'
+          },
+          
+        },
+      },
+    },
   };
 
   async onload() { this.app.workspace.onLayoutReady(this.initialize.bind(this)); } // initialize when layout is ready
