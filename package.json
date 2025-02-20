@@ -30,7 +30,8 @@
     "smart-settings": "file:../jsbrains/smart-settings",
     "smart-view": "file:../jsbrains/smart-view",
     "smart-blocks": "file:../jsbrains/smart-blocks",
-    "smart-contexts": "file:../jsbrains/smart-contexts"
+    "smart-contexts": "file:../jsbrains/smart-contexts",
+    "smart-sources": "file:../jsbrains/smart-sources"
   },
   "devDependencies": {
     "archiver": "^7.0.1",
