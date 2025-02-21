@@ -23,12 +23,6 @@ import { SmartContexts, SmartContext } from 'smart-contexts';
 import { AjsonMultiFileCollectionDataAdapter } from 'smart-collections/adapters/ajson_multi_file.js';
 import { SmartContextSettingTab } from './settings.js';
 
-import { SmartSources, SmartSource } from 'smart-sources';
-import { AjsonMultiFileSourcesDataAdapter } from "smart-sources/adapters/data/ajson_multi_file.js";
-import { MarkdownSourceContentAdapter } from "smart-sources/adapters/markdown_source.js";
-// actions architecture
-// import smart_block from "smart-blocks/smart_block.js";
-import smart_source from "smart-sources/smart_source.js";
 
 export default class SmartContextPlugin extends Plugin {
   LinkDepthModal = LinkDepthModal;
@@ -41,35 +35,9 @@ export default class SmartContextPlugin extends Plugin {
         class: SmartContexts,
         data_adapter: AjsonMultiFileCollectionDataAdapter
       },
-      smart_sources: {
-        class: SmartSources,
-        data_adapter: AjsonMultiFileSourcesDataAdapter,
-        source_adapters: {
-          "md": MarkdownSourceContentAdapter,
-          "txt": MarkdownSourceContentAdapter,
-          // "canvas": MarkdownSourceContentAdapter,
-          // "default": MarkdownSourceContentAdapter,
-        },
-        process_embed_queue: false,
-      },
-      // smart_blocks: {
-      //   class: SmartBlocks,
-      //   data_adapter: AjsonMultiFileBlocksDataAdapter,
-      //   block_adapters: {
-      //     "md": MarkdownBlockContentAdapter,
-      //     "txt": MarkdownBlockContentAdapter,
-      //     // "canvas": MarkdownBlockContentAdapter,
-      //   },
-      // },
     },
     item_types: {
       SmartContext,
-      SmartSource,
-      // SmartBlock,
-    },
-    items: {
-      smart_source,
-      // smart_block,
     },
     modules: {
       smart_fs: {
