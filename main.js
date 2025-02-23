@@ -68,12 +68,10 @@ export default class SmartContextPlugin extends Plugin {
   async onload() { this.app.workspace.onLayoutReady(this.initialize.bind(this)); } // initialize when layout is ready
 
   onunload() {
-    console.log('Unloading SmartContextPlugin...');
+    this.env.unload_main(this);
   }
 
   async initialize() {
-    console.log('Loading SmartContextPlugin...');
-
     // Initialize environment after Obsidian is ready
     await SmartEnv.create(this, this.smart_env_config);
     await SmartEnv.wait_for({loaded: true});
@@ -98,8 +96,6 @@ export default class SmartContextPlugin extends Plugin {
 
     // Settings tab
     this.addSettingTab(new SmartContextSettingTab(this.app, this));
-
-    console.log('SmartContextPlugin loaded');
   }
 
   /**
