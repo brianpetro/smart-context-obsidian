@@ -76,6 +76,7 @@ export default class SmartContextPlugin extends Plugin {
 
     // Initialize environment after Obsidian is ready
     await SmartEnv.create(this, this.smart_env_config);
+    await SmartEnv.wait_for({loaded: true});
 
     this.register_commands();
 
