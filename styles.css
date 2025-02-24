@@ -38,7 +38,6 @@
 }
 
 .setting-explanation {
-
   /* should be easy to highlight and copy */
   & code {
     cursor: text;

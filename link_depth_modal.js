@@ -35,8 +35,7 @@ function approximate_tokens(charCount) {
  */
 export class LinkDepthModal extends SuggestModal {
   /**
-   * @param {import("obsidian").App} app
-   * @param {import("./main").default} plugin
+   * @param {import("obsidian").Plugin} plugin
    * @param {any[]} base_items - An array of TFiles or similar, each with a .path
    * @param {number[]} depth_range - e.g. [0,1,2,3,4,5]
    */
@@ -71,7 +70,7 @@ export class LinkDepthModal extends SuggestModal {
     const cache = sc_item?.meta?.depth_cache || null;
     const isCacheValid = cache && (cache.depth0_token_count === this.zero_tokens);
 
-    // 3) If cache is valid, reuse. Otherwise, recalc everything
+    // 3) If cache is valid, reuse. Otherwise, recalc
     if (isCacheValid) {
       this.depths_info = cache.depths_info;
     } else {
@@ -83,7 +82,7 @@ export class LinkDepthModal extends SuggestModal {
       let stopFurther = false;
       for (const d of this.depth_range) {
         if (stopFurther) {
-          // We add a placeholder "Not calculated" item
+          // Add a placeholder for further depths
           this.depths_info.push({
             depth: d,
             label: `Depth ${d} (not calculated)`,
@@ -128,10 +127,10 @@ export class LinkDepthModal extends SuggestModal {
 
   /**
    * The suggestions to display (one per depth).
-   * @param {string} query
+   * @param {string} _query
    */
-  getSuggestions(query) {
-    // Show all depths in order, ignoring user query.
+  getSuggestions(_query) {
+    // We ignore user query and show all depths in order
     return this.depths_info;
   }
 

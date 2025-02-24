@@ -23,9 +23,9 @@ import { SmartContexts, SmartContext } from 'smart-contexts';
 import { AjsonMultiFileCollectionDataAdapter } from 'smart-collections/adapters/ajson_multi_file.js';
 import { SmartContextSettingTab } from './settings.js';
 
-
 export default class SmartContextPlugin extends Plugin {
   LinkDepthModal = LinkDepthModal;
+
   /**
    * Plugin-level config for hooking up "smart_env" modules.
    */
@@ -59,22 +59,25 @@ export default class SmartContextPlugin extends Plugin {
             before: 'LINK: {{ITEM_NAME}}\n```{{ITEM_EXT}}',
             after: '```'
           },
-          
         },
       },
     },
   };
 
-  async onload() { this.app.workspace.onLayoutReady(this.initialize.bind(this)); } // initialize when layout is ready
+  async onload() {
+    // Initialize once the workspace (layout) is ready
+    this.app.workspace.onLayoutReady(this.initialize.bind(this));
+  }
 
   onunload() {
+    // Release resources, no custom onUnload code needed if we register all events/commands.
     this.env.unload_main(this);
   }
 
   async initialize() {
-    // Initialize environment after Obsidian is ready
+    // Initialize environment after Obsidian is fully ready
     await SmartEnv.create(this, this.smart_env_config);
-    await SmartEnv.wait_for({loaded: true});
+    await SmartEnv.wait_for({ loaded: true });
 
     this.register_commands();
 
@@ -118,11 +121,10 @@ export default class SmartContextPlugin extends Plugin {
       name: 'Copy current note to clipboard',
       checkCallback: (checking) => {
         const base_items = [this.app.workspace.getActiveFile()];
-        if (!base_items.length) return false;
+        if (!base_items.length || !base_items[0]) return false;
         if (checking) return true;
 
         new this.LinkDepthModal(this, base_items).open();
-
         return true;
       },
     });
@@ -151,20 +153,19 @@ export default class SmartContextPlugin extends Plugin {
         if (checking) return true;
 
         new this.LinkDepthModal(this, base_items).open();
-
         return true;
       },
     });
   }
 
   /**
-   * Copy folder contents at depth=0, **including** non-text files by default.
+   * Copy folder contents at depth=0, including non-text files.
    */
   async copy_folder_without_modal(folder) {
-    // The main fix: add `context_opts: { includeNonText: true }` so subfiles are not filtered out.
     const sc_item = this.env.smart_contexts.create_or_update({
       context_items: { [folder.path]: true },
     });
+
     const { context, stats } = await sc_item.compile({ link_depth: 0 });
     await this.copy_to_clipboard(context);
     this.showStatsNotice(stats, `Folder: ${folder.path}`);
@@ -239,15 +240,23 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   /**
-   * Copy text to clipboard.
+   * Copy text to clipboard in a cross-platform manner.
+   * On mobile, Node/Electron APIs are unavailable.
    */
   async copy_to_clipboard(text) {
     try {
+      // First try standard browser clipboard API
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
-      } else {
+      }
+      // If not on mobile, attempt Electron's clipboard
+      else if (!this.app.isMobile) {
         const { clipboard } = require('electron');
         clipboard.writeText(text);
+      }
+      // Otherwise, no known method for copying
+      else {
+        new Notice('Unable to copy text: no valid method found.');
       }
     } catch (err) {
       console.error('Failed to copy text:', err);
@@ -279,7 +288,4 @@ export default class SmartContextPlugin extends Plugin {
     }
     new Notice(noticeMsg);
   }
-
 }
-
-
