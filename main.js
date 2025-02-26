@@ -19,8 +19,8 @@ import { SmartEnv } from 'smart-environment/obsidian.js';
 
 import { LinkDepthModal } from './link_depth_modal.js';
 
-import { SmartContexts, SmartContext } from 'smart-contexts';
-import { AjsonMultiFileCollectionDataAdapter } from 'smart-collections/adapters/ajson_multi_file.js';
+import { SmartContexts, SmartContext, smart_contexts } from 'smart-contexts';
+// import { AjsonMultiFileCollectionDataAdapter } from 'smart-collections/adapters/ajson_multi_file.js';
 import { SmartContextSettingTab } from './settings.js';
 
 export default class SmartContextPlugin extends Plugin {
@@ -31,10 +31,7 @@ export default class SmartContextPlugin extends Plugin {
    */
   smart_env_config = {
     collections: {
-      smart_contexts: {
-        class: SmartContexts,
-        data_adapter: AjsonMultiFileCollectionDataAdapter
-      },
+      smart_contexts,
     },
     item_types: {
       SmartContext,
