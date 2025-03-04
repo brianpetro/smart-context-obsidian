@@ -61,7 +61,9 @@ export default class SmartContextPlugin extends Plugin {
     },
   };
 
-  async onload() {
+  onload() {
+    // Initialize environment after Obsidian is fully ready
+    SmartEnv.create(this, this.smart_env_config);
     // Initialize once the workspace (layout) is ready
     this.app.workspace.onLayoutReady(this.initialize.bind(this));
   }
@@ -72,8 +74,6 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   async initialize() {
-    // Initialize environment after Obsidian is fully ready
-    await SmartEnv.create(this, this.smart_env_config);
     await SmartEnv.wait_for({ loaded: true });
 
     this.register_commands();
