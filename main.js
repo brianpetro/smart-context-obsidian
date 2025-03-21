@@ -15,7 +15,7 @@ import { SmartFs } from 'smart-file-system/smart_fs.js';
 import { SmartFsObsidianAdapter } from 'smart-file-system/adapters/obsidian.js';
 import { is_text_file } from 'smart-file-system/utils/ignore.js';
 
-import { SmartEnv } from 'smart-environment/obsidian.js';
+import { SmartEnv } from 'obsidian-smart-env';
 
 import { LinkDepthModal } from './link_depth_modal.js';
 
