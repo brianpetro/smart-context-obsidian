@@ -61,7 +61,7 @@ export class LinkDepthModal extends SuggestModal {
     const sc_item = this.env.smart_contexts.create_or_update({ context_items });
 
     // 1) Always compute depth=0 fresh
-    const { context: zeroContext, stats: zeroStats } = await sc_item.compile({ link_depth: 0 });
+    const { context: zeroContext, stats: zeroStats } = await sc_item.compile({ link_depth: 0, calculating: true });
     this.zero_char_count = zeroStats.char_count;
     this.zero_tokens = approximate_tokens(this.zero_char_count);
 
@@ -93,7 +93,7 @@ export class LinkDepthModal extends SuggestModal {
           continue;
         }
 
-        const { stats } = await sc_item.compile({ link_depth: d });
+        const { stats } = await sc_item.compile({ link_depth: d, calculating: true });
         const total_chars = stats.char_count;
         const total_tokens = approximate_tokens(total_chars);
 
