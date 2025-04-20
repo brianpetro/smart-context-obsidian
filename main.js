@@ -146,8 +146,8 @@ export default class SmartContextPlugin extends Plugin {
       context_items: { [folder.path]: true },
     });
 
-    const { context, stats } = await sc_item.compile({ link_depth: 0 });
-    await this.copy_to_clipboard(context);
+    const { context, stats, images } = await sc_item.compile({ link_depth: 0 });
+    await this.copy_to_clipboard(context, images);
     this.showStatsNotice(stats, `Folder: ${folder.path}`);
   }
 

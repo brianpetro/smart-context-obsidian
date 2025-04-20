@@ -149,8 +149,8 @@ export class LinkDepthModal extends SuggestModal {
    * @param {DepthInfo} item
    */
   async onChooseSuggestion(item) {
-    const { context, stats } = await item.sc_item.compile({ link_depth: item.depth });
-    await this.plugin.copy_to_clipboard(context);
+    const { context, stats, images } = await item.sc_item.compile({ link_depth: item.depth });
+    await this.plugin.copy_to_clipboard(context, images);
 
     this.plugin.showStatsNotice(stats, `Depth ${item.depth} selected`);
     new Notice('Copied context to clipboard!');
