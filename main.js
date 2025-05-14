@@ -15,7 +15,7 @@ import { SmartFs } from 'smart-file-system/smart_fs.js';
 import { SmartFsObsidianAdapter } from 'smart-file-system/adapters/obsidian.js';
 import { is_text_file } from 'smart-file-system/utils/ignore.js';
 
-import { SmartEnv } from 'obsidian-smart-env';
+import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
 
 import { LinkDepthModal } from './link_depth_modal.js';
 
@@ -23,8 +23,11 @@ import { SmartContexts, SmartContext, smart_contexts } from 'smart-contexts';
 // import { AjsonMultiFileCollectionDataAdapter } from 'smart-collections/adapters/ajson_multi_file.js';
 import { SmartContextSettingTab } from './settings.js';
 
+import { smart_env_config } from './dist/smart_env.config.js';
+
 export default class SmartContextPlugin extends Plugin {
   LinkDepthModal = LinkDepthModal;
+  compiled_smart_env_config = smart_env_config;
 
   /**
    * Plugin-level config for hooking up "smart_env" modules.
@@ -45,8 +48,9 @@ export default class SmartContextPlugin extends Plugin {
   };
 
   onload() {
+    console.log('onload', this.compiled_smart_env_config);
     // Initialize environment after Obsidian is fully ready
-    SmartEnv.create(this, this.smart_env_config);
+    SmartEnv.create(this, merge_env_config(this.compiled_smart_env_config, this.smart_env_config));
     // Initialize once the workspace (layout) is ready
     this.app.workspace.onLayoutReady(this.initialize.bind(this));
   }
