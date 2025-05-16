@@ -74,7 +74,7 @@ export default class SmartContextPlugin extends Plugin {
               .setTitle('Copy folder contents to clipboard')
               .setIcon('documents')
               .onClick(async () => {
-                await this.copy_folder_without_modal(file);
+                await this.copy_folder_to_clipboard(file);
               });
           });
         }
@@ -140,14 +140,26 @@ export default class SmartContextPlugin extends Plugin {
         return true;
       },
     });
+    
+    // Command: select folder to copy contents
+    this.addCommand({
+      id: "select-folder-to-copy-contents",
+      name: "Select folder to copy contents",
+      callback: () => {
+        new FolderSelectModal(this.app, async (folder) => {
+          if (!folder) return;
+          await this.copy_folder_to_clipboard(folder);
+        }).open();
+      },
+    });
   }
 
   /**
    * Copy folder contents at depth=0, including non-text files.
    */
-  async copy_folder_without_modal(folder) {
+  async copy_folder_to_clipboard(folder) {
     const sc_item = this.env.smart_contexts.create_or_update({
-      context_items: { [folder.path]: true },
+      context_items: { [folder.path]: { d: 0 } },
     });
 
     const { context, stats, images } = await sc_item.compile({ link_depth: 0 });
