@@ -40,5 +40,8 @@
     "dotenv": "^16.4.7",
     "esbuild": "^0.24.0"
   },
-  "workspaces": ["../jsbrains/*"]
+  "workspaces": [
+    "../jsbrains/*",
+    "../obsidian-smart-env"
+  ]
 }

@@ -1,9 +1,3 @@
-/******************************************************
- * main.js
- * @fileoverview
- * Obsidian plugin entry point for Smart Context.
- ******************************************************/
-
 import {
   Plugin,
   Notice,
@@ -26,6 +20,8 @@ import { SmartContextSettingTab } from './settings.js';
 import { smart_env_config } from './dist/smart_env.config.js';
 
 import { FolderSelectModal } from "./src/views/folder_select_modal.js";
+
+import { ContextSelectorModal } from './src/views/context_selector_modal.js';
 
 export default class SmartContextPlugin extends Plugin {
   LinkDepthModal = LinkDepthModal;
@@ -101,6 +97,17 @@ export default class SmartContextPlugin extends Plugin {
   }
 
   register_commands() {
+    this.addCommand({
+      id: "open-context-select-modal",
+      name: "Context selector",
+      callback: () => {
+        this.open_context_selector_modal();
+      },
+    });
+
+    /**
+     * Legacy commands
+     */
     // Command: copy current note
     this.addCommand({
       id: 'copy-current-note-with-depth',
@@ -114,7 +121,6 @@ export default class SmartContextPlugin extends Plugin {
         return true;
       },
     });
-
     // Command: copy visible open files
     this.addCommand({
       id: 'copy-visible-open-files',
@@ -128,7 +134,6 @@ export default class SmartContextPlugin extends Plugin {
         return true;
       },
     });
-
     // Command: copy all open files
     this.addCommand({
       id: 'copy-all-open-files',
@@ -142,7 +147,6 @@ export default class SmartContextPlugin extends Plugin {
         return true;
       },
     });
-    
     // Command: select folder to copy contents
     this.addCommand({
       id: "select-folder-to-copy-contents",
@@ -154,6 +158,29 @@ export default class SmartContextPlugin extends Plugin {
         }).open();
       },
     });
+  }
+  open_context_selector_modal(opts={}) {
+    this.close_context_selector_modal();
+    if(!opts.buttons) {
+      opts.buttons = [
+        {
+          text: 'Copy to clipboard',
+          display_callback: (ctx) => ctx.has_context_items,
+          callback: async (ctx) => {
+            const { context, stats, images } = await ctx.compile({ link_depth: 0 });
+            await this.copy_to_clipboard(context, images);
+            this.showStatsNotice(stats, `${Object.keys(ctx.data.context_items).length} file(s)`);
+          },
+        }
+      ]
+    }
+    this.context_selector_modal = new ContextSelectorModal(this, opts);
+    this.context_selector_modal.open(opts);
+    return this.context_selector_modal;
+  }
+  close_context_selector_modal() {
+    if (this.context_selector_modal) this.context_selector_modal.close(true);
+    this.context_selector_modal = null;
   }
 
   /**

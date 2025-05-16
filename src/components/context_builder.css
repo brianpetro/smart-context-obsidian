@@ -1,0 +1,56 @@
+.sc-context-builder {
+  padding: 6px 8px;
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  width: 100%;
+  overflow: auto;
+  &.modal {
+    max-height: 50%;
+  }
+  .sc-context-header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    .sc-context-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sc-stats {
+      flex: 1 1 auto;
+    }
+  }
+  
+}
+
+
+.sc-selected-tree ul {
+  list-style: none;
+  margin: 0 0 0 .8em;
+  padding: 0;
+}
+
+.sc-tree-item {
+  gap: 4px;
+  padding: 2px 0;
+  overflow: auto;
+
+  &.dir {
+    &> span {
+      opacity: 0.8;
+    }
+    &> span::after {
+      content: '/';
+    }
+  }
+}
+
+.sc-tree-remove {
+  cursor: pointer;
+  opacity: .8;
+}
+
+.sc-tree-remove:hover {
+  opacity: 1;
+}

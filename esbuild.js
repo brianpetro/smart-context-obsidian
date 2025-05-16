@@ -119,6 +119,7 @@ esbuild.build({
     'crypto',
     '@codemirror/view',
     '@codemirror/state',
+    '@huggingface/transformers',
   ],
   define: {
   },
