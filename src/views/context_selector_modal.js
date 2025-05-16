@@ -201,7 +201,6 @@ export class ContextSelectorModal extends FuzzySuggestModal {
 
 
   async onChooseSuggestion (selection) {
-    console.log('onChooseSuggestion selection', selection);
     await this.ensure_ctx();
     if(selection.item.items){
       console.log('is special item', selection);
