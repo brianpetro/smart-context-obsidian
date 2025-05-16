@@ -17,13 +17,15 @@ import { is_text_file } from 'smart-file-system/utils/ignore.js';
 
 import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
 
-import { LinkDepthModal } from './link_depth_modal.js';
+import { LinkDepthModal } from './src/views/link_depth_modal.js';
 
 import { SmartContexts, SmartContext, smart_contexts } from 'smart-contexts';
 // import { AjsonMultiFileCollectionDataAdapter } from 'smart-collections/adapters/ajson_multi_file.js';
 import { SmartContextSettingTab } from './settings.js';
 
 import { smart_env_config } from './dist/smart_env.config.js';
+
+import { FolderSelectModal } from "./src/views/folder_select_modal.js";
 
 export default class SmartContextPlugin extends Plugin {
   LinkDepthModal = LinkDepthModal;
