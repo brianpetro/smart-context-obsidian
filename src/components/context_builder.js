@@ -138,6 +138,7 @@ export async function post_process (ctx, container, opts = {}) {
   }
 
   const buttons = [
+    ...(opts.buttons ?? []),
     {
       text: 'New',
       display_callback: (ctx) => ctx.has_context_items,
@@ -149,7 +150,6 @@ export async function post_process (ctx, container, opts = {}) {
         reload_context_builder(new_ctx, opts);
       }
     },
-    ...(opts.buttons ?? [])
   ];
 
   render_actions(buttons);
