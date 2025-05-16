@@ -69,8 +69,10 @@ export function tree_to_html (node, selected_paths) {
       let links_btn = '';
       if(selected_paths.has(child.path)){
         remove_btn = `<span class="sc-tree-remove" data-path="${child.path}">×</span>`;
-        connections_btn = `<span class="sc-tree-connections" data-path="${child.path}">connections</span>`;
-        links_btn = `<span class="sc-tree-links" data-path="${child.path}">links</span>`;
+        if(!child.path.startsWith('../')){
+          connections_btn = `<span class="sc-tree-connections" data-path="${child.path}">connections</span>`;
+          links_btn = `<span class="sc-tree-links" data-path="${child.path}">links</span>`;
+        }
       }
       const li_inner = `
         ${remove_btn}

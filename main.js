@@ -24,9 +24,10 @@ import { FolderSelectModal } from "./src/views/folder_select_modal.js";
 import { ContextSelectorModal } from './src/views/context_selector_modal.js';
 
 export default class SmartContextPlugin extends Plugin {
-  LinkDepthModal = LinkDepthModal;
   compiled_smart_env_config = smart_env_config;
-
+  ContextSelectorModal = ContextSelectorModal;
+  LinkDepthModal = LinkDepthModal;
+  
   /**
    * Plugin-level config for hooking up "smart_env" modules.
    */
@@ -62,6 +63,7 @@ export default class SmartContextPlugin extends Plugin {
     await SmartEnv.wait_for({ loaded: true });
 
     this.register_commands();
+    this.register_context_selector_modal_command();
 
     // Right-click menu for folders
     this.registerEvent(
@@ -96,18 +98,23 @@ export default class SmartContextPlugin extends Plugin {
     return rel;
   }
 
-  register_commands() {
+  register_context_selector_modal_command() {
     this.addCommand({
       id: "open-context-select-modal",
       name: "Context selector",
       callback: () => {
-        this.open_context_selector_modal();
+        const initial_context_items = [];
+        const active_file = this.app.workspace.getActiveFile();
+        if (active_file) initial_context_items.push(active_file.path);
+        this.open_context_selector_modal({ initial_context_items });
       },
     });
+  }
 
-    /**
-     * Legacy commands
-     */
+  /**
+   * Legacy commands
+   */
+  register_commands() {
     // Command: copy current note
     this.addCommand({
       id: 'copy-current-note-with-depth',
@@ -139,8 +146,8 @@ export default class SmartContextPlugin extends Plugin {
       id: 'copy-all-open-files',
       name: 'Copy all open files (pick link depth)',
       checkCallback: (checking) => {
-        const base_items = this.get_all_open_files();
-        if (!base_items.size) return false;
+        const base_items = this.get_all_open_file_paths();
+        if (!base_items.length) return false;
         if (checking) return true;
 
         new this.LinkDepthModal(this, base_items).open();
@@ -159,22 +166,20 @@ export default class SmartContextPlugin extends Plugin {
       },
     });
   }
+
+  copy_to_clipboard_button = {
+    text: 'Copy to clipboard',
+    display_callback: (ctx) => ctx.has_context_items,
+    callback: async (ctx, opts, e) => {
+      const { context, stats, images } = await ctx.compile({ link_depth: 0 });
+      await this.copy_to_clipboard(context, images);
+      this.showStatsNotice(stats, `${Object.keys(ctx.data.context_items).length} file(s)`);
+    },
+  }
   open_context_selector_modal(opts={}) {
     this.close_context_selector_modal();
-    if(!opts.buttons) {
-      opts.buttons = [
-        {
-          text: 'Copy to clipboard',
-          display_callback: (ctx) => ctx.has_context_items,
-          callback: async (ctx) => {
-            const { context, stats, images } = await ctx.compile({ link_depth: 0 });
-            await this.copy_to_clipboard(context, images);
-            this.showStatsNotice(stats, `${Object.keys(ctx.data.context_items).length} file(s)`);
-          },
-        }
-      ]
-    }
-    this.context_selector_modal = new ContextSelectorModal(this, opts);
+    if(!opts.buttons) opts.buttons = [this.copy_to_clipboard_button];
+    this.context_selector_modal = new this.ContextSelectorModal(this, opts);
     this.context_selector_modal.open(opts);
     return this.context_selector_modal;
   }
@@ -209,21 +214,23 @@ export default class SmartContextPlugin extends Plugin {
         visible_files.add(file);
       }
     }
+    console.log('get_visible_open_files', visible_files);
     return visible_files;
   }
 
   /**
    * Collect all open files in the workspace.
    */
-  get_all_open_files() {
+  get_all_open_file_paths() {
     const leaves = this.get_all_leaves();
-    const files_set = new Set();
+    const files_set = [];
     for (const leaf of leaves) {
-      const file = leaf.view?.file;
-      if (file && is_text_file(file.path)) {
-        files_set.add(file);
+      const file_path = leaf.view?.state?.file ?? leaf.view?.file.path;
+      if (file_path && is_text_file(file_path)) {
+        files_set.push(file_path);
       }
     }
+    console.log('get_all_open_file_paths', files_set);
     return files_set;
   }
 
@@ -245,6 +252,7 @@ export default class SmartContextPlugin extends Plugin {
     recurse(this.app.workspace.rootSplit);
     return leaves;
   }
+
 
   /**
    * Is a leaf the active tab in its parent container?

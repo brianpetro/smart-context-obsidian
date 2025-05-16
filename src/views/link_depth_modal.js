@@ -56,7 +56,7 @@ export class LinkDepthModal extends SuggestModal {
     // Gather base items into a single SmartContext item
     const context_items = {};
     for (const p of this.base_items) {
-      context_items[p.path] = true;
+      context_items[p] = true;
     }
     const sc_item = this.env.smart_contexts.create_or_update({ context_items });
 

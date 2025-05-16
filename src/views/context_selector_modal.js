@@ -41,8 +41,12 @@ export class ContextSelectorModal extends FuzzySuggestModal {
 
   async ensure_ctx () {
     if (this.ctx) return this.ctx;
+    const context_items = (this.opts.initial_context_items ?? {}).reduce((acc, item) => {
+      acc[item] = { d: 0 };
+      return acc;
+    }, {});
     this.ctx = await this.env.smart_contexts.create_or_update({
-      context_items : {},
+      context_items,
       key: Date.now().toString(), // prevent collisions with existing contexts
     });
     return this.ctx;
@@ -102,6 +106,12 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     this.modalEl.prepend(frag);
   }
 
+  get suggestions () {
+    return this.opts.suggestions ?? [];
+  }
+  set suggestions (suggestions) {
+    this.opts.suggestions = suggestions;
+  }
 
   getItems () {
     const suggestions = this.suggestions?.filter(s => !this.ctx?.data?.context_items[s.item.key]);
@@ -135,9 +145,45 @@ export class ContextSelectorModal extends FuzzySuggestModal {
         ...suggestions
       ]
     }
+    const special_items = this.opts.special_items ?? [];
+    if(!special_items.length) {
+      const visible_open_files = Array.from(this.plugin.get_visible_open_files())
+        .map(f => {
+          return {item: this.env.smart_sources.get(f.path)};
+        })
+        .filter(i => {
+          if(!i.item) return false;
+          if(this.ctx?.data?.context_items[i.item.key]) return false;
+          return true;
+        })
+      ;
+      console.log('visible_open_files', visible_open_files);
+      if(visible_open_files.length) special_items.push({
+        name: 'Visible open files' + (visible_open_files.length ? ` (+${visible_open_files.length})` : ''),
+        items: visible_open_files,
+      });
+      const all_open_files = Array.from(this.plugin.get_all_open_file_paths())
+        .map(f => {
+          return {item: this.env.smart_sources.get(f)};
+        })
+        .filter(i => {
+          if(!i.item) return false;
+          if(this.ctx?.data?.context_items[i.item.key]) return false;
+          return true;
+        })
+      ;
+      console.log('all_open_files', all_open_files);
+      if(all_open_files.length) special_items.push({
+        name: 'All open files' + (all_open_files.length ? ` (+${all_open_files.length})` : ''),
+        items: all_open_files,
+      });
+    }
     const unselected = Object.values(this.env.smart_sources.items)
       .filter(src => !this.ctx?.data?.context_items[src.key]);
-    return unselected;
+    return [
+      ...special_items,
+      ...unselected
+    ];
   }
 
   getItemText (item) {
