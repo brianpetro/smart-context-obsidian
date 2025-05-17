@@ -232,5 +232,6 @@ export class ContextSelectorModal extends FuzzySuggestModal {
   load_suggestions (suggestions) {
     this.suggestions = suggestions;
     this.updateSuggestions();
+    this.render();
   }
 }
