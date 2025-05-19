@@ -225,7 +225,7 @@ export default class SmartContextPlugin extends Plugin {
     const leaves = this.get_all_leaves();
     const files_set = [];
     for (const leaf of leaves) {
-      const file_path = leaf.view?.state?.file ?? leaf.view?.file.path;
+      const file_path = leaf.view?.state?.file ?? leaf.view?.file?.path;
       if (file_path && is_text_file(file_path)) {
         files_set.push(file_path);
       }

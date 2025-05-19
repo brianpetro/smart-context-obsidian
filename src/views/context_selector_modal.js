@@ -41,7 +41,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
 
   async ensure_ctx () {
     if (this.ctx) return this.ctx;
-    const context_items = (this.opts.initial_context_items ?? {}).reduce((acc, item) => {
+    const context_items = (this.opts.initial_context_items ?? []).reduce((acc, item) => {
       acc[item] = { d: 0 };
       return acc;
     }, {});
@@ -52,7 +52,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     return this.ctx;
   }
 
-  async open (opts = {}) {
+  async open (opts = this.opts) {
     if (opts.ctx) this.ctx = opts.ctx;
     this.opts = opts;
     await this.render();
@@ -147,36 +147,40 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     }
     const special_items = this.opts.special_items ?? [];
     if(!special_items.length) {
-      const visible_open_files = Array.from(this.plugin.get_visible_open_files())
-        .map(f => {
-          return {item: this.env.smart_sources.get(f.path)};
-        })
-        .filter(i => {
-          if(!i.item) return false;
-          if(this.ctx?.data?.context_items[i.item.key]) return false;
-          return true;
-        })
-      ;
-      console.log('visible_open_files', visible_open_files);
-      if(visible_open_files.length) special_items.push({
-        name: 'Visible open files' + (visible_open_files.length ? ` (+${visible_open_files.length})` : ''),
-        items: visible_open_files,
-      });
-      const all_open_files = Array.from(this.plugin.get_all_open_file_paths())
-        .map(f => {
-          return {item: this.env.smart_sources.get(f)};
-        })
-        .filter(i => {
-          if(!i.item) return false;
-          if(this.ctx?.data?.context_items[i.item.key]) return false;
-          return true;
-        })
-      ;
-      console.log('all_open_files', all_open_files);
-      if(all_open_files.length) special_items.push({
-        name: 'All open files' + (all_open_files.length ? ` (+${all_open_files.length})` : ''),
-        items: all_open_files,
-      });
+      if(typeof this.plugin.get_visible_open_files === 'function'){
+        const visible_open_files = Array.from(this.plugin.get_visible_open_files())
+          .map(f => {
+            return {item: this.env.smart_sources.get(f.path)};
+          })
+          .filter(i => {
+            if(!i.item) return false;
+            if(this.ctx?.data?.context_items[i.item.key]) return false;
+            return true;
+          })
+        ;
+        console.log('visible_open_files', visible_open_files);
+        if(visible_open_files.length) special_items.push({
+          name: 'Visible open files' + (visible_open_files.length ? ` (+${visible_open_files.length})` : ''),
+          items: visible_open_files,
+        });
+      }
+      if(typeof this.plugin.get_all_open_file_paths === 'function'){
+        const all_open_files = Array.from(this.plugin.get_all_open_file_paths())
+          .map(f => {
+            return {item: this.env.smart_sources.get(f)};
+          })
+          .filter(i => {
+            if(!i.item) return false;
+            if(this.ctx?.data?.context_items[i.item.key]) return false;
+            return true;
+          })
+        ;
+        console.log('all_open_files', all_open_files);
+        if(all_open_files.length) special_items.push({
+          name: 'All open files' + (all_open_files.length ? ` (+${all_open_files.length})` : ''),
+          items: all_open_files,
+        });
+      }
     }
     const unselected = Object.values(this.env.smart_sources.items)
       .filter(src => !this.ctx?.data?.context_items[src.key]);

@@ -139,7 +139,9 @@ export async function post_process (ctx, container, opts = {}) {
 
   const buttons = [
     ...(opts.buttons ?? []),
-    {
+  ];
+  if(opts.reload_callback){
+    buttons.push({
       text: 'New',
       display_callback: (ctx) => ctx.has_context_items,
       callback: async (ctx, opts) => {
@@ -149,8 +151,8 @@ export async function post_process (ctx, container, opts = {}) {
         });
         reload_context_builder(new_ctx, opts);
       }
-    },
-  ];
+    });
+  }
 
   render_actions(buttons);
 
