@@ -30,7 +30,6 @@
   margin: 0 0 0 .8em;
   padding: 0;
 }
-
 .sc-tree-item {
   gap: 4px;
   padding: 2px 0;
@@ -45,12 +44,18 @@
     }
   }
 }
+.sc-tree-label {
+  cursor: pointer;
+}
 
-.sc-tree-remove {
+.sc-tree-remove,
+.sc-tree-connections,
+.sc-tree-links {
   cursor: pointer;
   opacity: .8;
 }
-
-.sc-tree-remove:hover {
+.sc-tree-remove:hover,
+.sc-tree-connections:hover,
+.sc-tree-links:hover {
   opacity: 1;
 }

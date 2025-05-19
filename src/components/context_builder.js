@@ -1,13 +1,12 @@
 import { build_context_items_tree_html } from '../utils/build_context_items_tree_html.js';
 import context_builder_css from './context_builder.css' with { type : 'css' };
 import { get_links_to_depth } from 'smart-sources/actions/get_links_to_depth.js';
+import { open_note } from 'obsidian-smart-env/utils/open_note.js';
 
 const estimate_tokens = char_count => Math.ceil(char_count / 4);
 
 /**
  * build_html
- * Render Context Builder root – now includes a <select> dropdown listing
- * all saved “named contexts”.
  *
  * @param {import('smart-contexts').SmartContext} ctx
  * @param {Object} opts
@@ -23,8 +22,6 @@ export function build_html (ctx, opts = {}) {
     : selected_items;
 
   const tree_list_html = build_context_items_tree_html(items);
-
-  /* NEW: named-context dropdown */
 
   return `<div>
     <div class="sc-context-builder${opts.add_class ? ` ${opts.add_class}` : ''}">
@@ -44,7 +41,6 @@ export function build_html (ctx, opts = {}) {
   </div>`;
 }
 
-
 /* render() remains the same except we pass opts through */
 export async function render (ctx, opts = {}) {
   const html  = build_html.call(this, ctx, opts);
@@ -56,15 +52,16 @@ export async function render (ctx, opts = {}) {
 }
 
 /*───────────────────────────────────────────────────────────────────────────*\
-  internal behaviour
+  internal behaviour – with hover, drag, titles, cursors
 \*───────────────────────────────────────────────────────────────────────────*/
 
 export async function post_process (ctx, container, opts = {}) {
+  const env        = ctx?.env;
+  const plugin     = env?.smart_chat_plugin;
   const tree_el    = container.querySelector('.sc-selected-tree');
   const stats_el   = container.querySelector('.sc-stats');
   const header_el  = container.querySelector('.sc-context-header');
   const actions_el = header_el.querySelector('.sc-context-actions');
-
 
   const get_selected_items = () =>
     Object.keys(ctx.data.context_items || {})
@@ -72,7 +69,7 @@ export async function post_process (ctx, container, opts = {}) {
       .filter(Boolean);
 
   const render_tree = () => {
-    const items        = get_selected_items();
+    const items          = get_selected_items();
     const tree_list_html = build_context_items_tree_html(items);
     this.safe_inner_html(tree_el, tree_list_html || '<em>No items selected…</em>');
     attach_item_handlers();
@@ -80,16 +77,21 @@ export async function post_process (ctx, container, opts = {}) {
   };
 
   const attach_item_handlers = () => {
+    /* remove btn */
     tree_el.querySelectorAll('.sc-tree-remove').forEach(btn => {
+      btn.title = `Remove ${btn.dataset.path}`;
       btn.addEventListener('click', e => {
         const p = e.currentTarget.dataset.path;
         delete ctx.data.context_items[p];
         render_tree();
+        opts.changed_callback?.(ctx, opts);
       });
     });
+    /* connections btn */
     tree_el.querySelectorAll('.sc-tree-connections').forEach(btn => {
+      btn.title = `Connections for ${btn.dataset.path}`;
       btn.addEventListener('click', async e => {
-        const p = e.currentTarget.dataset.path;
+        const p      = e.currentTarget.dataset.path;
         const target = ctx.get_ref(p);
         const connections = await target.find_connections();
         if(!opts.selector_modal) {
@@ -98,34 +100,73 @@ export async function post_process (ctx, container, opts = {}) {
         opts.selector_modal?.load_suggestions(connections);
       });
     });
+    /* links btn */
     tree_el.querySelectorAll('.sc-tree-links').forEach(btn => {
+      btn.title = `Links from ${btn.dataset.path}`;
       btn.addEventListener('click', e => {
-        const p = e.currentTarget.dataset.path;
+        const p      = e.currentTarget.dataset.path;
         const target = ctx.get_ref(p);
-        const links = get_links_to_depth(target, 3);
-        console.log('links', links);
+        const links  = get_links_to_depth(target, 3);
+        if(!opts.selector_modal) {
+          opts.selector_modal = opts.open_selector_callback?.(ctx, opts);
+        }
         opts.selector_modal?.load_suggestions(links);
       });
     });
+    /* label: hover, drag, click */
+    tree_el.querySelectorAll('.sc-tree-label').forEach(label => {
+      const parent_li = label.closest('.sc-tree-item');
+      if(!parent_li) return;
+      const item_path = parent_li.dataset.path;
+      if(!item_path) return;
+
+      label.classList.add('internal-link');
+      label.dataset.href  = item_path;
+      label.dataset.path  = item_path;
+      label.setAttribute('draggable', 'true');
+      label.title = item_path;
+
+      /* hover preview */
+      label.addEventListener('mouseover', ev => {
+        plugin?.app?.workspace.trigger('hover-link', {
+          event: ev,
+          source: 'smart-context-builder',
+          hoverParent: label,
+          targetEl: label,
+          linktext: item_path
+        });
+      });
+      /* drag support */
+      label.addEventListener('dragstart', ev => {
+        const file_path = item_path.split('#')[0];
+        const file      = plugin?.app?.metadataCache?.getFirstLinkpathDest(file_path, '');
+        const drag_data = plugin?.app?.dragManager?.dragFile(ev, file);
+        plugin?.app?.dragManager?.onDragStart(ev, drag_data);
+      });
+      /* click open */
+      label.addEventListener('click', ev => {
+        ev.preventDefault();
+        open_note(plugin, item_path, ev, { new_tab : true });
+      });
+    });
   };
+
   const update_stats = async () => {
     const items = get_selected_items();
     if (!items.length) {
       stats_el.textContent = '';
       return;
     }
-    const { stats } = await ctx.compile({ link_depth : 0, calculating : true });
+    const { stats }    = await ctx.compile({ link_depth : 0, calculating : true });
     const total_chars  = stats.char_count;
     const total_tokens = estimate_tokens(total_chars);
     stats_el.textContent = `≈ ${total_chars.toLocaleString()} chars · ${total_tokens.toLocaleString()} tokens`;
   };
 
   const render_actions = (_buttons) => {
-    // filter duplicates (precedence to last occurrence)
     _buttons = _buttons.filter((btn, index, self) =>
       index === self.findLastIndex((t) => t.text === btn.text)
     );
-    console.log('render_actions', _buttons);
     for (const btn of _buttons) {
       if (btn.display_callback && !btn.display_callback(ctx)) continue;
       const el = document.createElement('button');
@@ -135,10 +176,10 @@ export async function post_process (ctx, container, opts = {}) {
       });
       actions_el.appendChild(el);
     }
-  }
+  };
 
   const buttons = [
-    ...(opts.buttons ?? []),
+    ...(opts.buttons ?? [])
   ];
   if(opts.reload_callback){
     buttons.push({
@@ -155,9 +196,7 @@ export async function post_process (ctx, container, opts = {}) {
   }
 
   render_actions(buttons);
-
   render_tree();
-
 }
 
 export function reload_context_builder(ctx, opts) {
