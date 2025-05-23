@@ -79,7 +79,7 @@ export async function render(context, opts = {}) {
  */
 export function post_process(context, frag, opts = {}) {
   const env = context?.env;
-  const plugin = env?.smart_chat_plugin;
+  const plugin = env?.smart_context_plugin || env?.smart_chat_plugin || env?.smart_connections_plugin;
   const container = frag.querySelector('.context-review');
   if (!container) return frag;
 
