@@ -5,6 +5,16 @@ import { FuzzySuggestModal, Keymap } from 'obsidian';
  */
 
 export class ContextSelectorModal extends FuzzySuggestModal {
+  static open(env, opts) {
+    const plugin = env.smart_contexts_plugin || env.smart_chat_plugin || env.smart_connections_plugin;
+    env.context_selector_modal = new ContextSelectorModal(plugin, opts);
+    env.context_selector_modal.open(opts);
+    return env.context_selector_modal;
+  }
+  static close(env) {
+    env.context_selector_modal.close(true);
+    env.context_selector_modal = null;
+  }
   /**
    * @param {import('../../main.js').default} plugin
    * @param {Object} [opts={}]
