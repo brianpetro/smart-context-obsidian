@@ -4,6 +4,10 @@ import { get_links_to_depth } from 'smart-sources/actions/get_links_to_depth.js'
 import { open_note } from 'obsidian-smart-env/utils/open_note.js';
 
 const estimate_tokens = char_count => Math.ceil(char_count / 4);
+const get_selected_items = (ctx) => {
+  return Object.keys(ctx.data.context_items || {})
+    .map(k => ({path: k}))
+}
 
 /**
  * build_html
@@ -13,13 +17,9 @@ const estimate_tokens = char_count => Math.ceil(char_count / 4);
  * @returns {string}
  */
 export function build_html (ctx, opts = {}) {
-  const { selected_items = [], show_name_input = false } = opts;
+  const { show_name_input = false } = opts;
 
-  const items = ctx
-    ? Object.keys(ctx.data.context_items || {})
-        .map(k => ctx.get_ref(k))
-        .filter(Boolean)
-    : selected_items;
+  const items = get_selected_items(ctx);
 
   const tree_list_html = build_context_items_tree_html(items);
 
@@ -63,13 +63,9 @@ export async function post_process (ctx, container, opts = {}) {
   const header_el  = container.querySelector('.sc-context-header');
   const actions_el = header_el.querySelector('.sc-context-actions');
 
-  const get_selected_items = () =>
-    Object.keys(ctx.data.context_items || {})
-      .map(k => ctx.get_ref(k))
-      .filter(Boolean);
 
   const render_tree = () => {
-    const items          = get_selected_items();
+    const items          = get_selected_items(ctx);
     const tree_list_html = build_context_items_tree_html(items);
     this.safe_inner_html(tree_el, tree_list_html || '<em>No items selected…</em>');
     attach_item_handlers();
