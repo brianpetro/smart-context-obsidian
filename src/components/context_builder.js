@@ -5,7 +5,7 @@ import { open_note } from 'obsidian-smart-env/utils/open_note.js';
 
 const estimate_tokens = char_count => Math.ceil(char_count / 4);
 const get_selected_items = (ctx) => {
-  return Object.keys(ctx.data.context_items || {})
+  return Object.keys(ctx?.data?.context_items || {})
     .map(k => ({path: k}))
 }
 
