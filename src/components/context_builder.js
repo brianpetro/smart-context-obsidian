@@ -2,6 +2,7 @@ import { build_context_items_tree_html } from '../utils/build_context_items_tree
 import context_builder_css from './context_builder.css' with { type : 'css' };
 import { get_links_to_depth } from 'smart-sources/actions/get_links_to_depth.js';
 import { open_note } from 'obsidian-smart-env/utils/open_note.js';
+import { getIcon } from 'obsidian';
 
 const estimate_tokens = char_count => Math.ceil(char_count / 4);
 const get_selected_items = (ctx) => {
@@ -63,7 +64,6 @@ export async function post_process (ctx, container, opts = {}) {
   const header_el  = container.querySelector('.sc-context-header');
   const actions_el = header_el.querySelector('.sc-context-actions');
 
-
   const render_tree = () => {
     const items          = get_selected_items(ctx);
     const tree_list_html = build_context_items_tree_html(items);
@@ -85,27 +85,29 @@ export async function post_process (ctx, container, opts = {}) {
     });
     /* connections btn */
     tree_el.querySelectorAll('.sc-tree-connections').forEach(btn => {
-      btn.title = `Connections for ${btn.dataset.path}`;
+      const connections_icon = getIcon('smart-connections');
+      btn.appendChild(connections_icon);
       btn.addEventListener('click', async e => {
         const p      = e.currentTarget.dataset.path;
         const target = ctx.get_ref(p);
         const connections = await target.find_connections();
         if(!opts.selector_modal) {
           opts.selector_modal = opts.open_selector_callback?.(ctx, opts);
-        }
+        }else opts.selector_modal.open(opts);
         opts.selector_modal?.load_suggestions(connections);
       });
     });
     /* links btn */
     tree_el.querySelectorAll('.sc-tree-links').forEach(btn => {
-      btn.title = `Links from ${btn.dataset.path}`;
+      const links_icon = getIcon('link');
+      btn.appendChild(links_icon);
       btn.addEventListener('click', e => {
         const p      = e.currentTarget.dataset.path;
         const target = ctx.get_ref(p);
         const links  = get_links_to_depth(target, 3);
         if(!opts.selector_modal) {
           opts.selector_modal = opts.open_selector_callback?.(ctx, opts);
-        }
+        }else opts.selector_modal.open(opts);
         opts.selector_modal?.load_suggestions(links);
       });
     });
