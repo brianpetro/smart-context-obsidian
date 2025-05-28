@@ -214,7 +214,6 @@ export default class SmartContextPlugin extends Plugin {
         visible_files.add(file);
       }
     }
-    console.log('get_visible_open_files', visible_files);
     return visible_files;
   }
 
@@ -230,7 +229,6 @@ export default class SmartContextPlugin extends Plugin {
         files_set.push(file_path);
       }
     }
-    console.log('get_all_open_file_paths', files_set);
     return files_set;
   }
 

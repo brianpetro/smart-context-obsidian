@@ -108,7 +108,6 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       selector_modal : this,
     };
     if(this.opts.add_class) builder_opts.add_class += this.opts.add_class;
-    console.log('builder_opts', builder_opts);
     const frag = await this.env.render_component(
       'context_builder',
       ctx,
@@ -170,7 +169,6 @@ export class ContextSelectorModal extends FuzzySuggestModal {
             return true;
           })
         ;
-        console.log('visible_open_files', visible_open_files);
         if(visible_open_files.length) special_items.push({
           name: 'Visible open files' + (visible_open_files.length ? ` (+${visible_open_files.length})` : ''),
           items: visible_open_files,
@@ -187,7 +185,6 @@ export class ContextSelectorModal extends FuzzySuggestModal {
             return true;
           })
         ;
-        console.log('all_open_files', all_open_files);
         if(all_open_files.length) special_items.push({
           name: 'All open files' + (all_open_files.length ? ` (+${all_open_files.length})` : ''),
           items: all_open_files,
@@ -219,7 +216,6 @@ export class ContextSelectorModal extends FuzzySuggestModal {
   async onChooseSuggestion (selection) {
     await this.ensure_ctx();
     if(selection.item.items){
-      console.log('is special item', selection);
       for(const special_item of selection.item.items){
         if(!this.ctx.data.context_items[special_item.item.key]){
           this.ctx.data.context_items[special_item.item.key] = { d: 0 };
@@ -230,7 +226,6 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       return;
     }
     const item = selection.item?.item ?? selection.item;
-    console.log('onChooseSuggestion item', item);
 
     if (!this.ctx.data.context_items[item.key]) {
       this.ctx.data.context_items[item.key] = { d: 0 };
