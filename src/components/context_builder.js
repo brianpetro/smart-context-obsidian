@@ -162,6 +162,7 @@ export async function post_process (ctx, container, opts = {}) {
   };
 
   const render_actions = (_buttons) => {
+    this.empty(actions_el);
     _buttons = _buttons.filter((btn, index, self) =>
       index === self.findLastIndex((t) => t.text === btn.text)
     );

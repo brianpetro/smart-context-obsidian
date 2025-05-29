@@ -70,21 +70,6 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     await this.render();
     super.open();
   }
-  get context_buttons () {
-    if(this.suggestions?.length){
-      return [
-        {
-          text: 'Back',
-          callback: (ctx) => {
-            this.suggestions = null;
-            this.close(true);
-            this.open({...this.opts, ctx});
-          }
-        }
-      ]
-    }
-    return this.opts.buttons ?? [];
-  }
 
   async render () {
     this.modalEl.style.display = 'flex';
@@ -101,7 +86,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     const ctx = await this.ensure_ctx();
     const builder_opts = {
       add_class: 'modal',
-      buttons: this.context_buttons,
+      buttons: this.opts.buttons ?? [],
       reload_callback: (ctx, opts) => {
         this.open({ ctx, ...opts });
       },
@@ -128,6 +113,10 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     const suggestions = this.suggestions?.filter(s => !this.ctx?.data?.context_items[s.item.key]);
     if(suggestions?.length){
       const special_items = [];
+      special_items.push({
+        name: 'Back',
+        items: {}
+      });
       if(suggestions.some(s => s.depth)){
         const depth_1 = suggestions.filter(s => s.depth <= 1);
         const depth_2 = suggestions.filter(s => s.depth <= 2);
@@ -214,6 +203,11 @@ export class ContextSelectorModal extends FuzzySuggestModal {
 
 
   async onChooseSuggestion (selection) {
+    if(selection.item.name === 'Back'){
+      this.suggestions = null;
+      this.updateSuggestions();
+      return;
+    }
     await this.ensure_ctx();
     if(selection.item.items){
       for(const special_item of selection.item.items){
@@ -239,7 +233,9 @@ export class ContextSelectorModal extends FuzzySuggestModal {
   }
 
   close (should_close = false) { if (should_close) super.close(); }
-  onClose (should_close = false) { if (should_close) super.onClose(); }
+  onClose (should_close = false) { 
+    this.opts.close_callback?.(this.ctx);
+  }
   load_suggestions (suggestions) {
     this.suggestions = suggestions;
     this.updateSuggestions();
