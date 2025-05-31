@@ -54,28 +54,26 @@ export class LinkDepthModal extends SuggestModal {
 
   async onOpen() {
     // Gather base items into a single SmartContext item
-    const context_items = {};
-    for (const p of this.base_items) {
-      context_items[p] = true;
-    }
-    const sc_item = this.env.smart_contexts.create_or_update({ context_items });
+    const ctx = this.env.smart_contexts.new_context({}, {
+      add_items: this.base_items
+    });
 
     // 1) Always compute depth=0 fresh
-    const { context: zeroContext, stats: zeroStats } = await sc_item.compile({ link_depth: 0, calculating: true });
+    const { context: zeroContext, stats: zeroStats } = await ctx.compile({ link_depth: 0, calculating: true });
     this.zero_char_count = zeroStats.char_count;
     this.zero_tokens = approximate_tokens(this.zero_char_count);
 
-    // 2) Access existing cache from sc_item.meta.depth_cache
+    // 2) Access existing cache from ctx.meta.depth_cache
     //    We'll store { depth0_token_count, depths_info } there.
-    const cache = sc_item?.meta?.depth_cache || null;
+    const cache = ctx?.meta?.depth_cache || null;
     const isCacheValid = cache && (cache.depth0_token_count === this.zero_tokens);
 
     // 3) If cache is valid, reuse. Otherwise, recalc
     if (isCacheValid) {
       this.depths_info = cache.depths_info;
     } else {
-      if (sc_item?.meta) {
-        sc_item.meta.depth_cache = null;
+      if (ctx?.meta) {
+        ctx.meta.depth_cache = null;
       }
       this.depths_info = [];
 
@@ -87,13 +85,13 @@ export class LinkDepthModal extends SuggestModal {
             depth: d,
             label: `Depth ${d} (not calculated)`,
             token_count: 0,
-            sc_item,
+            ctx: ctx,
             stats: {}
           });
           continue;
         }
 
-        const { stats } = await sc_item.compile({ link_depth: d, calculating: true });
+        const { stats } = await ctx.compile({ link_depth: d, calculating: true });
         const total_chars = stats.char_count;
         const total_tokens = approximate_tokens(total_chars);
 
@@ -109,13 +107,13 @@ export class LinkDepthModal extends SuggestModal {
           depth: d,
           label,
           token_count: tokens,
-          sc_item,
+          ctx: ctx,
           stats
         });
       }
 
-      if (sc_item?.meta) {
-        sc_item.meta.depth_cache = {
+      if (ctx?.meta) {
+        ctx.meta.depth_cache = {
           depth0_token_count: this.zero_tokens,
           depths_info: this.depths_info
         };
@@ -149,7 +147,7 @@ export class LinkDepthModal extends SuggestModal {
    * @param {DepthInfo} item
    */
   async onChooseSuggestion(item) {
-    const { context, stats, images } = await item.sc_item.compile({ link_depth: item.depth });
+    const { context, stats, images } = await item.ctx.compile({ link_depth: item.depth });
     await this.plugin.copy_to_clipboard(context, images);
 
     this.plugin.showStatsNotice(stats, `Depth ${item.depth} selected`);

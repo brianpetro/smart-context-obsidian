@@ -50,16 +50,10 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     });
   }
 
-
-  async ensure_ctx () {
+  ensure_ctx () {
     if (this.ctx) return this.ctx;
-    const context_items = (this.opts.initial_context_items ?? []).reduce((acc, item) => {
-      acc[item] = { d: 0 };
-      return acc;
-    }, {});
-    this.ctx = await this.env.smart_contexts.create_or_update({
-      context_items,
-      key: Date.now().toString(), // prevent collisions with existing contexts
+    this.ctx = this.env.smart_contexts.new_context({}, {
+      add_items: this.opts.initial_context_items
     });
     return this.ctx;
   }
@@ -83,23 +77,47 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       prompt_results.style.overflowY   = 'auto';
     }
 
-    const ctx = await this.ensure_ctx();
-    const builder_opts = {
-      add_class: 'modal',
-      buttons: this.opts.buttons ?? [],
-      reload_callback: (ctx, opts) => {
-        this.open({ ctx, ...opts });
-      },
-      selector_modal : this,
-    };
-    if(this.opts.add_class) builder_opts.add_class += this.opts.add_class;
-    const frag = await this.env.render_component(
+    const ctx = this.ensure_ctx();
+    const builder_container = await this.env.render_component(
       'context_builder',
       ctx,
-      builder_opts
+      {
+        update_callback: (_ctx) => {
+          this.updateSuggestions();
+          // this.render();
+          this.opts.update_callback?.(_ctx);
+        },
+        ...this.opts,
+      }
     );
+    builder_container.classList.add('modal');
+    const actions_el = builder_container.querySelector('.sc-context-actions');
+    if(ctx.has_context_items){
+      const clear_btn = document.createElement('button');
+      clear_btn.textContent = "Clear";
+      clear_btn.addEventListener('click', () => {
+        ctx.data.context_items = {};
+        ctx.queue_save();
+        ctx.collection.process_save_queue();
+        this.updateSuggestions();
+        this.render();
+      });
+      actions_el.appendChild(clear_btn);
+      const copy_btn = await this.env.render_component('copy_to_clipboard_button', ctx);
+      actions_el.appendChild(copy_btn);
+    }
+    if(this.opts.update_callback && !actions_el.querySelector('button[data-done="true"]')){
+      const done_btn = document.createElement('button');
+      done_btn.dataset.done = 'true';
+      done_btn.textContent = "Done";
+      done_btn.addEventListener('click', () => {
+        this.close(true);
+      });
+      actions_el.appendChild(done_btn);
+    }
     this.modalEl.querySelector('.sc-context-builder')?.remove();
-    this.modalEl.prepend(frag);
+    this.modalEl.prepend(builder_container);
+
   }
 
   get suggestions () {
@@ -202,13 +220,13 @@ export class ContextSelectorModal extends FuzzySuggestModal {
   }
 
 
-  async onChooseSuggestion (selection) {
+  onChooseSuggestion (selection) {
     if(selection.item.name === 'Back'){
       this.suggestions = null;
       this.updateSuggestions();
       return;
     }
-    await this.ensure_ctx();
+    this.ensure_ctx();
     if(selection.item.items){
       for(const special_item of selection.item.items){
         if(!this.ctx.data.context_items[special_item.item.key]){
@@ -234,7 +252,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
 
   close (should_close = false) { if (should_close) super.close(); }
   onClose (should_close = false) { 
-    this.opts.close_callback?.(this.ctx);
+    this.opts.update_callback?.(this.ctx);
   }
   load_suggestions (suggestions) {
     this.suggestions = suggestions;

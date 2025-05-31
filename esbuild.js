@@ -18,7 +18,7 @@ import { build_smart_env_config } from 'obsidian-smart-env/build_smart_env_confi
 const roots = [
   path.resolve(process.cwd(), 'src'),
 ];
-const dist_dir = path.resolve(process.cwd(), 'dist');
+const dist_dir = path.resolve(process.cwd());
 build_smart_env_config(dist_dir, roots);
 
 /**

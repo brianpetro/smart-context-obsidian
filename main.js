@@ -17,11 +17,15 @@ import { SmartContexts, SmartContext, smart_contexts } from 'smart-contexts';
 // import { AjsonMultiFileCollectionDataAdapter } from 'smart-collections/adapters/ajson_multi_file.js';
 import { SmartContextSettingTab } from './settings.js';
 
-import { smart_env_config } from './dist/smart_env.config.js';
+import { smart_env_config } from './smart_env.config.js';
 
 import { FolderSelectModal } from "./src/views/folder_select_modal.js";
 
 import { ContextSelectorModal } from './src/views/context_selector_modal.js';
+
+import { copy_to_clipboard } from './src/utils/copy_to_clipboard.js';
+import { show_stats_notice } from './src/utils/show_stats_notice.js';
+
 
 export default class SmartContextPlugin extends Plugin {
   compiled_smart_env_config = smart_env_config;
@@ -167,18 +171,8 @@ export default class SmartContextPlugin extends Plugin {
     });
   }
 
-  copy_to_clipboard_button = {
-    text: 'Copy to clipboard',
-    display_callback: (ctx) => ctx.has_context_items,
-    callback: async (ctx, opts, e) => {
-      const { context, stats, images } = await ctx.compile({ link_depth: 0 });
-      await this.copy_to_clipboard(context, images);
-      this.showStatsNotice(stats, `${Object.keys(ctx.data.context_items).length} file(s)`);
-    },
-  }
   open_context_selector_modal(opts={}) {
     this.close_context_selector_modal();
-    if(!opts.buttons) opts.buttons = [this.copy_to_clipboard_button];
     this.context_selector_modal = new this.ContextSelectorModal(this, opts);
     this.context_selector_modal.open(opts);
     return this.context_selector_modal;
@@ -192,11 +186,11 @@ export default class SmartContextPlugin extends Plugin {
    * Copy folder contents at depth=0, including non-text files.
    */
   async copy_folder_to_clipboard(folder) {
-    const sc_item = this.env.smart_contexts.create_or_update({
-      context_items: { [folder.path]: { d: 0 } },
+    const ctx = this.env.smart_contexts.new_context({}, {
+      add_items: [folder.path]
     });
 
-    const { context, stats, images } = await sc_item.compile({ link_depth: 0 });
+    const { context, stats, images } = await ctx.compile({ link_depth: 0 });
     await this.copy_to_clipboard(context, images);
     this.showStatsNotice(stats, `Folder: ${folder.path}`);
   }
@@ -275,48 +269,13 @@ export default class SmartContextPlugin extends Plugin {
    * On mobile, Node/Electron APIs are unavailable.
    */
   async copy_to_clipboard(text) {
-    try {
-      // First try standard browser clipboard API
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      }
-      // If not on mobile, attempt Electron's clipboard
-      else if (!this.app.isMobile) {
-        const { clipboard } = require('electron');
-        clipboard.writeText(text);
-      }
-      // Otherwise, no known method for copying
-      else {
-        new Notice('Unable to copy text: no valid method found.');
-      }
-    } catch (err) {
-      console.error('Failed to copy text:', err);
-      new Notice('Failed to copy.');
-    }
+    await copy_to_clipboard(text);
   }
 
   /**
    * Show user-facing notice summarizing stats.
    */
   showStatsNotice(stats, contextMsg) {
-    let noticeMsg = `Copied to clipboard! (${contextMsg})`;
-    if (stats) {
-      const char_count =
-        stats.char_count < 100000
-          ? stats.char_count
-          : `~${Math.round(stats.char_count / 1000)}k`;
-      noticeMsg += `, ${char_count} chars`;
-
-      if (stats.exclusions) {
-        const total_excluded = Object.values(stats.exclusions).reduce(
-          (p, c) => p + c,
-          0
-        );
-        if (total_excluded > 0) {
-          noticeMsg += `, ${total_excluded} section(s) excluded`;
-        }
-      }
-    }
-    new Notice(noticeMsg);
+    show_stats_notice(stats, contextMsg);
   }
 }

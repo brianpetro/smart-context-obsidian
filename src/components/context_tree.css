@@ -1,0 +1,34 @@
+.sc-context-tree ul {
+  list-style: none;
+  margin: 0 0 0 .8em;
+  padding: 0;
+}
+.sc-context-tree .sc-tree-item {
+  gap: 4px;
+  padding: 2px 0;
+  overflow: auto;
+}
+.sc-context-tree .sc-tree-item.dir > span {
+  opacity: 0.8;
+}
+.sc-context-tree .sc-tree-item.dir > span::after {
+  content: '/';
+}
+.sc-context-tree .sc-tree-label {
+  cursor: pointer;
+}
+.sc-context-tree .sc-tree-remove,
+.sc-context-tree .sc-tree-connections,
+.sc-context-tree .sc-tree-links {
+  cursor: pointer;
+  opacity: .8;
+}
+.sc-context-tree .sc-tree-remove:hover,
+.sc-context-tree .sc-tree-connections:hover,
+.sc-context-tree .sc-tree-links:hover {
+  opacity: 1;
+}
+
+.smart-block-popover {
+  z-index: 999999;
+}
