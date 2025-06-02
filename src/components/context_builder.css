@@ -24,6 +24,12 @@
   }
   .sc-context-footer {
     flex: 0 1 auto;
+    .sc-context-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      justify-content: flex-end;
+    }
   }
 }
 
