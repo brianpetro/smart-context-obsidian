@@ -110,9 +110,43 @@ export default class SmartContextPlugin extends Plugin {
         const initial_context_items = [];
         const active_file = this.app.workspace.getActiveFile();
         if (active_file) initial_context_items.push(active_file.path);
-        this.open_context_selector_modal({ initial_context_items });
+        const special_items = this.get_context_selector_special_items();
+        this.open_context_selector_modal({ initial_context_items, special_items });
       },
     });
+  }
+
+  get_context_selector_special_items() {
+    const special_items = [];
+    const visible_open_files = Array.from(this.get_visible_open_files())
+      .map(f => {
+        return {item: this.env.smart_sources.get(f.path)};
+      })
+      // .filter(i => {
+      //   if(!i.item) return false;
+      //   if(this.ctx?.data?.context_items[i.item.key]) return false;
+      //   return true;
+      // })
+    ;
+    if(visible_open_files.length) special_items.push({
+      name: 'Visible open files' + (visible_open_files.length ? ` (+${visible_open_files.length})` : ''),
+      items: visible_open_files,
+    });
+    const all_open_files = Array.from(this.get_all_open_file_paths())
+      .map(f => {
+        return {item: this.env.smart_sources.get(f)};
+      })
+      // .filter(i => {
+      //   if(!i.item) return false;
+      //   if(this.ctx?.data?.context_items[i.item.key]) return false;
+      //   return true;
+      // })
+    ;
+    if(all_open_files.length) special_items.push({
+      name: 'All open files' + (all_open_files.length ? ` (+${all_open_files.length})` : ''),
+      items: all_open_files,
+    });
+    return special_items;
   }
 
   /**

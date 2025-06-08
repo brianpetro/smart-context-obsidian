@@ -163,43 +163,19 @@ export class ContextSelectorModal extends FuzzySuggestModal {
         ...suggestions
       ]
     }
-    const special_items = this.opts.special_items ?? [];
-    if(!special_items.length) {
-      if(typeof this.plugin.get_visible_open_files === 'function'){
-        const visible_open_files = Array.from(this.plugin.get_visible_open_files())
-          .map(f => {
-            return {item: this.env.smart_sources.get(f.path)};
-          })
-          .filter(i => {
-            if(!i.item) return false;
-            if(this.ctx?.data?.context_items[i.item.key]) return false;
-            return true;
-          })
-        ;
-        if(visible_open_files.length) special_items.push({
-          name: 'Visible open files' + (visible_open_files.length ? ` (+${visible_open_files.length})` : ''),
-          items: visible_open_files,
-        });
+    let special_items = this.opts.special_items ?? [];
+
+    // Filter out special items where all items are already in context
+    special_items = special_items.filter(i => {
+      if (i.items) {
+        i.items = i.items.filter(item => !this.ctx?.data?.context_items[item.item.key]);
+        return i.items.length > 0;
       }
-      if(typeof this.plugin.get_all_open_file_paths === 'function'){
-        const all_open_files = Array.from(this.plugin.get_all_open_file_paths())
-          .map(f => {
-            return {item: this.env.smart_sources.get(f)};
-          })
-          .filter(i => {
-            if(!i.item) return false;
-            if(this.ctx?.data?.context_items[i.item.key]) return false;
-            return true;
-          })
-        ;
-        if(all_open_files.length) special_items.push({
-          name: 'All open files' + (all_open_files.length ? ` (+${all_open_files.length})` : ''),
-          items: all_open_files,
-        });
-      }
-    }
+      return true;
+    });
     const unselected = Object.values(this.env.smart_sources.items)
-      .filter(src => !this.ctx?.data?.context_items[src.key]);
+      .filter(src => !this.ctx?.data?.context_items[src.key])
+    ;
     return [
       ...special_items,
       ...unselected
