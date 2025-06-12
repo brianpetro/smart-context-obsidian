@@ -1,85 +1,99 @@
-# Smart Context Plugin for Obsidian
+# Smart Context
 
-Smart Context is an Obsidian plugin that helps you copy contents from folders, open files, and linked notes, with advanced configuration like excluding specific heading sections. This is particularly useful when working with AI tools like ChatGPT, letting you feed large sets of project notes, research, or documentation as 'context' to improve AI responses and accuracy.
+**Feed large language models better inputs, faster.** **Smart Context *collects, cleans, and copies* every note you need** in a single click.
 
-## Features
+> [!NOTE] Why does context matter?
+> AI only answers as well as the context you provide. Smart Context helps aggregate scattered notes into templated snippets that can be quickly pasted into ChatGPT, so your prompts hit harder, your responses feel clairvoyant, and your flow state stays unbroken.
 
-- **Copy Folder Contents**  
-  Copy all Markdown (and Canvas) files from a selected folder to your clipboard, optionally including the folder tree. Perfect for quickly giving AI models an entire project's context.
+✔️ Zero‑setup: works out‑of‑the‑box  
+🔐 Local‑first & privacy‑preserving
+🤖 Compatible with any AI workflow  
+⚔️ Mission‑driven, community‑supported
 
-- **Copy Visible Open Files**  
-  Copy content from only the currently visible open files, so you can provide precisely the subset of notes you are focusing on to ChatGPT or other tools.
+---
 
-- **Copy All Open Files**  
-  Gather content from every open file in the workspace (regardless of visibility) at once.
+## Mission‑driven
 
-- **Exclude Sections by Heading**  
-  Configure specific headings (glob patterns) to exclude. For example, headings named 'Secret' or 'Confidential' can automatically be removed before the content is copied.
+The Obsidian community proved user‑aligned software can out‑innovate closed platforms. Smart Context embodies that spirit—open‑source tools that **empower individuals**, not gatekeepers. Read about the [Smart Principles](https://smartconnections.app/smart-principles/) that guide development.
 
-- **Copy folder contents to clipboard**  
-  Right-click a folder in Obsidian's File Explorer and select 'Copy folder contents to clipboard' to quickly gather the folder's files.
+## Private by Design
 
-![Smart Context - Copy folder menu option](./assets/Smart%20Context%20-%20Copy%20folder%20menu%20option.png)
+No data leaves your vault unless *you* copy it. All parsing, filtering, and token estimates run locally. Use local embedding models or remote APIs—it is your choice.
+
+---
 
 ## Getting Started
+
+### Easy installation
+
+* Open **Settings → Community plugins → Browse**  
+* Search for **"Smart Context"** and click **Install**  
+* Enable the plugin – done!
 
 [![Smart Context Getting Started](./assets/smart-context-getting_started.gif)](https://docs.smartconnections.app/Smart-Context/Getting-Started)
 
 Read the [Getting Started Guide](https://docs.smartconnections.app/Smart-Context/Getting-Started) for more information.
 
-### Real-World Use Case
+### First run
 
-A developer wants to paste relevant code files, readme content, and design docs into ChatGPT for help. They do not want to manually open and copy each file, nor reveal sensitive or excluded headings. Smart Context solves it in a few clicks.
+1. Right‑click any folder → **Copy folder contents to clipboard**  
+2. Paste into ChatGPT, Claude, Gemini, or your favorite model  
+3. Enjoy dramatically richer answers
+
+---
+
+## Core Features
+
+* **Copy folder contents**  
+  Grab every Markdown and Canvas file inside a folder—including sub‑folders—and render a tree + fenced code blocks.
+
+* **Copy visible open files**  
+  Only the notes you can currently see are included. Perfect for quick Q&A sessions.
+
+* **Copy all open files**  
+  Snapshot *every* tab—great for large refactors or brainstorming sessions.
+
+* **Exclude headings**  
+  Add glob patterns (e.g. `*Secret*`, `Confidential`) and those sections vanish before copy.
+
+* **Context Builder UI**  
+  A modal lets you mix folders, individual notes, backlinks, outlinks, and AI‑discovered connections into one curated context bundle.
+
+* **Token / char estimator**  
+  Live stats help you stay under model limits before you hit *Copy*.
+
+---
 
 ## Settings
 
-In Settings → Community Plugins → Smart Context, you can configure:
+* **Excluded Headings** – Glob patterns to strip (no regex fiddling required).  
+* **In‑links / Out‑links** – Include backlinks or only forward links.  
+* **Before / After Context** – Custom banners, file trees, or dividers.  
+* **Before / After Each Item** – Template strings like `{{ITEM_PATH}}` or `{{ITEM_DEPTH}}`.  
 
-- **Excluded Headings**  
-  Array of headings (supports glob patterns, e.g. '*Secret*') to remove from the copied text.
+---
 
-- **In-links**  
-  Whether to include notes that link into your selected file(s).
+## Advanced Workflows
 
-- **Before / After Context**  
-  Custom text inserted at the very beginning or end of the final copied content. Supports placeholders like '{{FILE_TREE}}'.
+* **Context Selector**  
+  Set a hotkey → *Context selector* to quickly cherry‑pick notes, folders, or AI‑suggested connections without leaving the keyboard.
 
-- **Before / After Each Item**  
-  Text inserted before/after each primary file's content. Useful placeholders include:
-  - '{{ITEM_PATH}}'
-  - '{{ITEM_NAME}}'
-  - '{{ITEM_EXT}}'
-  - '{{ITEM_DEPTH}}'
+* **Smart Chat Integration**  
+  Smart Context powers the context in **Smart Chat**: drag items, auto‑retrieve with pronouns, review before send.
 
-## Formatting
+* **Scripting & Automations**  
+  All compile options are exposed via `ctx.compile({ link_depth, templates })`, ready for Templater, DataviewJS, or shell scripts.
 
-When you copy folder contents, open files, or build a custom set of notes, the output might look like:
+---
 
-```
-Folder Structure:
-├── example-folder/
-│   └── example-file.md
-└── example-folder-2/
-    └── example-file-2.md
-## File Contents:
-example-folder/example-file.md
-\`\`\`md
-# Example File
+## Smart Ecosystem
 
-This is an example file.
-\`\`\`
+Smart Context is one puzzle piece alongside **Smart Connections** (semantic links), **Smart Chat** (context‑aware chat), and **Smart Editor** (AI‑assisted writing). Together they create your **Local Smart Environment**—no cloud lock‑in, no monthly fees.
 
-example-folder-2/example-file-2.md
-\`\`\`md
-# Example File 2
+Join the [mission‑driven community](https://smartconnections.app/community).
 
-This is another example file.
-\`\`\`
-```
+---
 
+## Thanks to the Community
 
-If you set 'Secret' as an excluded heading, the 'Secret' section will not appear when you copy this file's content.
-
-## Contributing
-
-Feel free to open issues or submit pull requests. This plugin uses the [MIT License](LICENSE).
+Your feedback and support keep the project alive—thank you! 🌴
