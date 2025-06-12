@@ -1,6 +1,6 @@
-release.js
+#release.js
 package-lock.json
 package.json
 LICENSE
 dist
-esbuild.js
+#esbuild.js
