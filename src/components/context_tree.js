@@ -73,6 +73,7 @@ export async function post_process(ctx, container, opts = {}) {
     env?.smart_context_plugin ||
     env?.smart_chat_plugin ||
     env?.smart_connections_plugin;
+  const ContextSelectorModalClass = plugin.ContextSelectorModal || ContextSelectorModal;
 
   const render_tree = () => {
     const items = get_selected_items(ctx);
@@ -105,7 +106,7 @@ export async function post_process(ctx, container, opts = {}) {
           const p = e.currentTarget.dataset.path;
           const target = ctx.get_ref(p);
           const connections = await target.find_connections();
-          const modal = ContextSelectorModal.open(env, {
+          const modal = ContextSelectorModalClass.open(env, {
             ctx,
             update_callback: opts.update_callback
           });
@@ -125,7 +126,7 @@ export async function post_process(ctx, container, opts = {}) {
           const target = ctx.get_ref(p);
           if (!target) return;
           const links = get_links_to_depth(target, 3);
-          const modal = ContextSelectorModal.open(env, {
+          const modal = ContextSelectorModalClass.open(env, {
             ctx,
             update_callback: opts.update_callback
           });
