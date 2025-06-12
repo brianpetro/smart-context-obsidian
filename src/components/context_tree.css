@@ -8,6 +8,23 @@
   padding: 2px 0;
   overflow: auto;
 }
+
+.sc-context-tree .sc-tree-item.expandable > .sc-tree-label::before {
+  content: '▾';
+  display: inline-block;
+  width: 1em;
+  margin-right: 2px;
+  cursor: pointer;
+}
+
+.sc-context-tree .sc-tree-item.collapsed > .sc-tree-label::before {
+  content: '▸';
+}
+
+.sc-context-tree .sc-tree-item.collapsed > ul {
+  display: none;
+}
+
 .sc-context-tree .sc-tree-item.dir > span {
   opacity: 0.8;
 }

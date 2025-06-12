@@ -24,6 +24,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
    */
   constructor(plugin, opts = {}) {
     super(plugin.app);
+    this.app = plugin.app;
     this.plugin = plugin;
     this.opts = opts;
     this.ctx = opts.ctx ?? null;

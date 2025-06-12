@@ -33,6 +33,7 @@ export function build_path_tree(selected_items = []) {
    * @returns {{ segments:string[], has_block:boolean }}
    */
   const split_path_segments = (item_path) => {
+
     // ── 1. Extract optional block-ID ( "#{n}" ) ────────────────────────────────
     const BLOCK_ID_RE = /#\{\d+\}$/u;
     let remainder = item_path;
@@ -93,10 +94,14 @@ export function build_path_tree(selected_items = []) {
     let running = '';
 
     segments.forEach((seg, idx) => {
+      // Always update the running path, even if skipping as a child
+      running = running ? `${running}/${seg}` : seg;
+
+      // Skip adding "external:.." as a child node, but keep it in path properties
+      if (seg.startsWith('external:..')) return;
+
       const is_last = idx === segments.length - 1;
       const is_block_leaf = is_last && has_block;
-
-      running = running ? `${running}/${seg}` : seg;
 
       if (!node.children[seg]) {
         node.children[seg] = {
@@ -141,7 +146,7 @@ export function tree_to_html(node, selected_paths) {
 
       if (selected_paths.has(child.path)) {
         remove_btn = `<span class="sc-tree-remove" data-path="${child.path}">×</span>`;
-        if (!child.path.startsWith('../')) {
+        if (!child.path.startsWith('external:../')) {
           connections_btn = `<span class="sc-tree-connections" data-path="${child.path}" title="Connections for ${child.name}"></span>`;
           links_btn = `<span class="sc-tree-links" data-path="${child.path}" title="Links for ${child.name}"></span>`;
         }
@@ -155,7 +160,7 @@ export function tree_to_html(node, selected_paths) {
         ${tree_to_html(child, selected_paths)}
       `;
 
-      return `<li data-path="${child.path}" class="sc-tree-item ${child.is_file ? 'file' : 'dir'}">${li_inner}</li>`;
+      return `<li data-path="${child.path}" class="sc-tree-item ${child.is_file ? 'file' : 'dir'}${child.path?.startsWith('external:') ? ' sc-external' : ''}">${li_inner}</li>`;
     })
     .join('');
 
