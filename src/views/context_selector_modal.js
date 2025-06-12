@@ -8,7 +8,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
   static open(env, opts) {
     const plugin = env.smart_contexts_plugin || env.smart_chat_plugin || env.smart_connections_plugin;
     if(!env.context_selector_modal) {
-      env.context_selector_modal = new ContextSelectorModal(plugin, opts);
+      env.context_selector_modal = new this(plugin, opts);
     }
     env.context_selector_modal.open(opts);
     return env.context_selector_modal;
@@ -168,7 +168,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     // Filter out special items where all items are already in context
     special_items = special_items.filter(i => {
       if (i.items) {
-        i.items = i.items.filter(item => !this.ctx?.data?.context_items[item.item.key]);
+        i.items = i.items.filter(item => item.item && !this.ctx?.data?.context_items[item.item.key]);
         return i.items.length > 0;
       }
       return true;

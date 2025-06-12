@@ -82,6 +82,7 @@ export async function post_process(ctx, container, opts = {}) {
         btn.addEventListener('click', e => {
           const p = e.currentTarget.dataset.path;
           const target = ctx.get_ref(p);
+          if(!target) return;
           const links = get_links_to_depth(target, 3);
           const modal = ContextSelectorModal.open(env, {
             ctx,
