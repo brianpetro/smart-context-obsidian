@@ -46,6 +46,39 @@
   opacity: 1;
 }
 
+.sc-tree-remove, 
+.sc-tree-connections, 
+.sc-tree-links {
+  display: inline-flex;
+  width: 20px;
+  justify-content: space-around;
+  align-items: center;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease; /* Smooth transition for hover effects */
+}
+
+.sc-tree-remove:hover,
+.sc-tree-connections:hover,
+.sc-tree-links:hover {
+  border-color: var(--interactive-accent);
+}
+
+.sc-tree-remove,
+.sc-tree-connections,
+.sc-tree-links {
+  background-color: var(--background-modifier-hover);
+}
+
+/* * Hover state for tree elements that should change text/icon color.
+ * This includes the label and the connection/link icons.
+ */
+.sc-tree-label:hover,
+.sc-tree-connections:hover,
+.sc-tree-links:hover {
+  color: var(--text-accent);
+}
+
 .smart-block-popover {
   z-index: 999999;
 }
