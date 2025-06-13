@@ -15,5 +15,5 @@ export function get_visible_open_files(app) {
       visible_files.add(file);
     }
   }
-  return visible_files;
+  return [...visible_files].map(file => file.path);
 }

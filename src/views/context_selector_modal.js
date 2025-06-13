@@ -219,7 +219,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     let special_items = this.opts.special_items ?? [];
     const visible_open_files = Array.from(get_visible_open_files(this.app))
       .map(f => {
-        return {item: this.env.smart_sources.get(f.path)};
+        return {item: this.env.smart_sources.get(f)};
       })
     ;
     if(visible_open_files.length) {

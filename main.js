@@ -139,7 +139,8 @@ export default class SmartContextPlugin extends Plugin {
       name: 'Copy visible open files (pick link depth)',
       checkCallback: (checking) => {
         const base_items = get_visible_open_files(this.app);
-        if (!base_items.size) return false;
+        console.log('copy-visible-open-files', base_items);
+        if (!base_items.length) return false;
         if (checking) return true;
 
         new this.LinkDepthModal(this, base_items).open();
@@ -152,6 +153,7 @@ export default class SmartContextPlugin extends Plugin {
       name: 'Copy all open files (pick link depth)',
       checkCallback: (checking) => {
         const base_items = get_all_open_file_paths(this.app);
+        console.log('copy-all-open-files', base_items);
         if (!base_items.length) return false;
         if (checking) return true;
 
