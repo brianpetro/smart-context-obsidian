@@ -83,11 +83,6 @@ export async function post_process(ctx, container, opts = {}) {
     setup_collapse_handlers(container); // ⬅ collapsible
   };
 
-  const update_callback = _ctx => {
-    render_tree();
-    opts.update_callback?.(_ctx);
-  };
-
   /* ───────────── Handlers for remove / connections / links ───────────── */
   const attach_item_handlers = () => {
     if (!opts.disable_context_changes) {
@@ -96,7 +91,8 @@ export async function post_process(ctx, container, opts = {}) {
         btn.addEventListener('click', e => {
           const p = e.currentTarget.dataset.path;
           delete ctx.data.context_items[p];
-          update_callback(ctx);
+          render_tree();
+          opts.update_callback?.(ctx);
         });
       });
       container.querySelectorAll('.sc-tree-connections').forEach(btn => {

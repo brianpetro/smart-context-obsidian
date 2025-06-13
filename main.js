@@ -7,7 +7,6 @@ import {
 
 import { SmartFs } from 'smart-file-system/smart_fs.js';
 import { SmartFsObsidianAdapter } from 'smart-file-system/adapters/obsidian.js';
-import { is_text_file } from 'smart-file-system/utils/ignore.js';
 
 import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
 
@@ -110,43 +109,9 @@ export default class SmartContextPlugin extends Plugin {
         const initial_context_items = [];
         const active_file = this.app.workspace.getActiveFile();
         if (active_file) initial_context_items.push(active_file.path);
-        const special_items = this.get_context_selector_special_items();
-        this.open_context_selector_modal({ initial_context_items, special_items });
+        this.open_context_selector_modal({ initial_context_items });
       },
     });
-  }
-
-  get_context_selector_special_items() {
-    const special_items = [];
-    const visible_open_files = Array.from(this.get_visible_open_files())
-      .map(f => {
-        return {item: this.env.smart_sources.get(f.path)};
-      })
-      // .filter(i => {
-      //   if(!i.item) return false;
-      //   if(this.ctx?.data?.context_items[i.item.key]) return false;
-      //   return true;
-      // })
-    ;
-    if(visible_open_files.length) special_items.push({
-      name: 'Visible open files' + (visible_open_files.length ? ` (+${visible_open_files.length})` : ''),
-      items: visible_open_files,
-    });
-    const all_open_files = Array.from(this.get_all_open_file_paths())
-      .map(f => {
-        return {item: this.env.smart_sources.get(f)};
-      })
-      // .filter(i => {
-      //   if(!i.item) return false;
-      //   if(this.ctx?.data?.context_items[i.item.key]) return false;
-      //   return true;
-      // })
-    ;
-    if(all_open_files.length) special_items.push({
-      name: 'All open files' + (all_open_files.length ? ` (+${all_open_files.length})` : ''),
-      items: all_open_files,
-    });
-    return special_items;
   }
 
   /**
@@ -228,76 +193,6 @@ export default class SmartContextPlugin extends Plugin {
     await this.copy_to_clipboard(context, images);
     this.showStatsNotice(stats, `Folder: ${folder.path}`);
   }
-
-  /**
-   * Collect only visible open files.
-   */
-  get_visible_open_files() {
-    const leaves = this.get_all_leaves();
-    const visible_files = new Set();
-    for (const leaf of leaves) {
-      if (!this.is_leaf_visible(leaf)) continue;
-      const file = leaf.view?.file;
-      if (file && is_text_file(file.path)) {
-        visible_files.add(file);
-      }
-    }
-    return visible_files;
-  }
-
-  /**
-   * Collect all open files in the workspace.
-   */
-  get_all_open_file_paths() {
-    const leaves = this.get_all_leaves();
-    const files_set = [];
-    for (const leaf of leaves) {
-      const file_path = leaf.view?.state?.file ?? leaf.view?.file?.path;
-      if (file_path && is_text_file(file_path)) {
-        files_set.push(file_path);
-      }
-    }
-    return files_set;
-  }
-
-  /**
-   * Recursively gather workspace leaves.
-   */
-  get_all_leaves() {
-    const leaves = [];
-    const recurse = (container) => {
-      if (container.children) {
-        for (const child of container.children) {
-          recurse(child);
-        }
-      }
-      if (container.type === 'leaf') {
-        leaves.push(container);
-      }
-    };
-    recurse(this.app.workspace.rootSplit);
-    return leaves;
-  }
-
-
-  /**
-   * Is a leaf the active tab in its parent container?
-   */
-  is_leaf_visible(leaf) {
-    const parent = leaf.parent;
-    if (!parent) {
-      return leaf.containerEl && leaf.containerEl.offsetParent !== null;
-    }
-    if ('activeTab' in parent) {
-      return (
-        parent.activeTab === leaf &&
-        leaf.containerEl &&
-        leaf.containerEl.offsetParent !== null
-      );
-    }
-    return leaf.containerEl && leaf.containerEl.offsetParent !== null;
-  }
-
   /**
    * Copy text to clipboard in a cross-platform manner.
    * On mobile, Node/Electron APIs are unavailable.
