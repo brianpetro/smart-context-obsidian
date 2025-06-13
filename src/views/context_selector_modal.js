@@ -212,9 +212,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
           items: suggestions.filter((s) => s.score),
         });
       }
-      /* sort suggestions according to link‑/mtime priority */
-      const sorted_suggestions = this.sort_context_entries(suggestions);
-      return [...special_items, ...sorted_suggestions];
+      return [...special_items, ...suggestions];
     }
 
     /* default mode – show special items then every un‑selected SmartSource */
