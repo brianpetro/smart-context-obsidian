@@ -1,5 +1,6 @@
 import { FuzzySuggestModal, Keymap } from 'obsidian';
-import { is_text_file } from 'smart-file-system/utils/ignore.js';
+import { get_all_open_file_paths } from '../utils/get_all_open_file_paths.js';
+import { get_visible_open_files } from '../utils/get_visible_open_files.js';
 
 /**
  * @typedef {import('smart-contexts').SmartContext} SmartContext
@@ -218,7 +219,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
 
     /* default mode – show special items then every un‑selected SmartSource */
     let special_items = this.opts.special_items ?? [];
-    const visible_open_files = Array.from(this.get_visible_open_files())
+    const visible_open_files = Array.from(get_visible_open_files(this.app))
       .map(f => {
         return {item: this.env.smart_sources.get(f.path)};
       })
@@ -228,7 +229,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
         name: 'Visible open files' + (visible_open_files.length ? ` (+${visible_open_files.length})` : ''),
         items: visible_open_files,
       });
-      const all_open_files = Array.from(this.get_all_open_file_paths())
+      const all_open_files = Array.from(get_all_open_file_paths(this.app))
         .map(f => {
           return {item: this.env.smart_sources.get(f)};
         })
@@ -314,73 +315,5 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     this.render();
   }
 
-  /**
-   * Collect only visible open files.
-   */
-  get_visible_open_files() {
-    const leaves = this.get_all_leaves();
-    const visible_files = new Set();
-    for (const leaf of leaves) {
-      if (!this.is_leaf_visible(leaf)) continue;
-      const file = leaf.view?.file;
-      if (file && is_text_file(file.path)) {
-        visible_files.add(file);
-      }
-    }
-    return visible_files;
-  }
-
-  /**
-   * Collect all open files in the workspace.
-   */
-  get_all_open_file_paths() {
-    const leaves = this.get_all_leaves();
-    const files_set = [];
-    for (const leaf of leaves) {
-      const file_path = leaf.view?.state?.file ?? leaf.view?.file?.path;
-      if (file_path && is_text_file(file_path)) {
-        files_set.push(file_path);
-      }
-    }
-    return files_set;
-  }
-
-  /**
-   * Recursively gather workspace leaves.
-   */
-  get_all_leaves() {
-    const leaves = [];
-    const recurse = (container) => {
-      if (container.children) {
-        for (const child of container.children) {
-          recurse(child);
-        }
-      }
-      if (container.type === 'leaf') {
-        leaves.push(container);
-      }
-    };
-    recurse(this.app.workspace.rootSplit);
-    return leaves;
-  }
-
-
-  /**
-   * Is a leaf the active tab in its parent container?
-   */
-  is_leaf_visible(leaf) {
-    const parent = leaf.parent;
-    if (!parent) {
-      return leaf.containerEl && leaf.containerEl.offsetParent !== null;
-    }
-    if ('activeTab' in parent) {
-      return (
-        parent.activeTab === leaf &&
-        leaf.containerEl &&
-        leaf.containerEl.offsetParent !== null
-      );
-    }
-    return leaf.containerEl && leaf.containerEl.offsetParent !== null;
-  }
 
 }

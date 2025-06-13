@@ -25,6 +25,8 @@ import { ContextSelectorModal } from './src/views/context_selector_modal.js';
 import { copy_to_clipboard } from './src/utils/copy_to_clipboard.js';
 import { show_stats_notice } from './src/utils/show_stats_notice.js';
 
+import { get_all_open_file_paths } from './src/utils/get_all_open_file_paths.js';
+import { get_visible_open_files } from './src/utils/get_visible_open_files.js';
 
 export default class SmartContextPlugin extends Plugin {
   compiled_smart_env_config = smart_env_config;
@@ -136,7 +138,7 @@ export default class SmartContextPlugin extends Plugin {
       id: 'copy-visible-open-files',
       name: 'Copy visible open files (pick link depth)',
       checkCallback: (checking) => {
-        const base_items = this.get_visible_open_files();
+        const base_items = get_visible_open_files(this.app);
         if (!base_items.size) return false;
         if (checking) return true;
 
@@ -149,7 +151,7 @@ export default class SmartContextPlugin extends Plugin {
       id: 'copy-all-open-files',
       name: 'Copy all open files (pick link depth)',
       checkCallback: (checking) => {
-        const base_items = this.get_all_open_file_paths();
+        const base_items = get_all_open_file_paths(this.app);
         if (!base_items.length) return false;
         if (checking) return true;
 
@@ -185,8 +187,11 @@ export default class SmartContextPlugin extends Plugin {
    * Copy folder contents at depth=0, including non-text files.
    */
   async copy_folder_to_clipboard(folder) {
+    const add_items = this.env.smart_sources.filter({
+      key_starts_with: folder.path,
+    }).map(src => src.key);
     const ctx = this.env.smart_contexts.new_context({}, {
-      add_items: [folder.path]
+      add_items
     });
 
     const { context, stats, images } = await ctx.compile({ link_depth: 0 });
