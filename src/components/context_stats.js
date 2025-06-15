@@ -20,7 +20,7 @@ export async function render(ctx, opts = {}) {
 export async function post_process(ctx, container, opts = {}) {
   const items = get_selected_items(ctx);
   if(!items.length){
-    container.textContent = 'Add context';
+    // container.textContent = 'Add context';
     return;
   }
   const { stats } = await ctx.compile({ link_depth: 0, calculating: true });

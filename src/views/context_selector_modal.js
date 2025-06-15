@@ -200,15 +200,15 @@ export class ContextSelectorModal extends FuzzySuggestModal {
         const depth_2 = suggestions.filter((s) => s.depth <= 2);
         const depth_3 = suggestions.filter((s) => s.depth <= 3);
         if (depth_1.length)
-          special_items.push({ name: 'Add all to depth 1', items: depth_1 });
+          special_items.push({ name: `Add all to depth 1 (${depth_1.length})`, items: depth_1 });
         if (depth_2.length)
-          special_items.push({ name: 'Add all to depth 2', items: depth_2 });
+          special_items.push({ name: `Add all to depth 2 (${depth_2.length})`, items: depth_2 });
         if (depth_3.length)
-          special_items.push({ name: 'Add all to depth 3', items: depth_3 });
+          special_items.push({ name: `Add all to depth 3 (${depth_3.length})`, items: depth_3 });
       }
       if (suggestions.some((s) => s.score)) {
         special_items.push({
-          name: 'Add all connections',
+          name: `Add all connections (${all_connections.length})`,
           items: suggestions.filter((s) => s.score),
         });
       }
@@ -224,7 +224,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     ;
     if(visible_open_files.length) {
       special_items.push({
-        name: 'Visible open files' + (visible_open_files.length ? ` (+${visible_open_files.length})` : ''),
+        name: 'Visible open files',
         items: visible_open_files,
       });
       const all_open_files = Array.from(get_all_open_file_paths(this.app))
@@ -233,19 +233,25 @@ export class ContextSelectorModal extends FuzzySuggestModal {
         })
       ;
       if(all_open_files.length && visible_open_files.length !== all_open_files.length) special_items.push({
-        name: 'All open files' + (all_open_files.length ? ` (+${all_open_files.length})` : ''),
+        name: 'All open files',
         items: all_open_files,
       });
     }
-    special_items = special_items.filter((i) => {
-      if (i.items) {
-        i.items = i.items.filter(
-          (item) => item.item && !this.ctx?.data?.context_items[item.item.key]
-        );
-        return i.items.length > 0;
-      }
-      return true;
-    });
+    special_items = special_items
+      .map((i) => {
+        if (i.items) {
+          i.items = i.items.filter(
+            (item) => item.item && !this.ctx?.data?.context_items[item.item.key]
+          );
+          i.name = `${i.name} (+${i.items.length})`;
+        }
+        return i;
+      })
+      .filter((i) => {
+        if (i.items) return i.items.length > 0;
+        return true;
+      })
+    ;
 
     const unselected = Object.values(this.env.smart_sources.items).filter(
       (src) => !this.ctx?.data?.context_items[src.key]

@@ -108,10 +108,12 @@ export default class SmartContextPlugin extends Plugin {
       id: "open-context-select-modal",
       name: "Context selector",
       callback: () => {
-        const initial_context_items = [];
-        const active_file = this.app.workspace.getActiveFile();
-        if (active_file) initial_context_items.push(active_file.path);
-        this.open_context_selector_modal({ initial_context_items });
+        // disabled automatically adding current file to context (may re-add in future with setting toggle)
+        // const initial_context_items = [];
+        // const active_file = this.app.workspace.getActiveFile();
+        // if (active_file) initial_context_items.push(active_file.path);
+        // this.open_context_selector_modal({ initial_context_items });
+        this.open_context_selector_modal();
       },
     });
   }
