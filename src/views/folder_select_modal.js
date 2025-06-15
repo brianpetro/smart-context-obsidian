@@ -10,6 +10,9 @@ export class FolderSelectModal extends SuggestModal {
   constructor(app, onChoose) {
     super(app);
     this.onChoose = onChoose;
+    this.setInstructions([
+      { command: 'Enter', purpose: "Select a folder to copy its contents to the clipboard." }
+    ]);
   }
 
   getAllFolders(rootFolder, folders = []) {
