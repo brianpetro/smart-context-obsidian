@@ -63,7 +63,7 @@ Read the [Getting Started Guide](https://docs.smartconnections.app/Smart-Context
   Live stats help you stay under model limits before you hit *Copy*.
 
 * **Dataview content inclusion**  
-  Smart Context runs Dataview queries inside your notes, embeds the rendered list/table in the copied context, and—when **link depth > 0**—also follows any links discovered within those rendered results.
+  Smart Context runs Dataview queries inside your notes, embeds the rendered list/table in the copied context, and—when **link depth > 0**—also follows any links discovered within those rendered results.
 
 ---
 

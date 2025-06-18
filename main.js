@@ -13,13 +13,11 @@ import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
 import { LinkDepthModal } from './src/views/link_depth_modal.js';
 
 import { SmartContexts, SmartContext, smart_contexts } from 'smart-contexts';
-// import { AjsonMultiFileCollectionDataAdapter } from 'smart-collections/adapters/ajson_multi_file.js';
 import { SmartContextSettingTab } from './settings.js';
 
 import { smart_env_config } from './smart_env.config.js';
 
-import { FolderSelectModal } from "./src/views/folder_select_modal.js";
-
+import { FolderSelectModal } from './src/views/folder_select_modal.js';
 import { ContextSelectorModal } from './src/views/context_selector_modal.js';
 
 import { copy_to_clipboard } from './src/utils/copy_to_clipboard.js';
@@ -28,14 +26,21 @@ import { show_stats_notice } from './src/utils/show_stats_notice.js';
 import { get_all_open_file_paths } from './src/utils/get_all_open_file_paths.js';
 import { get_visible_open_files } from './src/utils/get_visible_open_files.js';
 
+import { StoryModal } from 'obsidian-smart-env/modals/story.js';  // ← NEW
+
+/**
+ * Smart Context (Obsidian) – copy & curate context for AI tools.
+ *
+ * @extends Plugin
+ */
 export default class SmartContextPlugin extends Plugin {
+  /* ------------------------------------------------------------------ */
+  /*  Smart‑Env registration                                             */
+  /* ------------------------------------------------------------------ */
   compiled_smart_env_config = smart_env_config;
   ContextSelectorModal = ContextSelectorModal;
   LinkDepthModal = LinkDepthModal;
-  
-  /**
-   * Plugin-level config for hooking up "smart_env" modules.
-   */
+
   smart_env_config = {
     collections: {
       smart_contexts,
@@ -51,76 +56,117 @@ export default class SmartContextPlugin extends Plugin {
     },
   };
 
+  /* ------------------------------------------------------------------ */
+  /*  Lifecycle                                                         */
+  /* ------------------------------------------------------------------ */
   onload() {
-    console.log('onload', this.compiled_smart_env_config);
-    // Initialize environment after Obsidian is fully ready
-    SmartEnv.create(this, merge_env_config(this.compiled_smart_env_config, this.smart_env_config));
-    // Initialize once the workspace (layout) is ready
     this.app.workspace.onLayoutReady(this.initialize.bind(this));
+    SmartEnv.create(this, merge_env_config(
+      this.compiled_smart_env_config,
+      this.smart_env_config,
+    ));
   }
 
-  onunload() {
-    // Release resources, no custom onUnload code needed if we register all events/commands.
-    this.env.unload_main(this);
-  }
+  onunload() { this.env.unload_main(this); }
 
+  /**
+   * Top‑level bootstrap after Obsidian workspace is ready.
+   * Handles first‑run onboarding, command registration, menus, etc.
+   *
+   * @returns {Promise<void>}
+   */
   async initialize() {
+    await this.load_new_user_state();                 // ← NEW
     await SmartEnv.wait_for({ loaded: true });
 
     this.register_commands();
     this.register_context_selector_modal_command();
+    this.register_folder_menu();
 
-    // Right-click menu for folders
-    this.registerEvent(
-      this.app.workspace.on('file-menu', (menu, file) => {
-        if (file instanceof TFolder) {
-          menu.addItem((item) => {
-            item
-              .setTitle('Copy folder contents to clipboard')
-              .setIcon('documents')
-              .onClick(async () => {
-                await this.copy_folder_to_clipboard(file);
-              });
-          });
-        }
-      })
-    );
-
-    // Settings tab
     this.addSettingTab(new SmartContextSettingTab(this.app, this));
+
+    /* ── First‑run onboarding ───────────────────────────────────────── */
+    if (this.is_new_user()) {                         // ← NEW
+      setTimeout(() => {
+        StoryModal.open(this, {
+          title: 'Getting Started With Smart Context',
+          url: 'https://smartconnections.app/story/smart-context-getting-started/?utm_source=sc-new-user',
+        });
+      }, 1000);
+      await this.save_installed_at(Date.now());
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  New‑user state (mirrors sc‑obsidian)                              */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Reads persisted install date (or migrates legacy localStorage flag).
+   *
+   * @private
+   * @returns {Promise<void>}
+   */
+  async load_new_user_state() {
+    this._installed_at = null;
+    const data = await this.loadData();
+    if (data && typeof data.installed_at !== 'undefined') {
+      this._installed_at = data.installed_at;
+    }
   }
 
   /**
-   * Helper to return a path relative to parent_path.
+   * Persists installation timestamp.
+   *
+   * @private
+   * @param {number} ts
    */
+  async save_installed_at(ts) {
+    this._installed_at = ts;
+    const data = (await this.loadData()) ?? {};
+    data.installed_at = ts;
+    await this.saveData(data);
+  }
+
+  /**
+   * @returns {boolean}
+   */
+  is_new_user() { return !this._installed_at; }
+
+  /* ------------------------------------------------------------------ */
+  /*  UI helpers & menus                                                */
+  /* ------------------------------------------------------------------ */
+  register_folder_menu() {
+    this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
+      if (!(file instanceof TFolder)) return;
+      menu.addItem((item) => {
+        item
+          .setTitle('Copy folder contents to clipboard')
+          .setIcon('documents')
+          .onClick(async () => { await this.copy_folder_to_clipboard(file); });
+      });
+    }));
+  }
+
   get_relative_path(child_path, parent_path) {
     if (child_path === parent_path) return '';
-    if (!child_path.startsWith(parent_path)) {
-      return child_path;
-    }
+    if (!child_path.startsWith(parent_path)) return child_path;
     let rel = child_path.slice(parent_path.length);
     if (rel.startsWith('/')) rel = rel.slice(1);
     return rel;
   }
 
+  /* ------------------------------------------------------------------ */
+  /*  Commands                                                          */
+  /* ------------------------------------------------------------------ */
   register_context_selector_modal_command() {
     this.addCommand({
-      id: "open-context-select-modal",
-      name: "Context selector",
-      callback: () => {
-        // disabled automatically adding current file to context (may re-add in future with setting toggle)
-        // const initial_context_items = [];
-        // const active_file = this.app.workspace.getActiveFile();
-        // if (active_file) initial_context_items.push(active_file.path);
-        // this.open_context_selector_modal({ initial_context_items });
-        this.open_context_selector_modal();
-      },
+      id: 'open-context-select-modal',
+      name: 'Context selector',
+      callback: () => { this.open_context_selector_modal(); },
     });
   }
 
-  /**
-   * Legacy commands
-   */
   register_commands() {
     // Command: copy current note
     this.addCommand({
@@ -172,9 +218,24 @@ export default class SmartContextPlugin extends Plugin {
         }).open();
       },
     });
+
+    /* ── Getting‑Started command ────────────────────────────────────── */
+    this.addCommand({
+      id: 'show-getting-started',
+      name: 'Show getting started',
+      callback: () => {
+        StoryModal.open(this, {
+          title: 'Getting Started With Smart Context',
+          url: 'https://smartconnections.app/story/smart-context-getting-started/?utm_source=sc-command',
+        });
+      },
+    });
   }
 
-  open_context_selector_modal(opts={}) {
+  /* ------------------------------------------------------------------ */
+  /*  Context selector helpers                                          */
+  /* ------------------------------------------------------------------ */
+  open_context_selector_modal(opts = {}) {
     this.close_context_selector_modal();
     this.context_selector_modal = new this.ContextSelectorModal(this, opts);
     this.context_selector_modal.open(opts);
@@ -185,33 +246,22 @@ export default class SmartContextPlugin extends Plugin {
     this.context_selector_modal = null;
   }
 
-  /**
-   * Copy folder contents at depth=0, including non-text files.
-   */
+  /* ------------------------------------------------------------------ */
+  /*  Clipboard actions                                                 */
+  /* ------------------------------------------------------------------ */
   async copy_folder_to_clipboard(folder) {
-    const add_items = this.env.smart_sources.filter({
-      key_starts_with: folder.path,
-    }).map(src => src.key);
-    const ctx = this.env.smart_contexts.new_context({}, {
-      add_items
-    });
+    const add_items = this.env.smart_sources
+      .filter({ key_starts_with: folder.path })
+      .map((src) => src.key);
 
+    const ctx = this.env.smart_contexts.new_context({}, { add_items });
     const { context, stats, images } = await ctx.compile({ link_depth: 0 });
+
     await this.copy_to_clipboard(context, images);
     this.showStatsNotice(stats, `Folder: ${folder.path}`);
   }
-  /**
-   * Copy text to clipboard in a cross-platform manner.
-   * On mobile, Node/Electron APIs are unavailable.
-   */
-  async copy_to_clipboard(text) {
-    await copy_to_clipboard(text);
-  }
 
-  /**
-   * Show user-facing notice summarizing stats.
-   */
-  showStatsNotice(stats, contextMsg) {
-    show_stats_notice(stats, contextMsg);
-  }
+  async copy_to_clipboard(text) { await copy_to_clipboard(text); }
+
+  showStatsNotice(stats, contextMsg) { show_stats_notice(stats, contextMsg); }
 }
