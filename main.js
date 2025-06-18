@@ -173,7 +173,8 @@ export default class SmartContextPlugin extends Plugin {
       id: 'copy-current-note-with-depth',
       name: 'Copy current note to clipboard',
       checkCallback: (checking) => {
-        const base_items = [this.app.workspace.getActiveFile()];
+        const active_file = this.app.workspace.getActiveFile();
+        const base_items = [{key: active_file.path, path: active_file.path}];
         if (!base_items.length || !base_items[0]) return false;
         if (checking) return true;
 
