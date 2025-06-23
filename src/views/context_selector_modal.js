@@ -207,9 +207,10 @@ export class ContextSelectorModal extends FuzzySuggestModal {
           special_items.push({ name: `Add all to depth 3 (${depth_3.length})`, items: depth_3 });
       }
       if (suggestions.some((s) => s.score)) {
+        const all_connections = suggestions.filter((s) => s.score);
         special_items.push({
           name: `Add all connections (${all_connections.length})`,
-          items: suggestions.filter((s) => s.score),
+          items: all_connections,
         });
       }
       return [...special_items, ...suggestions];
