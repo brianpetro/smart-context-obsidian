@@ -36,6 +36,7 @@ export async function post_process(ctx, container, opts = {}) {
   const body = container.querySelector('.sc-context-body');
   const footer = container.querySelector('.sc-context-footer');
 
+  const opts_update_callback = opts.update_callback || (() => {});
   /**
    * Re‑renders both the tree and the stats components whenever the context
    * changes (e.g. an item is removed or added).
@@ -59,8 +60,10 @@ export async function post_process(ctx, container, opts = {}) {
 
     // Bubble the change upward so parent components (e.g. chat builders)
     // can react to the updated context.
-    opts.update_callback?.(_ctx);
+    // opts.update_callback?.(_ctx);
+    opts_update_callback(_ctx);
   };
+  opts.update_callback = update_callback; //  ensure we use the same callback in extended post_process
 
   /* ─────────────────────────── Initial render ────────────────────────── */
   const tree_container = await env.render_component('context_tree', ctx, {
