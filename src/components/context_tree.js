@@ -70,9 +70,12 @@ export async function render(ctx, opts = {}) {
 export async function post_process(ctx, container, opts = {}) {
   const env = ctx?.env;
   const plugin =
-    env?.smart_context_plugin ||
+    env?.smart_context_plugin || // uses early-release version if available
     env?.smart_chat_plugin ||
-    env?.smart_connections_plugin;
+    env?.smart_connections_plugin ||
+    env?.plugin
+  ;
+  // plugin.ContextSelectorModal is early-release if available
   const ContextSelectorModalClass = plugin.ContextSelectorModal || ContextSelectorModal;
 
   const render_tree = () => {
