@@ -57,7 +57,29 @@ export function build_path_tree(selected_items = []) {
     }
 
     // ── 3. Split the remaining file/folder path on "/" ───────────────────────
-    const segments = remainder ? remainder.split("/") : [];
+    // Prevent splitting inside wikilinks [[...]]
+    const segments = [];
+    if (remainder) {
+      let seg = '';
+      let in_wikilink = false;
+      for (let i = 0; i < remainder.length; i++) {
+        if (!in_wikilink && remainder.slice(i, i + 2) === '[[') {
+          in_wikilink = true;
+          seg += '[[';
+          i++;
+        } else if (in_wikilink && remainder.slice(i, i + 2) === ']]') {
+          in_wikilink = false;
+          seg += ']]';
+          i++;
+        } else if (!in_wikilink && remainder[i] === '/') {
+          segments.push(seg);
+          seg = '';
+        } else {
+          seg += remainder[i];
+        }
+      }
+      if (seg) segments.push(seg);
+    }
 
     // ── 4. Append the block-specific segments (if present) ───────────────────
     if (block_key_seg) segments.push(block_key_seg);
