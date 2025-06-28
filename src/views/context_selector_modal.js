@@ -11,7 +11,9 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     const plugin =
       env.smart_contexts_plugin ||
       env.smart_chat_plugin ||
-      env.smart_connections_plugin;
+      env.smart_connections_plugin ||
+      env.plugin
+    ;
     if (!env.context_selector_modal) {
       env.context_selector_modal = new this(plugin, opts);
     }
