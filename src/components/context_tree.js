@@ -99,6 +99,9 @@ export async function post_process(ctx, container, opts = {}) {
         });
       });
       container.querySelectorAll('.sc-tree-connections').forEach(btn => {
+        if (!btn.dataset.path) return;
+        const target = ctx.get_ref(btn.dataset.path);
+        if (!target) return;
         const icon = getIcon('smart-connections');
         btn.appendChild(icon);
         btn.addEventListener('click', async e => {
