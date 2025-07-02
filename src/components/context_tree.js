@@ -76,6 +76,7 @@ export async function post_process(ctx, container, opts = {}) {
     env?.plugin
   ;
   // plugin.ContextSelectorModal is early-release if available
+  // @deprecated 2025-07-02 handling (should be handled in static open method)
   const ContextSelectorModalClass = plugin.ContextSelectorModal || ContextSelectorModal;
 
   const render_tree = () => {

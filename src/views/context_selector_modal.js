@@ -9,13 +9,17 @@ import { get_visible_open_files } from '../utils/get_visible_open_files.js';
 export class ContextSelectorModal extends FuzzySuggestModal {
   static open(env, opts) {
     const plugin =
-      env.smart_contexts_plugin ||
+      env.smart_context_plugin ||
       env.smart_chat_plugin ||
       env.smart_connections_plugin ||
       env.plugin
     ;
     if (!env.context_selector_modal) {
-      env.context_selector_modal = new this(plugin, opts);
+      if(env.smart_context_plugin.ContextSelectorModal){
+        // handle early-release ContextSelectorModal
+        env.context_selector_modal = new env.smart_context_plugin.ContextSelectorModal(plugin, opts);
+      }
+      else env.context_selector_modal = new this(plugin, opts);
     }
     env.context_selector_modal.open(opts);
     return env.context_selector_modal;
