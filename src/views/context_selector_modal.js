@@ -66,7 +66,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
   /**
    * Sort an array of context entries according to:
    *   – priority 0 → item has in/out‑links with the current active note
-   *   – priority 1 → item modified within the last 24 h
+   *   – priority 1 → item modified within the last 24 h
    *   – priority 2 → all remaining items
    * Within each priority group items are ordered alphabetically.
    *
