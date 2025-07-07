@@ -140,11 +140,13 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       'context_builder',
       ctx,
       {
+        ...this.opts,
         update_callback: (_ctx) => {
+          this.ctx = _ctx;
+          this.opts.ctx = _ctx;
           this.updateSuggestions();
           this.opts.update_callback?.(_ctx);
         },
-        ...this.opts,
       }
     );
     builder_container.classList.add('modal');
