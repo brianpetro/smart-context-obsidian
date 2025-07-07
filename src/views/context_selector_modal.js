@@ -15,7 +15,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       env.plugin
     ;
     if (!env.context_selector_modal) {
-      if(env.smart_context_plugin.ContextSelectorModal){
+      if(env.smart_context_plugin?.ContextSelectorModal){
         // handle early-release ContextSelectorModal
         env.context_selector_modal = new env.smart_context_plugin.ContextSelectorModal(plugin, opts);
       }
