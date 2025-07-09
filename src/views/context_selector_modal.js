@@ -334,8 +334,23 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     }
   }
 
+  /**
+   * Add a container to the list of opener containers.
+   * This is used to send context changed events when the modal is closed.
+   * @param {HTMLElement|NodeList|Array<HTMLElement>|function} container - The container to add.
+   * If a function is passed, it will be called to get the container(s).
+   */
   add_opener_container(container) {
     if (!this.opener_containers) this.opener_containers = [];
+    if (typeof container === 'function') container = container();
+    if (Array.isArray(container) || container instanceof NodeList) {
+      container.forEach((c) => this.add_opener_container(c));
+      return;
+    }
+    if(!(container instanceof HTMLElement)) {
+      console.warn('ContextSelectorModal: opener_container must be an HTMLElement, received:', container);
+      return;
+    }
     if (!this.opener_containers.includes(container)) {
       this.opener_containers.push(container);
     }
