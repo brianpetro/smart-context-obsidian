@@ -163,7 +163,7 @@ export default class SmartContextPlugin extends Plugin {
     this.addCommand({
       id: 'open-context-select-modal',
       name: 'Context selector',
-      callback: () => { this.open_context_selector_modal(); },
+      callback: () => { ContextSelectorModal.open(this.env); },
     });
   }
 
@@ -233,19 +233,6 @@ export default class SmartContextPlugin extends Plugin {
     });
   }
 
-  /* ------------------------------------------------------------------ */
-  /*  Context selector helpers                                          */
-  /* ------------------------------------------------------------------ */
-  open_context_selector_modal(opts = {}) {
-    this.close_context_selector_modal();
-    this.context_selector_modal = new this.ContextSelectorModal(this, opts);
-    this.context_selector_modal.open(opts);
-    return this.context_selector_modal;
-  }
-  close_context_selector_modal() {
-    if (this.context_selector_modal) this.context_selector_modal.close(true);
-    this.context_selector_modal = null;
-  }
 
   /* ------------------------------------------------------------------ */
   /*  Clipboard actions                                                 */

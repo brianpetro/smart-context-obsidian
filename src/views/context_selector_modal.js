@@ -1,6 +1,7 @@
 import { FuzzySuggestModal, Keymap } from 'obsidian';
 import { get_all_open_file_paths } from '../utils/get_all_open_file_paths.js';
 import { get_visible_open_files } from '../utils/get_visible_open_files.js';
+import { send_context_changed_event } from '../utils/send_context_changed_event.js';
 
 /**
  * @typedef {import('smart-contexts').SmartContext} SmartContext
@@ -51,10 +52,13 @@ export class ContextSelectorModal extends FuzzySuggestModal {
 
     /** tracks whether the user held the Mod key when confirming a suggestion */
     this.mod_key_was_held = false;
+    this.containerEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') this.close(true);
+    });
+
     this.modalEl.addEventListener('keydown', (e) => {
       this.mod_key_was_held = Keymap.isModifier(e, 'Mod');
       if (e.key === 'Enter') this.selectActiveSuggestion(e);
-      if (e.key === 'Escape') this.close(true);
     });
     this.resultContainerEl.addEventListener('click', (e) => {
       this.mod_key_was_held = Keymap.isModifier(e, 'Mod');
@@ -118,6 +122,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
 
   async open(opts = this.opts) {
     if (opts.ctx) this.ctx = opts.ctx;
+    if (opts.opener_container) this.add_opener_container(opts.opener_container);
     this.opts = opts;
     await this.render();
     super.open();
@@ -141,14 +146,17 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       ctx,
       {
         ...this.opts,
-        update_callback: (_ctx) => {
-          this.ctx = _ctx;
-          this.opts.ctx = _ctx;
-          this.updateSuggestions();
-          this.opts.update_callback?.(_ctx);
-        },
       }
     );
+    // add listener to context builder container for custom events
+    builder_container.addEventListener('smart-env:context-changed', (e) => {
+      const updated_ctx = e.detail.context;
+      this.ctx = updated_ctx;
+      this.opts.ctx = updated_ctx;
+      this.updateSuggestions();
+      this.render();
+    });
+
     builder_container.classList.add('modal');
     const actions_el = builder_container.querySelector('.sc-context-actions');
     if (ctx.has_context_items) {
@@ -169,7 +177,6 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       actions_el.appendChild(copy_btn);
     }
     if (
-      this.opts.update_callback &&
       !actions_el.querySelector('button[data-done="true"]')
     ) {
       const done_btn = document.createElement('button');
@@ -319,7 +326,19 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     if (should_close) super.close();
   }
   onClose(should_close = false) {
-    this.opts.update_callback?.(this.ctx);
+    while(this.opener_containers?.length) {
+      const container = this.opener_containers.pop();
+      if (container.isConnected) {
+        send_context_changed_event(container, this.ctx);
+      }
+    }
+  }
+
+  add_opener_container(container) {
+    if (!this.opener_containers) this.opener_containers = [];
+    if (!this.opener_containers.includes(container)) {
+      this.opener_containers.push(container);
+    }
   }
 
   load_suggestions(suggestions) {

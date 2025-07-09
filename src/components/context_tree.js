@@ -5,6 +5,7 @@ import { open_note } from 'obsidian-smart-env/utils/open_note.js';
 import { getIcon } from 'obsidian';
 import { ContextSelectorModal } from '../views/context_selector_modal.js';
 import { register_block_hover_popover } from 'obsidian-smart-env/utils/register_block_hover_popover.js';
+import {send_context_updated_event} from '../utils/send_context_updated_event.js';
 
 /* ─────────────────────────── Pure helpers ─────────────────────────── */
 
@@ -75,9 +76,7 @@ export async function post_process(ctx, container, opts = {}) {
     env?.smart_connections_plugin ||
     env?.plugin
   ;
-  // plugin.ContextSelectorModal is early-release if available
-  // @deprecated 2025-07-02 handling (should be handled in static open method)
-  const ContextSelectorModalClass = plugin.ContextSelectorModal || ContextSelectorModal;
+
 
   const render_tree = () => {
     const items = get_selected_items(ctx);
@@ -86,6 +85,9 @@ export async function post_process(ctx, container, opts = {}) {
     attach_item_handlers();
     setup_collapse_handlers(container); // ⬅ collapsible
   };
+  container.addEventListener('smart-env:context-updated', e => {
+    render_tree();
+  });
 
   /* ───────────── Handlers for remove / connections / links ───────────── */
   const attach_item_handlers = () => {
@@ -95,8 +97,7 @@ export async function post_process(ctx, container, opts = {}) {
         btn.addEventListener('click', e => {
           const p = e.currentTarget.dataset.path;
           delete ctx.data.context_items[p];
-          render_tree();
-          opts.update_callback?.(ctx);
+          send_context_updated_event(container);
         });
       });
       container.querySelectorAll('.sc-tree-connections').forEach(btn => {
@@ -109,9 +110,9 @@ export async function post_process(ctx, container, opts = {}) {
           const p = e.currentTarget.dataset.path;
           const target = ctx.get_ref(p);
           const connections = await target.find_connections();
-          const modal = ContextSelectorModalClass.open(env, {
+          const modal = ContextSelectorModal.open(env, {
             ctx,
-            update_callback: opts.update_callback
+            opener_container: container,
           });
           modal.load_suggestions(connections);
         });
@@ -121,7 +122,7 @@ export async function post_process(ctx, container, opts = {}) {
         const target = ctx.get_ref(btn.dataset.path);
         if (!target) return;
         const links = get_links_to_depth(target, 3);
-        if (!links.length) return;
+        if (!links.length) return btn.style.display = 'none';
         const icon = getIcon('link');
         btn.appendChild(icon);
         btn.addEventListener('click', () => {
@@ -129,9 +130,9 @@ export async function post_process(ctx, container, opts = {}) {
           const target = ctx.get_ref(p);
           if (!target) return;
           const links = get_links_to_depth(target, 3);
-          const modal = ContextSelectorModalClass.open(env, {
+          const modal = ContextSelectorModal.open(env, {
             ctx,
-            update_callback: opts.update_callback
+            opener_container: container,
           });
           modal.load_suggestions(links);
         });

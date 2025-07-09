@@ -36,39 +36,20 @@ export async function post_process(ctx, container, opts = {}) {
   const body = container.querySelector('.sc-context-body');
   const footer = container.querySelector('.sc-context-footer');
 
-  const opts_update_callback = opts.update_callback || (() => {});
-  /**
-   * Re‑renders both the tree and the stats components whenever the context
-   * changes (e.g. an item is removed or added).
-   * Propagates the change back up via opts.update_callback, if provided.
-   *
-   * @param {import('smart-contexts').SmartContext} _ctx
-   */
-  const update_callback = async (_ctx) => {
-    // ── Tree ────────────────────────────────────────────────────────────
-    const new_tree = await env.render_component('context_tree', _ctx, {
+  container.addEventListener('smart-env:context-updated', async (e) => {
+    const new_tree = await env.render_component('context_tree', ctx, {
       ...opts,
-      update_callback,
     });
     this.empty(body);
     body.appendChild(new_tree);
-
-    // ── Stats ───────────────────────────────────────────────────────────
-    const new_stats = await env.render_component('context_stats', _ctx, opts);
+    const new_stats = await env.render_component('context_stats', ctx, opts);
     this.empty(footer);
     footer.appendChild(new_stats);
-
-    // Bubble the change upward so parent components (e.g. chat builders)
-    // can react to the updated context.
-    // opts.update_callback?.(_ctx);
-    opts_update_callback(_ctx);
-  };
-  opts.update_callback = update_callback; //  ensure we use the same callback in extended post_process
+  });
 
   /* ─────────────────────────── Initial render ────────────────────────── */
   const tree_container = await env.render_component('context_tree', ctx, {
     ...opts,
-    update_callback,
   });
   this.empty(body);
   body.appendChild(tree_container);
