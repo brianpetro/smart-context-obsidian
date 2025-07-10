@@ -126,6 +126,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     this.opts = opts;
     await this.render();
     super.open();
+    this.focus_input();
   }
 
   async render() {
