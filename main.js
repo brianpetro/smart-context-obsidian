@@ -174,6 +174,7 @@ export default class SmartContextPlugin extends Plugin {
       name: 'Copy current note to clipboard',
       checkCallback: (checking) => {
         const active_file = this.app.workspace.getActiveFile();
+        if(!active_file) return false;
         const base_items = [{key: active_file.path, path: active_file.path}];
         if (!base_items.length || !base_items[0]) return false;
         if (checking) return true;
