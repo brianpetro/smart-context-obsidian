@@ -155,10 +155,11 @@ export async function post_process(ctx, container, opts = {}) {
         register_block_hover_popover(li, label, env, item_path, plugin);
       } else {
         label.addEventListener('mouseover', async ev => {
+          // not working in context selector modal (works in Item Views)
           plugin?.app?.workspace.trigger('hover-link', {
             event: ev,
             source: 'smart-context-tree',
-            hoverParent: label,
+            hoverParent: label.parentElement,
             targetEl: label,
             linktext: item_path
           });
