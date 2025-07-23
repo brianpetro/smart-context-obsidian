@@ -6,6 +6,7 @@ import { getIcon } from 'obsidian';
 import { ContextSelectorModal } from '../views/context_selector_modal.js';
 import { register_block_hover_popover } from 'obsidian-smart-env/utils/register_block_hover_popover.js';
 import {send_context_updated_event} from '../utils/send_context_updated_event.js';
+import { is_image_path } from '../utils/is_image_path.js';
 
 /* ─────────────────────────── Pure helpers ─────────────────────────── */
 
@@ -150,6 +151,21 @@ export async function post_process(ctx, container, opts = {}) {
       label.dataset.path = item_path;
       label.setAttribute('draggable', 'true');
       label.title = item_path;
+
+      /* Thumbnail preview for image files */
+      li.querySelector('img.sc-tree-thumb')?.remove();
+      if (is_image_path(item_path)) {
+        const file = plugin?.app?.metadataCache?.getFirstLinkpathDest(
+          item_path.split('#')[0],
+          ''
+        );
+        if (file) {
+          const thumb = document.createElement('img');
+          thumb.className = 'sc-tree-thumb';
+          thumb.src = plugin.app.vault.getResourcePath(file);
+          label.prepend(thumb);
+        }
+      }
 
       if (item_path.includes('{')) {
         register_block_hover_popover(li, label, env, item_path, plugin);

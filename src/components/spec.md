@@ -4,6 +4,7 @@
 Interactive tree view for current SmartContext items.
 - Collapsible directories, click to open notes.
 - Emits `smart-env:context-updated` events when items change.
+- Shows image thumbnails for image files.
 
 ## context_stats
 Displays estimated character and token counts for selected items.
