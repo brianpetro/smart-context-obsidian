@@ -2,6 +2,7 @@ import { FuzzySuggestModal, Keymap } from 'obsidian';
 import { get_all_open_file_paths } from '../utils/get_all_open_file_paths.js';
 import { get_visible_open_files } from '../utils/get_visible_open_files.js';
 import { send_context_changed_event } from '../utils/send_context_changed_event.js';
+import { get_selected_text } from '../utils/get_selected_text.js';
 
 /**
  * @typedef {import('smart-contexts').SmartContext} SmartContext
@@ -117,6 +118,21 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     this.ctx = this.env.smart_contexts.new_context({}, {
       add_items: this.opts.initial_context_items,
     });
+
+    const selected = get_selected_text(this.app);
+    if (selected) {
+      // Middle-truncate selected text to max 70 chars for the key
+      const maxLen = 70;
+      let truncated = selected;
+      if (selected.length > maxLen) {
+        const half = Math.floor((maxLen - 3) / 2);
+        truncated = selected.slice(0, half) + '...' + selected.slice(selected.length - half);
+      }
+      const key = `inline:${truncated}`;
+      if (!this.ctx.data.context_items[key]) {
+        this.ctx.data.context_items[key] = { content: selected };
+      }
+    }
     return this.ctx;
   }
 
