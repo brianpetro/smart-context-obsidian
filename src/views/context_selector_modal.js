@@ -119,20 +119,6 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       add_items: this.opts.initial_context_items,
     });
 
-    const selected = get_selected_text(this.app);
-    if (selected) {
-      // Middle-truncate selected text to max 70 chars for the key
-      const maxLen = 70;
-      let truncated = selected;
-      if (selected.length > maxLen) {
-        const half = Math.floor((maxLen - 3) / 2);
-        truncated = selected.slice(0, half) + '...' + selected.slice(selected.length - half);
-      }
-      const key = `inline:${truncated}`;
-      if (!this.ctx.data.context_items[key]) {
-        this.ctx.data.context_items[key] = { content: selected };
-      }
-    }
     return this.ctx;
   }
 
@@ -158,6 +144,21 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     }
 
     const ctx = this.ensure_ctx();
+    // handle highlighted text in the input
+    const selected = get_selected_text(this.app);
+    if (selected) {
+      // Middle-truncate selected text to max 70 chars for the key
+      const maxLen = 70;
+      let truncated = selected.replace(/[^A-Za-z0-9]/gm, ' ');
+      if (selected.length > maxLen) {
+        const half = Math.floor((maxLen - 3) / 2);
+        truncated = selected.slice(0, half) + '...' + selected.slice(selected.length - half);
+      }
+      const key = `inline:${truncated}`;
+      if (!this.ctx.data.context_items[key]) {
+        this.ctx.data.context_items[key] = { content: selected };
+      }
+    }
     const builder_container = await this.env.render_component(
       'context_builder',
       ctx,
