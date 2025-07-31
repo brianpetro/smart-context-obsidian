@@ -3,6 +3,7 @@ import { get_all_open_file_paths } from '../utils/get_all_open_file_paths.js';
 import { get_visible_open_files } from '../utils/get_visible_open_files.js';
 import { send_context_changed_event } from '../utils/send_context_changed_event.js';
 import { get_selected_text } from '../utils/get_selected_text.js';
+import { get_block_suggestions } from '../utils/get_block_suggestions.js';
 
 /**
  * @typedef {import('smart-contexts').SmartContext} SmartContext
@@ -60,6 +61,11 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     this.modalEl.addEventListener('keydown', (e) => {
       this.mod_key_was_held = Keymap.isModifier(e, 'Mod');
       if (e.key === 'Enter') this.selectActiveSuggestion(e);
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        this.arrow_right = true;
+        this.selectActiveSuggestion(e);
+      }
     });
     this.resultContainerEl.addEventListener('click', (e) => {
       this.mod_key_was_held = Keymap.isModifier(e, 'Mod');
@@ -310,13 +316,26 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     return item.path;
   }
 
-  onChooseSuggestion(selection) {
+  async onChooseSuggestion(selection) {
     if (selection.item.name === 'Back') {
       this.suggestions = null;
       this.updateSuggestions();
       return;
     }
     this.ensure_ctx();
+    if (this.arrow_right) {
+      console.log({selection});
+      this.arrow_right = false;
+      if (selection.item.items) {
+        this.load_suggestions(selection.item.items);
+        return;
+      }
+      if (selection.item?.blocks?.length) {
+        const blocks = await get_block_suggestions(selection.item);
+        this.load_suggestions(blocks);
+        return;
+      }
+    }
     if (selection.item.items) {
       for (const special_item of selection.item.items) {
         if (!this.ctx.data.context_items[special_item.item.key]) {
