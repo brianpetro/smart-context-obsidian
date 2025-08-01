@@ -1,6 +1,20 @@
 import { get_block_display_name } from 'smart-blocks/utils/get_block_display_name.js';
+
+function get_all_blocks(source) {
+  const entries = Object.entries(source?.data?.blocks || {});
+  const blocks = entries.map(([key, value]) => {
+    key = source.key + key;
+    const existing = source.env.smart_blocks.get(key);
+    if (existing) return existing;
+    const block = new source.env.smart_blocks.item_type(source.env, { key, lines: value });
+    source.env.smart_blocks.set(block);
+    return block;
+  });
+  return blocks;
+}
+
 export async function get_block_suggestions(source) {
-  const blocks = source?.blocks || [];
+  const blocks = get_all_blocks(source);
   const suggestions = [];
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
@@ -14,7 +28,7 @@ export async function get_block_suggestions(source) {
         const half = Math.floor((max - 3) / 2);
         truncated = truncated.slice(0, half) + '...' + truncated.slice(truncated.length - half);
       }
-      display_text += truncated;
+      display_text += (display_text.endsWith(' ') ? '' : ': ') + truncated + ` (${content.length} chars)`;
     }
     suggestions.push({
       item: block,

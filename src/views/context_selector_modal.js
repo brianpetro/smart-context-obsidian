@@ -224,7 +224,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
 
   getItems() {
     const suggestions = this.suggestions?.filter(
-      (s) => !this.ctx?.data?.context_items[s.item.key]
+      (s) => !s.item?.key || !this.ctx?.data?.context_items[s.item.key]
     );
 
     /* existing suggestions mode (connections / depths) */
@@ -294,13 +294,18 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     ;
 
     const unselected = Object.values(this.env.smart_sources.items).filter(
-      (src) => !this.ctx?.data?.context_items[src.key]
+      src => !this.ctx?.data?.context_items[src.key]
     );
+
+    const folder_suggestions = (this.env.smart_sources.fs?.folder_paths || [])
+      .filter(p => unselected.some(src => src.key.startsWith(p)))
+      .map(p => p.endsWith('/') ? p : p + '/')
+      .map(p => ({ folder: p }));
 
     /* sort unselected list: links first → recent → rest */
     const sorted_unselected = this.sort_context_entries(unselected);
 
-    return [...special_items, ...sorted_unselected];
+    return [...special_items, ...folder_suggestions, ...sorted_unselected];
   }
 
   getItemText(item) {
@@ -313,6 +318,9 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     if (item.items && item.name) {
       return item.name;
     }
+    if (item.folder) {
+      return item.folder;
+    }
     return item.path;
   }
 
@@ -323,16 +331,36 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       return;
     }
     this.ensure_ctx();
-    if (this.arrow_right) {
-      console.log({selection});
+    if (this.arrow_right && selection.item.items) {
       this.arrow_right = false;
-      if (selection.item.items) {
-        this.load_suggestions(selection.item.items);
+      this.load_suggestions(selection.item.items);
+      return;
+    }
+    if (this.arrow_right && Object.keys(selection.item?.data?.blocks || {}).length) {
+      this.arrow_right = false;
+      const blocks = await get_block_suggestions(selection.item);
+      this.load_suggestions(blocks);
+      return;
+    }
+    if (selection.item.folder) {
+      if(this.mod_key_was_held) {
+        Object.keys(this.env.smart_sources.items)
+          .forEach(key => {
+            if (key.startsWith(selection.item.folder)) {
+              this.ctx.data.context_items[key] = { d: 0 };
+            }
+          })
+        ;
+        this.mod_key_was_held = false;
+        this.updateSuggestions();
+        this.render();
         return;
-      }
-      if (selection.item?.blocks?.length) {
-        const blocks = await get_block_suggestions(selection.item);
-        this.load_suggestions(blocks);
+      }else{
+        this.arrow_right = false;
+        const notes = Object.values(this.env.smart_sources.items)
+          .filter(src => src.key.startsWith(selection.item.folder))
+        ;
+        this.load_suggestions(this.sort_context_entries(notes));
         return;
       }
     }
@@ -346,9 +374,9 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       this.render();
       return;
     }
+    
     const item = selection.item?.item ?? selection.item;
-
-    if (!this.ctx.data.context_items[item.key]) {
+    if (item.key && !this.ctx.data.context_items[item.key]) {
       this.ctx.data.context_items[item.key] = { d: 0 };
       this.updateSuggestions();
       this.render();
