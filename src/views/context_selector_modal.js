@@ -4,6 +4,8 @@ import { get_visible_open_files } from '../utils/get_visible_open_files.js';
 import { send_context_changed_event } from '../utils/send_context_changed_event.js';
 import { get_selected_text } from '../utils/get_selected_text.js';
 import { get_block_suggestions } from '../utils/get_block_suggestions.js';
+import { get_all_tags } from '../utils/get_all_tags.js';
+import { get_files_with_tag } from '../utils/get_files_with_tag.js';
 
 /**
  * @typedef {import('smart-contexts').SmartContext} SmartContext
@@ -66,9 +68,6 @@ export class ContextSelectorModal extends FuzzySuggestModal {
         this.arrow_right = true;
         this.selectActiveSuggestion(e);
       }
-    });
-    this.resultContainerEl.addEventListener('click', (e) => {
-      this.mod_key_was_held = Keymap.isModifier(e, 'Mod');
     });
   }
 
@@ -213,6 +212,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     }
     this.modalEl.querySelector('.sc-context-builder')?.remove();
     this.modalEl.prepend(builder_container);
+    this.inputEl.focus();
   }
 
   get suggestions() {
@@ -302,10 +302,14 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       .map(p => p.endsWith('/') ? p : p + '/')
       .map(p => ({ folder: p }));
 
+    const tag_suggestions = get_all_tags(this.app)
+      .map(t => ({ tag: t }))
+    ;
+
     /* sort unselected list: links first → recent → rest */
     const sorted_unselected = this.sort_context_entries(unselected);
 
-    return [...special_items, ...folder_suggestions, ...sorted_unselected];
+    return [...special_items, ...folder_suggestions, ...tag_suggestions, ...sorted_unselected];
   }
 
   getItemText(item) {
@@ -321,11 +325,19 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     if (item.folder) {
       return item.folder;
     }
+    if (item.tag) {
+      return item.tag;
+    }
     return item.path;
   }
 
-  async onChooseSuggestion(selection) {
+  async onChooseSuggestion(selection, evt) {
+    if(evt) this.mod_key_was_held = Keymap.isModifier(evt, 'Mod');
     if (selection.item.name === 'Back') {
+      if (this.last_input_value) {
+        this.inputEl.value = this.last_input_value;
+        this.last_input_value = null;
+      }
       this.suggestions = null;
       this.updateSuggestions();
       return;
@@ -364,6 +376,28 @@ export class ContextSelectorModal extends FuzzySuggestModal {
         return;
       }
     }
+    if (selection.item.tag) {
+      const paths = get_files_with_tag(this.app, selection.item.tag);
+      if (this.mod_key_was_held) {
+        paths.forEach(p => {
+          if (!this.ctx.data.context_items[p]) {
+            this.ctx.data.context_items[p] = { d: 0 };
+          }
+        });
+        this.mod_key_was_held = false;
+        this.updateSuggestions();
+        this.render();
+        return;
+      }else{
+        this.arrow_right = false;
+        const notes = paths
+          .map(p => (this.env.smart_sources.get(p)))
+          .filter(Boolean)
+        ;
+        this.load_suggestions(this.sort_context_entries(notes));
+        return;
+      }
+    }
     if (selection.item.items) {
       for (const special_item of selection.item.items) {
         if (!this.ctx.data.context_items[special_item.item.key]) {
@@ -388,6 +422,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
   }
 
   close(should_close = false) {
+    this.mod_key_was_held = false;
     if (should_close) super.close();
   }
   onClose(should_close = false) {
@@ -422,6 +457,11 @@ export class ContextSelectorModal extends FuzzySuggestModal {
   }
 
   load_suggestions(suggestions) {
+    // clear input
+    this.last_input_value = this.inputEl.value;
+    this.inputEl.value = '';
+    this.inputEl.focus();
+    // update suggestions
     this.suggestions = suggestions;
     this.updateSuggestions();
     this.render();
