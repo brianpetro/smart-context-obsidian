@@ -1,5 +1,21 @@
 import { get_block_display_name } from 'smart-blocks/utils/get_block_display_name.js';
 
+/**
+ * Build a content snippet for display.
+ *
+ * @param {string} content
+ * @param {number} [max=100]
+ * @returns {string}
+ */
+function create_snippet(content, max = 100) {
+  let truncated = content.replace(/\n/g, ' ').replace(/[^A-Za-z0-9\.,]/g, ' ');
+  if (truncated.length > max) {
+    const half = Math.floor((max - 3) / 2);
+    truncated = truncated.slice(0, half) + '...' + truncated.slice(truncated.length - half);
+  }
+  return truncated;
+}
+
 function get_all_blocks(source) {
   const entries = Object.entries(source?.data?.blocks || {});
   const blocks = entries.map(([key, value]) => {
@@ -13,22 +29,21 @@ function get_all_blocks(source) {
   return blocks;
 }
 
+/**
+ * Create suggestion entries for all blocks in a source.
+ *
+ * @param {Object} source
+ * @returns {Promise<Array<{item: Object, path: string}>>}
+ */
 export async function get_block_suggestions(source) {
   const blocks = get_all_blocks(source);
   const suggestions = [];
-  for (let i = 0; i < blocks.length; i++) {
-    const block = blocks[i];
+  for (const block of blocks) {
     let display_text = get_block_display_name(block.key);
-    if (block.key.endsWith('}')) {
-      const content = await block.read();
-      // middle truncate the content to 100 characters
-      const max = 100;
-      let truncated = content.replace(/\n/g, ' ').replace(/[^A-Za-z0-9\.,]/g, ' ');
-      if (truncated.length > max) {
-        const half = Math.floor((max - 3) / 2);
-        truncated = truncated.slice(0, half) + '...' + truncated.slice(truncated.length - half);
-      }
-      display_text += (display_text.endsWith(' ') ? '' : ': ') + truncated + ` (${content.length} chars)`;
+    const content = await block.read();
+    const snippet = create_snippet(content);
+    if (snippet) {
+      display_text += (display_text.endsWith(' ') ? '' : ': ') + snippet + ` (${content.length} chars)`;
     }
     suggestions.push({
       item: block,
