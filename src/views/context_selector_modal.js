@@ -61,7 +61,6 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     });
 
     this.modalEl.addEventListener('keydown', (e) => {
-      this.mod_key_was_held = Keymap.isModifier(e, 'Mod');
       if (e.key === 'Enter') this.selectActiveSuggestion(e);
       if (e.key === 'ArrowRight') {
         e.preventDefault();
