@@ -8,6 +8,7 @@ import { ContextSelectorModal } from '../views/context_selector_modal.js';
 import { register_block_hover_popover } from 'obsidian-smart-env/utils/register_block_hover_popover.js';
 import {send_context_updated_event} from '../utils/send_context_updated_event.js';
 import { is_image_path } from '../utils/is_image_path.js';
+import { remove_context_path } from '../utils/remove_context_path.js';
 
 /* ─────────────────────────── Pure helpers ─────────────────────────── */
 
@@ -101,7 +102,7 @@ export async function post_process(ctx, container, opts = {}) {
         btn.title = `Remove ${btn.dataset.path}`;
         btn.addEventListener('click', e => {
           const p = e.currentTarget.dataset.path;
-          delete ctx.data.context_items[p];
+          ctx.data.context_items = remove_context_path(ctx.data.context_items, p);
           send_context_updated_event(container);
         });
       });

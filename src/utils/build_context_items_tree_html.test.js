@@ -1,5 +1,5 @@
 import test from 'ava';
-import { build_path_tree } from './build_context_items_tree_html.js';
+import { build_path_tree, build_context_items_tree_html } from './build_context_items_tree_html.js';
 
 test('should create nested structure', t => {
   const items = [
@@ -82,4 +82,11 @@ test('should prevent splitting if slashes/hashtags appear within a wikilink [[so
   t.truthy(tree.children.main.children['file.md#heading link [[some/path.md#subpath]]']
   );
   t.is(Object.keys(tree.children.main.children).length, 1);
+});
+test('should add remove button for parent nodes', t => {
+  const items = [
+    { path: 'foo/bar.md#^a' }
+  ];
+  const html = build_context_items_tree_html(items);
+  t.regex(html, /<li data-path="foo"[^>]*>\s*<span class="sc-tree-remove"/);
 });
