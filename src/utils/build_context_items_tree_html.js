@@ -1,3 +1,5 @@
+import { build_context_item_li } from './build_context_item_li.js';
+
 export function build_context_items_tree_html(items) {
   const tree_root = build_path_tree(items);
   const selected_set = new Set(items.map((it) => it.path));
@@ -161,33 +163,7 @@ export function tree_to_html(node, selected_paths) {
       if (a.is_file !== b.is_file) return a.is_file ? 1 : -1;
       return a.name.localeCompare(b.name);
     })
-    .map((child) => {
-      let remove_btn = '';
-      let connections_btn = '';
-      let links_btn = '';
-
-      const has_children = Array.isArray(child.children)
-        ? child.children.length > 0
-        : Object.keys(child.children).length > 0;
-
-      if (selected_paths.has(child.path) || has_children) {
-        remove_btn = `<span class="sc-tree-remove" data-path="${child.path}">×</span>`;
-      }
-      if (selected_paths.has(child.path) && !child.path.startsWith('external:../')) {
-        connections_btn = `<span class="sc-tree-connections" data-path="${child.path}" title="Connections for ${child.name}"></span>`;
-        links_btn = `<span class="sc-tree-links" data-path="${child.path}" title="Links for ${child.name}"></span>`;
-      }
-
-      const li_inner = `
-        ${remove_btn}
-        <span class="sc-tree-label">${child.name}</span>
-        ${connections_btn}
-        ${links_btn}
-        ${tree_to_html(child, selected_paths)}
-      `;
-
-      return `<li data-path="${child.path}" class="sc-tree-item ${child.is_file ? 'file' : 'dir'}${child.path?.startsWith('external:') ? ' sc-external' : ''}">${li_inner}</li>`;
-    })
+    .map(child => build_context_item_li(child, selected_paths, tree_to_html(child, selected_paths)))
     .join('');
 
   return `<ul>${child_html}</ul>`;
