@@ -90,3 +90,11 @@ test('should add remove button for parent nodes', t => {
   const html = build_context_items_tree_html(items);
   t.regex(html, /<li data-path="foo"[^>]*>\s*<span class="sc-tree-remove"/);
 });
+
+test('should add missing class when item does not exist', t => {
+  const items = [
+    { path: 'gone.md', exists: false }
+  ];
+  const html = build_context_items_tree_html(items);
+  t.regex(html, /missing/, 'Missing items include sc-missing class');
+});

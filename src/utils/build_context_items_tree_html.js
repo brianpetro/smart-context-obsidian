@@ -2,7 +2,7 @@ import { build_context_item_li } from './build_context_item_li.js';
 
 export function build_context_items_tree_html(items) {
   const tree_root = build_path_tree(items);
-  const selected_set = new Set(items.map((it) => it.path));
+  const selected_set = new Set(items.map((it) => it.key || it.path));
   const tree_list_html = tree_to_html(tree_root, selected_set);
   return tree_list_html;
 }
@@ -102,17 +102,17 @@ export function build_path_tree(selected_items = []) {
   // Determine which user-selected items are folders so we can skip redundant children
   const selected_folders = selected_items
     .filter((it) => {
-      const for_ext_check = it.path.includes('##')
-        ? it.path.split('#')[0]
-        : it.path;
+      const for_ext_check = it.key.includes('#')
+        ? it.key.split('#')[0]
+        : it.key;
       return !for_ext_check.match(/\.[a-zA-Z0-9]+$/u);
     })
-    .map((it) => it.path);
+    .map((it) => it.key);
 
-  for (const { path } of selected_items) {
-    if (is_redundant(path, selected_folders.filter((p) => p !== path))) continue;
+  for (const { key, exists } of selected_items) {
+    if (is_redundant(key, selected_folders.filter((p) => p !== key))) continue;
 
-    const { segments, has_block } = split_path_segments(path);
+    const { segments, has_block } = split_path_segments(key);
 
     let node = root;
     let running = '';
@@ -130,7 +130,7 @@ export function build_path_tree(selected_items = []) {
       if (!node.children[seg]) {
         node.children[seg] = {
           name: seg,
-          path: is_block_leaf ? path : running,
+          path: is_block_leaf ? key : running,
           // For blocks we store an empty *array* so AVA can assert `children.length === 0`
           children: is_block_leaf ? [] : {},
           selected: false,
@@ -139,7 +139,10 @@ export function build_path_tree(selected_items = []) {
       }
 
       node = node.children[seg];
-      if (is_last) node.selected = true;
+      if (is_last) {
+        node.selected = true;
+        node.exists = exists;
+      }
     });
   }
 
@@ -168,3 +171,4 @@ export function tree_to_html(node, selected_paths) {
 
   return `<ul>${child_html}</ul>`;
 }
+

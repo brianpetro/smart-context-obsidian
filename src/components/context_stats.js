@@ -1,7 +1,6 @@
 function estimate_tokens(char_count){
   return Math.ceil(char_count / 4);
 }
-const get_selected_items = (ctx) => Object.keys(ctx?.data?.context_items || {}).map(k => ({ path: k }));
 
 export function build_html(ctx) {
   return `<div>
@@ -18,7 +17,7 @@ export async function render(ctx, opts = {}) {
 }
 
 export async function post_process(ctx, container, opts = {}) {
-  const items = get_selected_items(ctx);
+  const items = ctx.get_context_items();
   if(!items.length){
     // container.textContent = 'Add context';
     return;

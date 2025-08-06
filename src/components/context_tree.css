@@ -84,3 +84,13 @@
   margin-right: 4px;
   vertical-align: middle;
 }
+
+.missing.sc-tree-label {
+  text-decoration: line-through;
+  opacity: 0.6;
+
+  &::before {
+    content: 'Missing: ';
+    color: var(--text-muted);
+  }
+}

@@ -1,5 +1,4 @@
 import { build_context_items_tree_html } from '../utils/build_context_items_tree_html.js';
-import { filter_redundant_blocks } from '../utils/filter_redundant_blocks.js';
 import context_tree_css from './context_tree.css' with { type: 'css' };
 import { get_links_to_depth } from 'smart-sources/actions/get_links_to_depth.js';
 import { open_note } from 'obsidian-smart-env/utils/open_note.js';
@@ -51,14 +50,9 @@ export const setup_collapse_handlers = container => {
 
 /* ─────────────────────────── Component API ─────────────────────────── */
 
-const get_selected_items = ctx => {
-  const items = Object.keys(ctx?.data?.context_items || {})
-    .map(k => ({ path: k }));
-  return filter_redundant_blocks(items);
-};
 
 export function build_html(ctx) {
-  const items = get_selected_items(ctx);
+  const items = ctx.get_context_items();
   const tree_list_html = build_context_items_tree_html(items);
   return `<div>
     <div class="sc-context-tree">${tree_list_html || '<em>No items selected…</em>'}</div>
@@ -85,7 +79,7 @@ export async function post_process(ctx, container, opts = {}) {
 
 
   const render_tree = () => {
-    const items = get_selected_items(ctx);
+    const items = ctx.get_context_items();
     const tree_list_html = build_context_items_tree_html(items);
     this.safe_inner_html(container, tree_list_html || '<em>No items selected…</em>');
     attach_item_handlers();
