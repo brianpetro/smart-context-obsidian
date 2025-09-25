@@ -6,6 +6,7 @@ import { render as context_stats_component } from './src/components/context_stat
 import { render as context_tree_component } from './src/components/context_tree.js';
 import { render as copy_to_clipboard_button_component } from './src/components/copy_to_clipboard_button.js';
 
+
 export const smart_env_config = {
   collections: {
 
@@ -13,10 +14,16 @@ export const smart_env_config = {
   item_types: {
 
   },
+  items: {
+
+  },
   components: {
     context_builder: context_builder_component,
     context_stats: context_stats_component,
     context_tree: context_tree_component,
     copy_to_clipboard_button: copy_to_clipboard_button_component
+  },
+  actions: {
+
   }
 };

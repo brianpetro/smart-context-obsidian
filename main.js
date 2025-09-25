@@ -26,6 +26,8 @@ import { show_stats_notice } from './src/utils/show_stats_notice.js';
 import { get_all_open_file_paths } from './src/utils/get_all_open_file_paths.js';
 import { get_visible_open_files } from './src/utils/get_visible_open_files.js';
 
+import { build_folder_tree_for_path } from './src/utils/build_folder_tree_for_path.js';
+
 import { StoryModal } from 'obsidian-smart-env/modals/story.js';  // ← NEW
 
 /**
@@ -141,6 +143,12 @@ export default class SmartContextPlugin extends Plugin {
       if (!(file instanceof TFolder)) return;
       menu.addItem((item) => {
         item
+          .setTitle('Copy file-folder tree')
+          .setIcon('copy')
+          .onClick(async () => { await this.copy_folder_tree_to_clipboard(file); });
+      });
+      menu.addItem((item) => {
+        item
           .setTitle('Copy folder contents to clipboard')
           .setIcon('documents')
           .onClick(async () => { await this.copy_folder_to_clipboard(file); });
@@ -248,6 +256,34 @@ export default class SmartContextPlugin extends Plugin {
 
     await this.copy_to_clipboard(context, images);
     this.showStatsNotice(stats, `Folder: ${folder.path}`);
+  }
+
+  /**
+   * Copy an ASCII representation of the folder tree to the clipboard.
+   *
+   * @param {TFolder} folder
+   * @returns {Promise<void>}
+   */
+  async copy_folder_tree_to_clipboard(folder) {
+    const fs = this.env.smart_sources?.fs;
+    if (!fs) {
+      new Notice('Folder tree unavailable: Smart Context sources are still loading.');
+      return;
+    }
+
+    const tree = build_folder_tree_for_path(
+      folder?.path ?? '',
+      fs.file_paths ?? [],
+      fs.folder_paths ?? [],
+    );
+
+    if (!tree.trim()) {
+      new Notice(`No files found under ${folder?.path || 'this folder'}.`);
+      return;
+    }
+
+    await this.copy_to_clipboard(tree);
+    this.showStatsNotice(null, `Folder tree: ${folder?.path || '/'}`);
   }
 
   async copy_to_clipboard(text) { await copy_to_clipboard(text); }
