@@ -27,6 +27,7 @@ import { get_all_open_file_paths } from './src/utils/get_all_open_file_paths.js'
 import { get_visible_open_files } from './src/utils/get_visible_open_files.js';
 
 import { build_folder_tree_for_path } from './src/utils/build_folder_tree_for_path.js';
+import { get_selected_note_keys } from './src/utils/get_selected_note_keys.js';
 
 import { StoryModal } from 'obsidian-smart-env/modals/story.js';  // ← NEW
 
@@ -84,6 +85,7 @@ export default class SmartContextPlugin extends Plugin {
     this.register_commands();
     this.register_context_selector_modal_command();
     this.register_folder_menu();
+    this.register_files_menu();
 
     this.addSettingTab(new SmartContextSettingTab(this.app, this));
 
@@ -152,6 +154,22 @@ export default class SmartContextPlugin extends Plugin {
           .setTitle('Copy folder contents to clipboard')
           .setIcon('documents')
           .onClick(async () => { await this.copy_folder_to_clipboard(file); });
+      });
+    }));
+  }
+
+  register_files_menu() {
+    this.registerEvent(this.app.workspace.on('files-menu', (menu, files) => {
+      const selected_keys = get_selected_note_keys(files, this.env.smart_sources);
+      if (selected_keys.length < 2) return;
+
+      menu.addItem((item) => {
+        item
+          .setTitle('Copy selected notes as context')
+          .setIcon('documents')
+          .onClick(async () => {
+            await this.copy_selected_files_to_clipboard(files);
+          });
       });
     }));
   }
@@ -256,6 +274,20 @@ export default class SmartContextPlugin extends Plugin {
 
     await this.copy_to_clipboard(context, images);
     this.showStatsNotice(stats, `Folder: ${folder.path}`);
+  }
+
+  async copy_selected_files_to_clipboard(files) {
+    const add_items = get_selected_note_keys(files, this.env.smart_sources);
+    if (!add_items.length) {
+      new Notice('No Smart Context notes found in selection.');
+      return;
+    }
+
+    const ctx = this.env.smart_contexts.new_context({}, { add_items });
+    const { context, stats, images } = await ctx.compile({ link_depth: 0 });
+
+    await this.copy_to_clipboard(context, images);
+    this.showStatsNotice(stats, `Selected notes (${add_items.length})`);
   }
 
   /**
