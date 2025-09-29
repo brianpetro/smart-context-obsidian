@@ -312,7 +312,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
   }
 
   getItemText(item) {
-    if (item.score) {
+    if (typeof item.score === 'number') {
       return `${item.score.toFixed(2)} | ${item.item.path}`;
     }
     if (item.depth) {
