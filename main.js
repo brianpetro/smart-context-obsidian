@@ -20,7 +20,7 @@ import { smart_env_config } from './smart_env.config.js';
 import { FolderSelectModal } from './src/views/folder_select_modal.js';
 import { ContextSelectorModal } from './src/views/context_selector_modal.js';
 
-import { copy_to_clipboard } from './src/utils/copy_to_clipboard.js';
+import { copy_to_clipboard } from 'obsidian-smart-env/utils/copy_to_clipboard.js';
 import { show_stats_notice } from './src/utils/show_stats_notice.js';
 
 import { get_all_open_file_paths } from './src/utils/get_all_open_file_paths.js';

@@ -1,5 +1,5 @@
 import { show_stats_notice } from '../utils/show_stats_notice.js';
-import { copy_to_clipboard } from '../utils/copy_to_clipboard.js';
+import { copy_to_clipboard } from 'obsidian-smart-env/utils/copy_to_clipboard.js';
 
 export function build_html() {
   return '<button class="sc-copy-clipboard" type="button">Copy to clipboard</button>';
