@@ -2,7 +2,6 @@ import {
   Plugin,
   Notice,
   TFolder,
-  normalizePath,
 } from 'obsidian';
 
 import { SmartFs } from 'smart-file-system/smart_fs.js';
@@ -70,7 +69,10 @@ export default class SmartContextPlugin extends Plugin {
     ));
   }
 
-  onunload() { this.env.unload_main(this); }
+  onunload() {
+    try { this.unregister_event_bus_handlers(); } catch (e) { /* no-op */ }
+    this.env.unload_main(this);
+  }
 
   /**
    * Top‑level bootstrap after Obsidian workspace is ready.
@@ -89,6 +91,9 @@ export default class SmartContextPlugin extends Plugin {
 
     this.addSettingTab(new SmartContextSettingTab(this.app, this));
 
+    // Event-bus listeners (context:open_selector)
+    this.register_event_bus_handlers();
+
     /* ── First‑run onboarding ───────────────────────────────────────── */
     if (this.is_new_user()) {                         // ← NEW
       setTimeout(() => {
@@ -98,6 +103,61 @@ export default class SmartContextPlugin extends Plugin {
         });
       }, 1000);
       await this.save_installed_at(Date.now());
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Event bus: handlers                                               */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Register env.events handlers.
+   * Listens for 'context:open_selector' and opens the Context Selector modal.
+   */
+  register_event_bus_handlers() {
+    const events = this.env?.events;
+    if (!events?.on) return;
+    this._on_context_open_selector = this.on_context_open_selector.bind(this);
+    events.on('context:open_selector', this._on_context_open_selector);
+
+    events.on('context:updated', (event) => {
+      console.log('Context updated event:', {event});
+    });
+  }
+
+  /**
+   * Unregister env.events handlers to avoid leaks.
+   */
+  unregister_event_bus_handlers() {
+    const events = this.env?.events;
+    if (!events?.off || !this._on_context_open_selector) return;
+    events.off('context:open_selector', this._on_context_open_selector);
+    this._on_context_open_selector = null;
+  }
+
+  /**
+   * Handle 'context:open_selector' events from the env bus.
+   * @param {{ key?: string, context_key?: string, target_context_key?: string, initial_context_items?: string[], suggestions?: any[], special_items?: any[] }} payload
+   */
+  on_context_open_selector(payload = {}) {
+    console.log({context_open_selector: payload});
+    try {
+      const key = payload.key || payload.context_key || payload.target_context_key || '';
+      const open_opts = {
+        ctx: null,
+        target_context_key: key || undefined,
+        initial_context_items: Array.isArray(payload.initial_context_items) ? payload.initial_context_items : undefined,
+        suggestions: Array.isArray(payload.suggestions) ? payload.suggestions : undefined,
+        special_items: Array.isArray(payload.special_items) ? payload.special_items : undefined,
+      };
+      if (key) {
+        const existing = this.env.smart_contexts.get?.(key);
+        if (existing) open_opts.ctx = existing;
+      }
+      ContextSelectorModal.open(this.env, open_opts);
+    } catch (err) {
+      console.error('context:open_selector handler error:', err);
+      new Notice('Could not open Context Selector (see console).');
     }
   }
 

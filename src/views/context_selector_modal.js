@@ -7,6 +7,12 @@ import { get_block_suggestions } from '../utils/get_block_suggestions.js';
 import { get_all_tags } from '../utils/get_all_tags.js';
 import { get_files_with_tag } from '../utils/get_files_with_tag.js';
 
+function send_context_updated_env_event(env, payload = {}) {
+  if (!env?.events?.emit) return;
+  const at = payload.at || new Date().toISOString();
+  env.events.emit('context:updated', { ...payload, at });
+}
+
 /**
  * @typedef {import('smart-contexts').SmartContext} SmartContext
  */
@@ -20,11 +26,12 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       env.plugin
     ;
     if (!env.context_selector_modal) {
-      if(env.smart_context_plugin?.ContextSelectorModal){
-        // handle early-release ContextSelectorModal
+      if (env.smart_context_plugin?.ContextSelectorModal) {
+        // handle early-release ContextSelectorModal (better handle via Obsidian-specific config)
         env.context_selector_modal = new env.smart_context_plugin.ContextSelectorModal(plugin, opts);
+      } else {
+        env.context_selector_modal = new this(plugin, opts);
       }
-      else env.context_selector_modal = new this(plugin, opts);
     }
     env.context_selector_modal.open(opts);
     return env.context_selector_modal;
@@ -33,10 +40,13 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     env.context_selector_modal.close(true);
     env.context_selector_modal = null;
   }
+
   /**
    * @param {import('../../main.js').default} plugin
    * @param {Object} [opts={}]
    * @param {SmartContext} [opts.ctx]
+   * @param {string} [opts.target_context_key] - Logical key the opener will match on post-close.
+   * @param {string[]} [opts.initial_context_items]
    */
   constructor(plugin, opts = {}) {
     super(plugin.app);
@@ -115,15 +125,29 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     });
   }
 
-  /* ───────────────────────────────────────────────────────────── */
-
   ensure_ctx() {
-    if (this.ctx) return this.ctx;
-    this.ctx = this.env.smart_contexts.new_context({}, {
-      add_items: this.opts.initial_context_items,
-    });
-
-    return this.ctx;
+    if (this.ctx) {
+      if (this.opts?.target_context_key && this.ctx?.data) {
+        this.ctx.data.key = this.opts.target_context_key;
+      }
+      return this.ctx;
+    }
+    const target_key = this.opts?.target_context_key;
+    let ctx = null;
+    if (target_key) {
+      ctx = this.env.smart_contexts.get?.(target_key) || null;
+      if (!ctx) {
+        ctx = this.env.smart_contexts.new_context({ key: target_key }, {
+          add_items: this.opts.initial_context_items,
+        });
+      }
+    } else {
+      ctx = this.env.smart_contexts.new_context({}, {
+        add_items: this.opts.initial_context_items,
+      });
+    }
+    this.ctx = ctx;
+    return ctx;
   }
 
   async open(opts = this.opts) {
@@ -198,9 +222,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       );
       actions_el.appendChild(copy_btn);
     }
-    if (
-      !actions_el.querySelector('button[data-done="true"]')
-    ) {
+    if (!actions_el.querySelector('button[data-done="true"]')) {
       const done_btn = document.createElement('button');
       done_btn.dataset.done = 'true';
       done_btn.textContent = 'Done';
@@ -229,27 +251,18 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     /* existing suggestions mode (connections / depths) */
     if (suggestions?.length) {
       const special_items = [];
-      special_items.push({
-        name: 'Back',
-        items: {},
-      });
+      special_items.push({ name: 'Back', items: {} });
       if (suggestions.some((s) => s.depth)) {
         const depth_1 = suggestions.filter((s) => s.depth <= 1);
         const depth_2 = suggestions.filter((s) => s.depth <= 2);
         const depth_3 = suggestions.filter((s) => s.depth <= 3);
-        if (depth_1.length)
-          special_items.push({ name: `Add all to depth 1 (${depth_1.length})`, items: depth_1 });
-        if (depth_2.length)
-          special_items.push({ name: `Add all to depth 2 (${depth_2.length})`, items: depth_2 });
-        if (depth_3.length)
-          special_items.push({ name: `Add all to depth 3 (${depth_3.length})`, items: depth_3 });
+        if (depth_1.length) special_items.push({ name: `Add all to depth 1 (${depth_1.length})`, items: depth_1 });
+        if (depth_2.length) special_items.push({ name: `Add all to depth 2 (${depth_2.length})`, items: depth_2 });
+        if (depth_3.length) special_items.push({ name: `Add all to depth 3 (${depth_3.length})`, items: depth_3 });
       }
       if (suggestions.some((s) => s.score)) {
         const all_connections = suggestions.filter((s) => s.score);
-        special_items.push({
-          name: `Add all connections (${all_connections.length})`,
-          items: all_connections,
-        });
+        special_items.push({ name: `Add all connections (${all_connections.length})`, items: all_connections });
       }
       return [...special_items, ...suggestions];
     }
@@ -257,24 +270,19 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     /* default mode – show special items then every un‑selected SmartSource */
     let special_items = this.opts.special_items ?? [];
     const visible_open_files = Array.from(get_visible_open_files(this.app))
-      .map(f => {
-        return {item: this.env.smart_sources.get(f)};
-      })
+      .map(f => ({ item: this.env.smart_sources.get(f) }))
     ;
-    if(visible_open_files.length) {
+    if (visible_open_files.length) {
       special_items.push({
         name: 'Visible open files',
         items: visible_open_files,
       });
       const all_open_files = Array.from(get_all_open_file_paths(this.app))
-        .map(f => {
-          return {item: this.env.smart_sources.get(f)};
-        })
+        .map(f => ({ item: this.env.smart_sources.get(f) }))
       ;
-      if(all_open_files.length && visible_open_files.length !== all_open_files.length) special_items.push({
-        name: 'All open files',
-        items: all_open_files,
-      });
+      if (all_open_files.length && visible_open_files.length !== all_open_files.length) {
+        special_items.push({ name: 'All open files', items: all_open_files });
+      }
     }
     special_items = special_items
       .map((i) => {
@@ -292,46 +300,33 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       })
     ;
 
-    const unselected = Object.values(this.env.smart_sources.items).filter(
-      src => !this.ctx?.data?.context_items[src.key]
-    );
+    const unselected = Object.values(this.env.smart_sources.items)
+      .filter(src => !this.ctx?.data?.context_items[src.key])
+    ;
 
     const folder_suggestions = (this.env.smart_sources.fs?.folder_paths || [])
       .filter(p => unselected.some(src => src.key.startsWith(p)))
       .map(p => p.endsWith('/') ? p : p + '/')
       .map(p => ({ folder: p }));
 
-    const tag_suggestions = get_all_tags(this.app)
-      .map(t => ({ tag: t }))
-    ;
+    const tag_suggestions = get_all_tags(this.app).map(t => ({ tag: t }));
 
-    /* sort unselected list: links first → recent → rest */
     const sorted_unselected = this.sort_context_entries(unselected);
 
     return [...special_items, ...folder_suggestions, ...tag_suggestions, ...sorted_unselected];
   }
 
   getItemText(item) {
-    if (typeof item.score === 'number') {
-      return `${item.score.toFixed(2)} | ${item.item.path}`;
-    }
-    if (item.depth) {
-      return `${item.depth} | ${item.item.path}`;
-    }
-    if (item.items && item.name) {
-      return item.name;
-    }
-    if (item.folder) {
-      return item.folder;
-    }
-    if (item.tag) {
-      return item.tag;
-    }
+    if (typeof item.score === 'number') return `${item.score.toFixed(2)} | ${item.item.path}`;
+    if (item.depth) return `${item.depth} | ${item.item.path}`;
+    if (item.items && item.name) return item.name;
+    if (item.folder) return item.folder;
+    if (item.tag) return item.tag;
     return item.path;
   }
 
   async onChooseSuggestion(selection, evt) {
-    if(evt) this.mod_key_was_held = Keymap.isModifier(evt, 'Mod');
+    if (evt) this.mod_key_was_held = Keymap.isModifier(evt, 'Mod');
     if (selection.item.name === 'Back') {
       if (this.last_input_value) {
         this.inputEl.value = this.last_input_value;
@@ -354,19 +349,17 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       return;
     }
     if (selection.item.folder) {
-      if(this.mod_key_was_held) {
-        Object.keys(this.env.smart_sources.items)
-          .forEach(key => {
-            if (key.startsWith(selection.item.folder)) {
-              this.ctx.data.context_items[key] = { d: 0 };
-            }
-          })
-        ;
+      if (this.mod_key_was_held) {
+        Object.keys(this.env.smart_sources.items).forEach(key => {
+          if (key.startsWith(selection.item.folder)) {
+            this.ctx.data.context_items[key] = { d: 0 };
+          }
+        });
         this.mod_key_was_held = false;
         this.updateSuggestions();
         this.render();
         return;
-      }else{
+      } else {
         this.arrow_right = false;
         const notes = Object.values(this.env.smart_sources.items)
           .filter(src => src.key.startsWith(selection.item.folder))
@@ -387,12 +380,9 @@ export class ContextSelectorModal extends FuzzySuggestModal {
         this.updateSuggestions();
         this.render();
         return;
-      }else{
+      } else {
         this.arrow_right = false;
-        const notes = paths
-          .map(p => (this.env.smart_sources.get(p)))
-          .filter(Boolean)
-        ;
+        const notes = paths.map(p => (this.env.smart_sources.get(p))).filter(Boolean);
         this.load_suggestions(this.sort_context_entries(notes));
         return;
       }
@@ -407,7 +397,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       this.render();
       return;
     }
-    
+
     const item = selection.item?.item ?? selection.item;
     if (item.key && !this.ctx.data.context_items[item.key]) {
       this.ctx.data.context_items[item.key] = { d: 0 };
@@ -416,21 +406,36 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     }
   }
 
-  focus_input() {
-    setTimeout(() => this.inputEl.focus(), 100);
-  }
+  focus_input() { setTimeout(() => this.inputEl.focus(), 100); }
 
   close(should_close = false) {
     this.mod_key_was_held = false;
     if (should_close) super.close();
   }
+
   onClose(should_close = false) {
-    while(this.opener_containers?.length) {
+    while (this.opener_containers?.length) {
       const container = this.opener_containers.pop();
       if (container.isConnected) {
         send_context_changed_event(container, this.ctx);
       }
     }
+
+    const target_key = this.opts?.target_context_key || this.ctx?.key;
+    const items_count = Array.isArray(this.ctx?.context_item_keys) ? this.ctx.context_item_keys.length : 0;
+    const depth_counts = {};
+    try {
+      for (let d = 0; d <= 5; d += 1) {
+        const c = this.ctx?.get_item_keys_by_depth?.(d)?.length ?? 0;
+        if (c) depth_counts[d] = c;
+      }
+    } catch (e) { /* no-op */ }
+    send_context_updated_env_event(this.env, {
+      key: target_key,
+      ctx_key: this.ctx?.key,
+      items_count,
+      depth_counts: Object.keys(depth_counts).length ? depth_counts : undefined,
+    });
   }
 
   /**
@@ -446,7 +451,7 @@ export class ContextSelectorModal extends FuzzySuggestModal {
       container.forEach((c) => this.add_opener_container(c));
       return;
     }
-    if(!(container instanceof HTMLElement)) {
+    if (!(container instanceof HTMLElement)) {
       console.warn('ContextSelectorModal: opener_container must be an HTMLElement, received:', container);
       return;
     }
@@ -465,6 +470,4 @@ export class ContextSelectorModal extends FuzzySuggestModal {
     this.updateSuggestions();
     this.render();
   }
-
-
 }
