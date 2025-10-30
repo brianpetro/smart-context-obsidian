@@ -1,6 +1,6 @@
-import { is_text_file } from 'smart-file-system/utils/ignore';
-import { get_all_leaves } from './get_all_leaves';
-import { is_leaf_visible } from './is_leaf_visible';
+import { is_text_file } from 'smart-file-system/utils/ignore.js';
+import { get_all_leaves } from './get_all_leaves.js';
+import { is_leaf_visible } from './is_leaf_visible.js';
 
 /**
  * Collect only visible open files.
