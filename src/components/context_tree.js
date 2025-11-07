@@ -1,4 +1,4 @@
-import { build_context_items_tree_html } from '../utils/build_context_items_tree_html.js';
+import { build_tree_html } from 'obsidian-smart-env/src/utils/smart-context/build_tree_html.js';
 import context_tree_css from './context_tree.css' with { type: 'css' };
 import { get_links_to_depth } from 'smart-sources/actions/get_links_to_depth.js';
 import { open_note } from 'obsidian-smart-env/utils/open_note.js';
@@ -53,7 +53,7 @@ export const setup_collapse_handlers = container => {
 
 export function build_html(ctx) {
   const items = ctx.get_context_items();
-  const tree_list_html = build_context_items_tree_html(items);
+  const tree_list_html = build_tree_html(items);
   return `<div>
     <div class="sc-context-tree">${tree_list_html || '<em>No items selected…</em>'}</div>
   </div>`;
@@ -80,7 +80,7 @@ export async function post_process(ctx, container, opts = {}) {
 
   const render_tree = () => {
     const items = ctx.get_context_items();
-    const tree_list_html = build_context_items_tree_html(items);
+    const tree_list_html = build_tree_html(items);
     this.safe_inner_html(container, tree_list_html || '<em>No items selected…</em>');
     attach_item_handlers();
     setup_collapse_handlers(container); // ⬅ collapsible
