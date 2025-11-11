@@ -4,7 +4,7 @@ import { get_links_to_depth } from 'smart-sources/actions/get_links_to_depth.js'
 import { open_note } from 'obsidian-smart-env/utils/open_note.js';
 import { getIcon } from 'obsidian';
 import { ContextSelectorModal } from '../views/context_selector_modal.js';
-import { register_block_hover_popover } from 'obsidian-smart-env/utils/register_block_hover_popover.js';
+import { register_block_hover_popover } from 'obsidian-smart-env/src/utils/register_block_hover_popover.js';
 import {send_context_updated_event} from '../utils/send_context_updated_event.js';
 import { is_image_path } from '../utils/is_image_path.js';
 import { remove_context_path } from '../utils/remove_context_path.js';
