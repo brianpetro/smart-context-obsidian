@@ -4,9 +4,6 @@ import {
   TFolder,
 } from 'obsidian';
 
-import { SmartFs } from 'smart-file-system/smart_fs.js';
-import { SmartFsObsidianAdapter } from 'smart-file-system/adapters/obsidian.js';
-
 import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
 
 import { LinkDepthModal } from './src/views/link_depth_modal.js';
@@ -49,12 +46,6 @@ export default class SmartContextPlugin extends Plugin {
     },
     item_types: {
       SmartContext,
-    },
-    modules: {
-      smart_fs: {
-        class: SmartFs,
-        adapter: SmartFsObsidianAdapter,
-      },
     },
   };
 
