@@ -78,8 +78,6 @@ export default class SmartContextPlugin extends Plugin {
 
     this.addSettingTab(new SmartContextSettingTab(this.app, this));
 
-    // Event-bus listeners (context:open_selector)
-    this.register_event_bus_handlers();
 
     /* ── First‑run onboarding ───────────────────────────────────────── */
     if (this.is_new_user()) {                         // ← NEW
