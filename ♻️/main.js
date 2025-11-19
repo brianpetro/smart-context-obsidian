@@ -14,13 +14,15 @@ import { SmartContextSettingTab } from './settings.js';
 import { smart_env_config } from './smart_env.config.js';
 
 import { FolderSelectModal } from './src/views/folder_select_modal.js';
+import { ContextSelectorModal } from './src/views/context_selector_modal.js';
 
 import { copy_to_clipboard } from 'obsidian-smart-env/utils/copy_to_clipboard.js';
 import { show_stats_notice } from './src/utils/show_stats_notice.js';
 
-import { get_all_open_file_paths } from './src/utils/workspace.js';
-import { get_visible_open_files } from './src/utils/workspace.js';
+import { get_all_open_file_paths } from './src/utils/get_all_open_file_paths.js';
+import { get_visible_open_files } from './src/utils/get_visible_open_files.js';
 
+import { build_folder_tree_for_path } from './src/utils/build_folder_tree_for_path.js';
 import { get_selected_note_keys } from './src/utils/get_selected_note_keys.js';
 
 import { StoryModal } from 'obsidian-smart-env/modals/story.js';  // ← NEW
@@ -35,6 +37,7 @@ export default class SmartContextPlugin extends Plugin {
   /*  Smart‑Env registration                                             */
   /* ------------------------------------------------------------------ */
   compiled_smart_env_config = smart_env_config;
+  ContextSelectorModal = ContextSelectorModal;
   LinkDepthModal = LinkDepthModal;
 
   smart_env_config = {
@@ -73,6 +76,7 @@ export default class SmartContextPlugin extends Plugin {
     await SmartEnv.wait_for({ loaded: true });
 
     this.register_commands();
+    this.register_context_selector_modal_command();
     this.register_folder_menu();
     this.register_files_menu();
 
@@ -93,6 +97,60 @@ export default class SmartContextPlugin extends Plugin {
     }
   }
 
+  /* ------------------------------------------------------------------ */
+  /*  Event bus: handlers                                               */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Register env.events handlers.
+   * Listens for 'context:open_selector' and opens the Context Selector modal.
+   */
+  register_event_bus_handlers() {
+    const events = this.env?.events;
+    if (!events?.on) return;
+    this._on_context_open_selector = this.on_context_open_selector.bind(this);
+    events.on('context:open_selector', this._on_context_open_selector);
+
+    events.on('context:updated', (event) => {
+      console.log('Context updated event:', {event});
+    });
+  }
+
+  /**
+   * Unregister env.events handlers to avoid leaks.
+   */
+  unregister_event_bus_handlers() {
+    const events = this.env?.events;
+    if (!events?.off || !this._on_context_open_selector) return;
+    events.off('context:open_selector', this._on_context_open_selector);
+    this._on_context_open_selector = null;
+  }
+
+  /**
+   * Handle 'context:open_selector' events from the env bus.
+   * @param {{ key?: string, context_key?: string, target_context_key?: string, initial_context_items?: string[], suggestions?: any[], special_items?: any[] }} payload
+   */
+  on_context_open_selector(payload = {}) {
+    console.log({context_open_selector: payload});
+    try {
+      const key = payload.key || payload.context_key || payload.target_context_key || '';
+      const open_opts = {
+        ctx: null,
+        target_context_key: key || undefined,
+        initial_context_items: Array.isArray(payload.initial_context_items) ? payload.initial_context_items : undefined,
+        suggestions: Array.isArray(payload.suggestions) ? payload.suggestions : undefined,
+        special_items: Array.isArray(payload.special_items) ? payload.special_items : undefined,
+      };
+      if (key) {
+        const existing = this.env.smart_contexts.get?.(key);
+        if (existing) open_opts.ctx = existing;
+      }
+      ContextSelectorModal.open(this.env, open_opts);
+    } catch (err) {
+      console.error('context:open_selector handler error:', err);
+      new Notice('Could not open Context Selector (see console).');
+    }
+  }
 
   /* ------------------------------------------------------------------ */
   /*  New‑user state (mirrors sc‑obsidian)                              */
@@ -138,6 +196,12 @@ export default class SmartContextPlugin extends Plugin {
       if (!(file instanceof TFolder)) return;
       menu.addItem((item) => {
         item
+          .setTitle('Copy file-folder tree')
+          .setIcon('copy')
+          .onClick(async () => { await this.copy_folder_tree_to_clipboard(file); });
+      });
+      menu.addItem((item) => {
+        item
           .setTitle('Copy folder contents to clipboard')
           .setIcon('documents')
           .onClick(async () => { await this.copy_folder_to_clipboard(file); });
@@ -172,6 +236,13 @@ export default class SmartContextPlugin extends Plugin {
   /* ------------------------------------------------------------------ */
   /*  Commands                                                          */
   /* ------------------------------------------------------------------ */
+  register_context_selector_modal_command() {
+    this.addCommand({
+      id: 'open-context-select-modal',
+      name: 'Context selector',
+      callback: () => { ContextSelectorModal.open(this.env); },
+    });
+  }
 
   register_commands() {
     // Command: copy current note
@@ -268,6 +339,34 @@ export default class SmartContextPlugin extends Plugin {
 
     await this.copy_to_clipboard(context, images);
     this.showStatsNotice(stats, `Selected notes (${add_items.length})`);
+  }
+
+  /**
+   * Copy an ASCII representation of the folder tree to the clipboard.
+   *
+   * @param {TFolder} folder
+   * @returns {Promise<void>}
+   */
+  async copy_folder_tree_to_clipboard(folder) {
+    const fs = this.env.smart_sources?.fs;
+    if (!fs) {
+      new Notice('Folder tree unavailable: Smart Context sources are still loading.');
+      return;
+    }
+
+    const tree = build_folder_tree_for_path(
+      folder?.path ?? '',
+      fs.file_paths ?? [],
+      fs.folder_paths ?? [],
+    );
+
+    if (!tree.trim()) {
+      new Notice(`No files found under ${folder?.path || 'this folder'}.`);
+      return;
+    }
+
+    await this.copy_to_clipboard(tree);
+    this.showStatsNotice(null, `Folder tree: ${folder?.path || '/'}`);
   }
 
   async copy_to_clipboard(text) { await copy_to_clipboard(text); }
