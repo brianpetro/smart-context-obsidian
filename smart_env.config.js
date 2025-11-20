@@ -2,7 +2,8 @@
 
 
 
-
+import { render as smart_context_list_component } from './src/components/smart-context/list.js';
+import { render as smart_context_list_item_component } from './src/components/smart-context/list_item.js';
 
 
 export const smart_env_config = {
@@ -19,7 +20,8 @@ export const smart_env_config = {
 
   },
   components: {
-
+    smart_context_list: { render: smart_context_list_component },
+    smart_context_list_item: { render: smart_context_list_item_component }
   },
   actions: {
 

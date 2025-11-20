@@ -25,6 +25,9 @@ import { get_selected_note_keys } from './src/utils/get_selected_note_keys.js';
 
 import { StoryModal } from 'obsidian-smart-env/modals/story.js';  // ← NEW
 
+// v2
+import { ContextsDashboardView } from './src/views/contexts_dashboard_view.js';
+
 /**
  * Smart Context (Obsidian) – copy & curate context for AI tools.
  *
@@ -75,6 +78,7 @@ export default class SmartContextPlugin extends Plugin {
     this.register_commands();
     this.register_folder_menu();
     this.register_files_menu();
+    ContextsDashboardView.register_item_view(this);
 
     this.addSettingTab(new SmartContextSettingTab(this.app, this));
 
