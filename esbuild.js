@@ -22,15 +22,7 @@ const dist_dir = path.resolve(process.cwd());
 build_smart_env_config(dist_dir, roots);
 
 /**
- * Plugin to process CSS files imported with an import attribute:
- *   import sheet from './style.css' with { type: 'css' };
- *
- * When such an import is detected, the plugin loads the CSS file,
- * optionally minifies it if the build options request minification,
- * and wraps the CSS text into a new CSSStyleSheet. The module then
- * exports the stylesheet as its default export.
- *
- * @returns {esbuild.Plugin} The esbuild plugin object.
+ * @deprecated Use esbuild's "loader" to load as text
  */
 export function css_with_plugin() {
   return {
@@ -122,6 +114,9 @@ esbuild.build({
     '@huggingface/transformers',
   ],
   define: {
+  },
+  loader: {
+    '.css': 'text',
   },
   plugins: [css_with_plugin()],
 }).then(() => {
