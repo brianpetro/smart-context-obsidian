@@ -4,8 +4,6 @@
 
 import { render as smart_context_list_component } from './src/components/smart-context/list.js';
 import { render as smart_context_list_item_component } from './src/components/smart-context/list_item.js';
-import { merge_template as context_item_merge_template_action, settings_config as context_item_merge_template_action_settings_config, default_settings as context_item_merge_template_action_default_settings } from './src/actions/context-item/merge_template.js';
-import { merge_template as context_merge_template_action, settings_config as context_merge_template_action_settings_config, default_settings as context_merge_template_action_default_settings } from './src/actions/context/merge_template.js';
 import { source_get_context as source_get_context_action } from './src/actions/source/get_context.js';
 
 export const smart_env_config = {
@@ -26,8 +24,6 @@ export const smart_env_config = {
     smart_context_list_item: { render: smart_context_list_item_component }
   },
   actions: {
-    context_item_merge_template: { action: context_item_merge_template_action, settings_config: context_item_merge_template_action_settings_config, default_settings: context_item_merge_template_action_default_settings },
-    context_merge_template: { action: context_merge_template_action, settings_config: context_merge_template_action_settings_config, default_settings: context_merge_template_action_default_settings },
     source_get_context: { action: source_get_context_action }
   }
 };
