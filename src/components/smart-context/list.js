@@ -94,7 +94,6 @@ export async function post_process(smart_contexts, container, params = {}) {
     }
   };
 
-
   await render_list_items();
   const rerender = () => { render_list_items(); };
   disposers.push(smart_contexts?.env?.events?.on('context:created', rerender));
