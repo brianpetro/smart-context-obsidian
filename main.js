@@ -27,6 +27,7 @@ import { StoryModal } from 'obsidian-smart-env/modals/story.js';  // ← NEW
 
 // v2
 import { ContextsDashboardView } from './src/views/contexts_dashboard_view.js';
+import { CopyContextModal } from './src/modals/copy_context_modal.js';
 
 /**
  * Smart Context (Obsidian) – copy & curate context for AI tools.
@@ -46,6 +47,11 @@ export default class SmartContextPlugin extends Plugin {
     },
     item_types: {
       SmartContext,
+    },
+    modals: {
+      copy_context_modal: {
+        class: CopyContextModal,
+      },
     },
   };
 
@@ -198,24 +204,49 @@ export default class SmartContextPlugin extends Plugin {
         });
       },
     });
-    /**
-     * TODO: REVIEW BELOW
-     */
-    // Command: copy current note
     this.addCommand({
       id: 'copy-current-note-with-depth',
       name: 'Copy current note to clipboard',
-      checkCallback: (checking) => {
-        const active_file = this.app.workspace.getActiveFile();
-        if(!active_file) return false;
-        const base_items = [{key: active_file.path, path: active_file.path}];
-        if (!base_items.length || !base_items[0]) return false;
-        if (checking) return true;
-
-        new this.LinkDepthModal(this, base_items).open();
+      editorCheckCallback: (checking, editor, view) => {
+        const source_path = view.file?.path;
+        if(!source_path) return false;
+        const source = this.env.smart_sources.get(source_path);
+        if(!source) return false;
+        const ModalClass = this.env.config.modals?.copy_context_modal?.class;
+        if (!ModalClass) return false;
+        if(checking) return true; // TODO: what checks should we do here?
+        source.actions.source_get_context().then((ctx) => {
+          if(!ctx) {
+            this.env.events.emit('notification:error', {
+              message: 'Failed to build context for current note.',
+            });
+            new Notice('Failed to build context for current note.');
+            return;
+          }
+          const modal = new ModalClass(ctx);
+          modal.open();
+        });
         return true;
-      },
+      }
     });
+    /**
+     * TODO: REVIEW BELOW
+     */
+    // // Command: copy current note
+    // this.addCommand({
+    //   id: 'copy-current-note-with-depth',
+    //   name: 'Copy current note to clipboard',
+    //   editorCheckCallback: (checking) => {
+    //     const active_file = this.app.workspace.getActiveFile();
+    //     if(!active_file) return false;
+    //     const base_items = [{key: active_file.path, path: active_file.path}];
+    //     if (!base_items.length || !base_items[0]) return false;
+    //     if (checking) return true;
+
+    //     new this.LinkDepthModal(this, base_items).open();
+    //     return true;
+    //   },
+    // });
     // Command: copy visible open files
     this.addCommand({
       id: 'copy-visible-open-files',
