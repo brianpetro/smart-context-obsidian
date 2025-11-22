@@ -28,21 +28,8 @@ export class SmartContextSettingTab extends SmartPluginSettingsTab {
       });
     });
 
-    const smart_view = this.env?.smart_view;
-    const smart_contexts = this.plugin?.env?.smart_contexts;
-    if (!smart_view || !smart_contexts) return;
-
-    Object.entries(smart_contexts.settings_config || {}).forEach(([setting, config]) => {
-      const setting_html = smart_view.render_setting_html({
-        setting,
-        ...config,
-      });
-      const fragment = smart_view.create_doc_fragment(setting_html);
-      if (fragment) container.appendChild(fragment);
-    });
-
-    await smart_view.render_setting_components(container, {
-      scope: smart_contexts,
+    this.env.smart_components.render_component('smart_context_settings_tab', this).then((settings_container) => {
+      container.appendChild(settings_container);
     });
   }
 }

@@ -4,6 +4,7 @@
 
 import { render as smart_context_list_component } from './src/components/smart-context/list.js';
 import { render as smart_context_list_item_component } from './src/components/smart-context/list_item.js';
+import { render as smart_context_settings_tab_component } from './src/components/smart-context/settings_tab.js';
 import { source_get_context as source_get_context_action } from './src/actions/source/get_context.js';
 
 export const smart_env_config = {
@@ -21,7 +22,8 @@ export const smart_env_config = {
   },
   components: {
     smart_context_list: { render: smart_context_list_component },
-    smart_context_list_item: { render: smart_context_list_item_component }
+    smart_context_list_item: { render: smart_context_list_item_component },
+    smart_context_settings_tab: { render: smart_context_settings_tab_component }
   },
   actions: {
     source_get_context: { action: source_get_context_action }

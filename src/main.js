@@ -8,22 +8,22 @@ import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
 
 
 import { SmartContexts, SmartContext, smart_contexts } from 'smart-contexts';
-import { SmartContextSettingTab } from './settings.js';
+import { SmartContextSettingTab } from './views/settings_tab.js';
 
-import { smart_env_config } from './smart_env.config.js';
+import { smart_env_config } from '../smart_env.config.js';
 
-import { FolderSelectModal } from './src/views/folder_select_modal.js';
+import { FolderSelectModal } from './views/folder_select_modal.js';
 
 import { copy_to_clipboard } from 'obsidian-smart-env/utils/copy_to_clipboard.js';
-import { show_stats_notice } from './src/utils/show_stats_notice.js';
+import { show_stats_notice } from './utils/show_stats_notice.js';
 
-import { get_selected_note_keys } from './src/utils/get_selected_note_keys.js';
+import { get_selected_note_keys } from './utils/get_selected_note_keys.js';
 
 import { StoryModal } from 'obsidian-smart-env/modals/story.js';  // ← NEW
 
 // v2
-import { ContextsDashboardView } from './src/views/contexts_dashboard_view.js';
-import { CopyContextModal } from './src/modals/copy_context_modal.js';
+import { ContextsDashboardView } from './views/contexts_dashboard_view.js';
+import { CopyContextModal } from './modals/copy_context_modal.js';
 
 /**
  * Smart Context (Obsidian) – copy & curate context for AI tools.

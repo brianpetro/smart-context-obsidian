@@ -90,7 +90,7 @@ fs.copyFileSync(styles_path, path.join(process.cwd(), 'dist', 'styles.css'));
 const destination_vaults = process.env.DESTINATION_VAULTS.split(',');
 
 // get first argument as entry point
-const entry_point = process.argv[2] || 'main.js';
+const entry_point = process.argv[2] || 'src/main.js';
 
 // Build the project
 esbuild.build({
