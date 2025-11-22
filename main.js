@@ -6,7 +6,6 @@ import {
 
 import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
 
-import { LinkDepthModal } from './src/views/link_depth_modal.js';
 
 import { SmartContexts, SmartContext, smart_contexts } from 'smart-contexts';
 import { SmartContextSettingTab } from './settings.js';
@@ -17,9 +16,6 @@ import { FolderSelectModal } from './src/views/folder_select_modal.js';
 
 import { copy_to_clipboard } from 'obsidian-smart-env/utils/copy_to_clipboard.js';
 import { show_stats_notice } from './src/utils/show_stats_notice.js';
-
-import { get_all_open_file_paths } from './src/utils/workspace.js';
-import { get_visible_open_files } from './src/utils/workspace.js';
 
 import { get_selected_note_keys } from './src/utils/get_selected_note_keys.js';
 
@@ -39,7 +35,6 @@ export default class SmartContextPlugin extends Plugin {
   /*  Smart‑Env registration                                             */
   /* ------------------------------------------------------------------ */
   compiled_smart_env_config = smart_env_config;
-  LinkDepthModal = LinkDepthModal;
 
   smart_env_config = {
     collections: {
@@ -237,47 +232,6 @@ export default class SmartContextPlugin extends Plugin {
     /**
      * TODO: REVIEW BELOW
      */
-    // // Command: copy current note
-    // this.addCommand({
-    //   id: 'copy-current-note-with-depth',
-    //   name: 'Copy current note to clipboard',
-    //   editorCheckCallback: (checking) => {
-    //     const active_file = this.app.workspace.getActiveFile();
-    //     if(!active_file) return false;
-    //     const base_items = [{key: active_file.path, path: active_file.path}];
-    //     if (!base_items.length || !base_items[0]) return false;
-    //     if (checking) return true;
-
-    //     new this.LinkDepthModal(this, base_items).open();
-    //     return true;
-    //   },
-    // });
-    // Command: copy visible open files
-    this.addCommand({
-      id: 'copy-visible-open-files',
-      name: 'Copy visible open files (pick link depth)',
-      checkCallback: (checking) => {
-        const base_items = get_visible_open_files(this.app);
-        if (!base_items.length) return false;
-        if (checking) return true;
-
-        new this.LinkDepthModal(this, base_items).open();
-        return true;
-      },
-    });
-    // Command: copy all open files
-    this.addCommand({
-      id: 'copy-all-open-files',
-      name: 'Copy all open files (pick link depth)',
-      checkCallback: (checking) => {
-        const base_items = get_all_open_file_paths(this.app);
-        if (!base_items.length) return false;
-        if (checking) return true;
-
-        new this.LinkDepthModal(this, base_items).open();
-        return true;
-      },
-    });
     // Command: select folder to copy contents
     this.addCommand({
       id: "select-folder-to-copy-contents",
