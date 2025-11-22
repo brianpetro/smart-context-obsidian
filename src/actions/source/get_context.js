@@ -42,6 +42,7 @@ function build_context_items_from_graph(graph = []) {
       d: final_depth,
       mtime: item.mtime,
       size: item.size,
+      link: true,
     };
   }
 

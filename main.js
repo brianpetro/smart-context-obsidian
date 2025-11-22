@@ -180,54 +180,59 @@ export default class SmartContextPlugin extends Plugin {
   /* ------------------------------------------------------------------ */
   /*  Commands                                                          */
   /* ------------------------------------------------------------------ */
+  get commands () {
+    return {
+      new_context: {
+        id: 'new-context-open-selector',
+        name: 'New Context: Open Context Selector',
+        checkCallback: (checking) => {
+          if (!this?.env?.smart_contexts) return false;
+          if (checking) return true;
+          this.open_new_context_modal();
+          return true;
+        },
+      },
+      get_started: {
+        id: 'show-getting-started',
+        name: 'Show getting started',
+        callback: () => {
+          StoryModal.open(this, {
+            title: 'Getting Started With Smart Context',
+            url: 'https://smartconnections.app/story/smart-context-getting-started/?utm_source=sc-command',
+          });
+        },
+      },
+      copy_current: {
+        id: 'copy-current-note-with-depth',
+        name: 'Copy current note to clipboard',
+        editorCheckCallback: (checking, editor, view) => {
+          const source_path = view.file?.path;
+          if(!source_path) return false;
+          const source = this.env.smart_sources.get(source_path);
+          if(!source) return false;
+          const ModalClass = this.env.config.modals?.copy_context_modal?.class;
+          if (!ModalClass) return false;
+          if(checking) return true; // TODO: what checks should we do here?
+          source.actions.source_get_context().then((ctx) => {
+            if(!ctx) {
+              this.env.events.emit('notification:error', {
+                message: 'Failed to build context for current note.',
+              });
+              new Notice('Failed to build context for current note.');
+              return;
+            }
+            const modal = new ModalClass(ctx);
+            modal.open();
+          });
+          return true;
+        }
+      }
+    }
+  }
 
   register_commands() {
-    // New command: create a SmartContext and open ContextModal
-    this.addCommand({
-      id: 'new-context-open-selector',
-      name: 'New Context: Open Context Selector',
-      checkCallback: (checking) => {
-        if (!this?.env?.smart_contexts) return false;
-        if (checking) return true;
-        this.open_new_context_modal();
-        return true;
-      },
-    });
-
-    this.addCommand({
-      id: 'show-getting-started',
-      name: 'Show getting started',
-      callback: () => {
-        StoryModal.open(this, {
-          title: 'Getting Started With Smart Context',
-          url: 'https://smartconnections.app/story/smart-context-getting-started/?utm_source=sc-command',
-        });
-      },
-    });
-    this.addCommand({
-      id: 'copy-current-note-with-depth',
-      name: 'Copy current note to clipboard',
-      editorCheckCallback: (checking, editor, view) => {
-        const source_path = view.file?.path;
-        if(!source_path) return false;
-        const source = this.env.smart_sources.get(source_path);
-        if(!source) return false;
-        const ModalClass = this.env.config.modals?.copy_context_modal?.class;
-        if (!ModalClass) return false;
-        if(checking) return true; // TODO: what checks should we do here?
-        source.actions.source_get_context().then((ctx) => {
-          if(!ctx) {
-            this.env.events.emit('notification:error', {
-              message: 'Failed to build context for current note.',
-            });
-            new Notice('Failed to build context for current note.');
-            return;
-          }
-          const modal = new ModalClass(ctx);
-          modal.open();
-        });
-        return true;
-      }
+    Object.values(this.commands).forEach((cmd) => {
+      this.addCommand(cmd);
     });
     /**
      * TODO: REVIEW BELOW
