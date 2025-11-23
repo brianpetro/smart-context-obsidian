@@ -8,20 +8,12 @@ const DASHBOARD_ITEM_CLASS = 'sc-contexts-dashboard-item';
  * @returns {string}
  */
 export function build_html(ctx, opts = {}) {
-  const name =
-    (ctx?.data?.name && String(ctx.data.name).trim()) ||
-    (ctx?.data?.key && String(ctx.data.key).trim()) ||
-    'Untitled context';
-  const item_count = Array.isArray(ctx?.context_item_keys)
-    ? ctx.context_item_keys.length
-    : Object.keys(ctx?.data?.context_items || {}).length;
-
   return `<div>
     <div class="${DASHBOARD_ITEM_CLASS}" data-context-key="${ctx?.data?.key || ''}">
-      <div class="sc-contexts-dashboard-item-header" tabindex="0" aria-label="${name}">
-        <button class="sc-contexts-dashboard-show" aria-expanded="false" aria-label="Show ${name}">Show</button>
-        <span class="sc-contexts-dashboard-name">${name}</span>
-        <span class="sc-contexts-dashboard-count">${item_count} items</span>
+      <div class="sc-contexts-dashboard-item-header" tabindex="0" aria-label="${ctx.name}">
+        <button class="sc-contexts-dashboard-show" aria-expanded="false" aria-label="Show ${ctx.name}">Show</button>
+        <span class="sc-contexts-dashboard-name">${ctx.name}</span>
+        <span class="sc-contexts-dashboard-count">${ctx.item_count} items</span>
       </div>
       <div class="sc-contexts-dashboard-item-detail" hidden></div>
     </div>
@@ -75,6 +67,24 @@ async function post_process(ctx, container, opts = {}) {
 
     menu.showAtMouseEvent(ev);
   });
+  const disposers = [];
+  const update_count = () => {
+    const count_span = container.querySelector('.sc-contexts-dashboard-count');
+    if (count_span) {
+      count_span.textContent = `${ctx.item_count} item${ctx.item_count === 1 ? '' : 's'}`;
+    }
+  };
+  const rename_handler = (payload) => {
+    const name_span = container.querySelector('.sc-contexts-dashboard-name');
+    if (name_span && payload?.name) {
+      name_span.textContent = payload.name;
+    } else {
+      console.warn('Received context:renamed event without name payload or missing name_span element', { payload, name_span });
+    }
+  };
+  disposers.push(ctx.on_event('context:renamed', rename_handler));
+  disposers.push(ctx.on_event('context:updated', update_count));
+  this.attach_disposer(container, disposers);
 
   return container;
 }
