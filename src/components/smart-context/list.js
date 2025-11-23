@@ -74,7 +74,10 @@ export async function post_process(smart_contexts, container, params = {}) {
   const env = smart_contexts?.env;
 
   const render_list_items = async () => {
-    const items = smart_contexts.filter();
+    const items = smart_contexts.filter((ctx) => {
+      // only named contexts
+      return ctx?.data?.name && String(ctx.data.name).trim().length > 0;
+    });
     this.empty(list_el);
     if (!items.length) {
       const empty = document.createElement('div');
@@ -95,10 +98,9 @@ export async function post_process(smart_contexts, container, params = {}) {
   };
 
   await render_list_items();
-  const rerender = () => { render_list_items(); };
-  disposers.push(smart_contexts?.env?.events?.on('context:created', rerender));
+  disposers.push(smart_contexts?.env?.events?.on('context:created', render_list_items));
 
   // cleanup
-  this.attach_disposer(container, disposers.filter(Boolean));
+  this.attach_disposer(container, disposers);
   return container;
 }
