@@ -1,7 +1,7 @@
 import { SuggestModal, Notice } from 'obsidian';
 
 export class CopyContextModal extends SuggestModal {
-  constructor(ctx) {
+  constructor(ctx, params = {}) {
     const env = ctx.env;
     const plugin = env.plugin;
     const app = plugin.app;
@@ -10,6 +10,7 @@ export class CopyContextModal extends SuggestModal {
     env.create_env_getter(this);
     this.plugin = plugin;
     this.ctx = ctx;
+    this.params = params;
   }
 
   /* ------------------------------------------------------ */
@@ -53,7 +54,8 @@ export class CopyContextModal extends SuggestModal {
     await this.ctx.actions.context_copy_to_clipboard({
       filter: (ctx_item) => {
         return ctx_item.data.d <= item.d;
-      }
+      },
+      ...this.params,
     });
     wait.hide();
   }
