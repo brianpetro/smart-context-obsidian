@@ -3,6 +3,7 @@ import {
   Notice,
   TFolder,
 } from 'obsidian';
+import { SmartPlugin } from "obsidian-smart-env/smart_plugin.js";
 
 import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
 
@@ -30,7 +31,7 @@ import { CopyContextModal } from './modals/copy_context_modal.js';
  *
  * @extends Plugin
  */
-export default class SmartContextPlugin extends Plugin {
+export default class SmartContextPlugin extends SmartPlugin {
   /* ------------------------------------------------------------------ */
   /*  Smart‑Env registration                                             */
   /* ------------------------------------------------------------------ */
@@ -221,29 +222,18 @@ export default class SmartContextPlugin extends Plugin {
           });
           return true;
         }
+      },
+      copy_folder: {
+        id: 'copy-folder-to-clipboard',
+        name: 'Copy folder contents to clipboard',
+        callback: () => {
+          new FolderSelectModal(this.app, async (folder) => {
+            if (!folder) return;
+            await this.copy_folder_to_clipboard(folder);
+          }).open();
+        },
       }
     }
-  }
-
-  register_commands() {
-    Object.values(this.commands).forEach((cmd) => {
-      this.addCommand(cmd);
-    });
-    /**
-     * TODO: REVIEW BELOW
-     */
-    // Command: select folder to copy contents
-    this.addCommand({
-      id: "select-folder-to-copy-contents",
-      name: "Select folder to copy contents",
-      callback: () => {
-        new FolderSelectModal(this.app, async (folder) => {
-          if (!folder) return;
-          await this.copy_folder_to_clipboard(folder);
-        }).open();
-      },
-    });
-
   }
 
   /**
