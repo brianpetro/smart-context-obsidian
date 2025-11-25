@@ -14,20 +14,54 @@ import {
 /**
  * Build context_items payload from link traversal results.
  *
+ * Depth handling:
+ *  - Start with the graph-reported depth.
+ *  - If the linked item appears as an embedded outlink on the root source
+ *    (the SmartSource that invoked source_get_context), treat it as depth 0
+ *    so it is considered part of the root note.
+ *
  * @param {Array<{ depth:number, item:import('smart-sources').SmartSource }>} graph
+ * @param {import('smart-sources').SmartSource|null} [root_source]
  * @returns {Record<string, { d:number, mtime?:number, size?:number }>}
  */
-function build_context_items_from_graph(graph = []) {
+function build_context_items_from_graph(graph = [], root_source = null) {
   /** @type {Record<string, { d:number, mtime?:number, size?:number }>} */
   const context_items = {};
 
+  const root_outlinks = Array.isArray(root_source?.data?.outlinks)
+    ? root_source.data.outlinks
+    : null;
+
   for (const entry of graph) {
     if (!entry || !entry.item) continue;
-    const depth = typeof entry.depth === "number" ? entry.depth : 0;
+
     const item = entry.item;
     const key = item.key;
-
     if (!key) continue;
+
+    const graph_depth = typeof entry.depth === "number" ? entry.depth : 0;
+    let depth = graph_depth;
+
+    // Override depth for direct embedded outlinks from the root source.
+    // Pseudocode requirement:
+    // if (this.data.outlinks[].find(o => linked_key.endsWith(o.target)).embedded === true) d = 0
+    if (
+      root_outlinks &&
+      graph_depth > 0 && // root itself (depth 0) is already correct
+      typeof key === "string"
+    ) {
+      const embedded_outlink = root_outlinks.find((o) => {
+        if (!o || typeof o !== "object") return false;
+        const target = typeof o.target === "string" ? o.target : null;
+        if (!target) return false;
+        if (!key.endsWith(target)) return false;
+        return o.embedded === true;
+      });
+
+      if (embedded_outlink) {
+        depth = 0;
+      }
+    }
 
     const existing = context_items[key] || {};
 
@@ -53,8 +87,6 @@ function build_context_items_from_graph(graph = []) {
  * Build or update a SmartContext for a given source, including link graph
  * up to a given depth. The SmartContext key is equal to the source key.
  *
- * @param {import('smart-environment').SmartEnv} this.env
- * @param {import('smart-sources').SmartSource|string} source_or_key
  * @param {object} [params={}]
  * @param {"out"|"in"|"both"} [params.direction="both"]  - Link direction(s).
  * @param {boolean} [params.include_self=true]           - Include the root source.
@@ -77,7 +109,7 @@ export async function source_get_context(params = {}) {
     include_self,
   });
 
-  const context_items = build_context_items_from_graph(graph);
+  const context_items = build_context_items_from_graph(graph, this);
 
   const smart_contexts = this.env.smart_contexts;
   const context_key = this.key;
