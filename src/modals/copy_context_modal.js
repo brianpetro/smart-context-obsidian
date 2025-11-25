@@ -16,7 +16,12 @@ export class CopyContextModal extends SuggestModal {
   /* ------------------------------------------------------ */
 
   async onOpen() {
-    const ctx_items = Object.values(this.ctx.context_items.items);
+    // const ctx_items = Object.values(this.ctx.context_items.items);
+    const ctx_items = this.ctx.context_items.filter(i =>{
+      if (i.data.exclude) return false;
+      if (i.is_media && !this.params.with_media) return false;
+      return true;
+    });
     const max_depth = Math.max(
       ...ctx_items.map((item) => (typeof item.data.d === 'number' ? item.data.d : 0))
     );
@@ -46,7 +51,7 @@ export class CopyContextModal extends SuggestModal {
   /* SuggestModal overrides                                  */
   getSuggestions()             { return this.suggestions; }
   renderSuggestion(item, el)   {
-    el.createDiv({ text: `Depth ${item.d} (${item.size} chars, ${item.sizes} items)` });
+    el.createDiv({ text: `Depth ${item.d} (${item.size} chars, ${item.count} items)` });
   }
 
   async onChooseSuggestion(item) {
