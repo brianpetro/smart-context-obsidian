@@ -118,6 +118,10 @@ export async function source_get_context(params = {}) {
     key: context_key,
     context_items,
   });
+  this.once_event('sources:imported', () => {
+    if(smart_contexts.items[context_key]) delete smart_contexts.items[context_key];
+    console.log(`Invalidated SmartContext cache for source ${context_key}`);
+  });
 
   return smart_context || null;
 }
