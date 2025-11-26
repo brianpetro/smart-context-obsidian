@@ -255,10 +255,7 @@ export default class SmartContextPlugin extends SmartPlugin {
       .map((src) => src.key);
 
     const ctx = this.env.smart_contexts.new_context({}, { add_items });
-    const { context, stats, images } = await ctx.compile({ link_depth: 0 });
-
-    await this.copy_to_clipboard(context, images);
-    this.showStatsNotice(stats, `Folder: ${folder.path}`);
+    ctx.actions.context_copy_to_clipboard();
   }
 
   async copy_selected_files_to_clipboard(files) {
@@ -269,10 +266,7 @@ export default class SmartContextPlugin extends SmartPlugin {
     }
 
     const ctx = this.env.smart_contexts.new_context({}, { add_items });
-    const { context, stats, images } = await ctx.compile({ link_depth: 0 });
-
-    await this.copy_to_clipboard(context, images);
-    this.showStatsNotice(stats, `Selected notes (${add_items.length})`);
+    ctx.actions.context_copy_to_clipboard();
   }
 
   async copy_to_clipboard(text) { await copy_to_clipboard(text); }
