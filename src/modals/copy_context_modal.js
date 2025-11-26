@@ -51,7 +51,7 @@ export class CopyContextModal extends SuggestModal {
   /* SuggestModal overrides                                  */
   getSuggestions()             { return this.suggestions; }
   renderSuggestion(item, el)   {
-    el.createDiv({ text: `Depth ${item.d} (${item.size} chars, ${item.count} items)` });
+    el.createDiv({ text: `Depth ${item.d} (${format_suggestion_size(item.size)} chars, ${item.count} items)` });
   }
 
   async onChooseSuggestion(item) {
@@ -64,4 +64,23 @@ export class CopyContextModal extends SuggestModal {
     });
     wait.hide();
   }
+}
+
+function format_suggestion_size(size) {
+  const value = Number(size) || 0;
+  if (value >= 10000000) {
+    const millions = value / 1000000;
+    const rounded = millions >= 10
+      ? Math.round(millions)
+      : Math.round(millions * 10) / 10;
+    return `${rounded}M`;
+  }
+  if (value >= 10000) {
+    const thousands = value / 1000;
+    const rounded = thousands >= 10
+      ? Math.round(thousands)
+      : Math.round(thousands * 10) / 10;
+    return `${rounded}K`;
+  }
+  return value.toLocaleString();
 }
