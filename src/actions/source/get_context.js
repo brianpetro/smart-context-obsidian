@@ -90,7 +90,6 @@ function build_context_items_from_graph(graph = [], root_source = null) {
  * @param {object} [params={}]
  * @param {"out"|"in"|"both"} [params.direction="both"]  - Link direction(s).
  * @param {boolean} [params.include_self=true]           - Include the root source.
- * @param {boolean} [params.merge_context_opts=true]     - Preserve existing context_opts.
  * @returns {Promise<import('smart-contexts').SmartContext|null>}
  */
 export async function source_get_context(params = {}) {
