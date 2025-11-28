@@ -60,6 +60,7 @@ export class CopyContextModal extends SuggestModal {
       filter: (ctx_item) => {
         return ctx_item.data.d <= item.d;
       },
+      max_depth: item.d, // for stats notification
       ...this.params,
     });
     wait.hide();
