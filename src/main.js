@@ -8,10 +8,7 @@ import { SmartPlugin } from "obsidian-smart-env/smart_plugin.js";
 import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
 
 
-import { SmartContexts, SmartContext, smart_contexts } from 'smart-contexts';
 import { SmartContextSettingTab } from './views/settings_tab.js';
-
-import { smart_env_config } from '../smart_env.config.js';
 
 import { FolderSelectModal } from './views/folder_select_modal.js';
 
@@ -24,7 +21,7 @@ import { StoryModal } from 'obsidian-smart-env/modals/story.js';  // ← NEW
 
 // v2
 import { ContextsDashboardView } from './views/contexts_dashboard_view.js';
-import { CopyContextModal } from './modals/copy_context_modal.js';
+import { smart_env_config } from './default.config.js';
 
 /**
  * Smart Context (Obsidian) – copy & curate context for AI tools.
@@ -32,34 +29,9 @@ import { CopyContextModal } from './modals/copy_context_modal.js';
  * @extends Plugin
  */
 export default class SmartContextPlugin extends SmartPlugin {
-  /* ------------------------------------------------------------------ */
-  /*  Smart‑Env registration                                             */
-  /* ------------------------------------------------------------------ */
-  compiled_smart_env_config = smart_env_config;
-
-  smart_env_config = {
-    collections: {
-      smart_contexts,
-    },
-    item_types: {
-      SmartContext,
-    },
-    modals: {
-      copy_context_modal: {
-        class: CopyContextModal,
-      },
-    },
-  };
-
-  /* ------------------------------------------------------------------ */
-  /*  Lifecycle                                                         */
-  /* ------------------------------------------------------------------ */
   onload() {
     this.app.workspace.onLayoutReady(this.initialize.bind(this));
-    SmartEnv.create(this, merge_env_config(
-      this.compiled_smart_env_config,
-      this.smart_env_config,
-    ));
+    SmartEnv.create(this, smart_env_config);
   }
 
   onunload() {
