@@ -10,7 +10,6 @@ import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
 
 import { SmartContextSettingTab } from './views/settings_tab.js';
 
-import { FolderSelectModal } from './modals/folder_select_modal.js';
 
 import { copy_to_clipboard } from 'obsidian-smart-env/utils/copy_to_clipboard.js';
 import { show_stats_notice } from './utils/show_stats_notice.js';
@@ -22,6 +21,7 @@ import { StoryModal } from 'obsidian-smart-env/modals/story.js';  // ← NEW
 // v2
 import { ContextsDashboardView } from './views/contexts_dashboard_view.js';
 import { smart_env_config } from './default.config.js';
+import {context_commands} from './commands/context_commands.js'
 
 /**
  * Smart Context (Obsidian) – copy & curate context for AI tools.
@@ -150,61 +150,7 @@ export default class SmartContextPlugin extends SmartPlugin {
   /* ------------------------------------------------------------------ */
   get commands () {
     return {
-      new_context: {
-        id: 'new-context-open-selector',
-        name: 'Open Selector for New Context',
-        checkCallback: (checking) => {
-          if (!this?.env?.smart_contexts) return false;
-          if (checking) return true;
-          this.open_new_context_modal();
-          return true;
-        },
-      },
-      get_started: {
-        id: 'show-getting-started',
-        name: 'Help: Show getting started',
-        callback: () => {
-          StoryModal.open(this, {
-            title: 'Getting Started With Smart Context',
-            url: 'https://smartconnections.app/story/smart-context-getting-started/?utm_source=sc-command',
-          });
-        },
-      },
-      copy_current: {
-        id: 'copy-current-note-with-depth',
-        name: 'Copy current to clipboard',
-        editorCheckCallback: (checking, editor, view) => {
-          const source_path = view.file?.path;
-          if(!source_path) return false;
-          const source = this.env.smart_sources.get(source_path);
-          if(!source) return false;
-          const ModalClass = this.env.config.modals?.copy_context_modal?.class;
-          if (!ModalClass) return false;
-          if(checking) return true; // TODO: what checks should we do here?
-          source.actions.source_get_context().then((ctx) => {
-            if(!ctx) {
-              this.env.events.emit('notification:error', {
-                message: 'Failed to build context for current note.',
-              });
-              new Notice('Failed to build context for current note.');
-              return;
-            }
-            const modal = new ModalClass(ctx);
-            modal.open();
-          });
-          return true;
-        }
-      },
-      copy_folder: {
-        id: 'copy-folder-to-clipboard',
-        name: 'Copy entire folder to clipboard',
-        callback: () => {
-          new FolderSelectModal(this.app, async (folder) => {
-            if (!folder) return;
-            await this.copy_folder_to_clipboard(folder);
-          }).open();
-        },
-      }
+      ...context_commands(this)
     }
   }
 
