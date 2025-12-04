@@ -10,7 +10,7 @@ import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
 
 import { SmartContextSettingTab } from './views/settings_tab.js';
 
-import { FolderSelectModal } from './views/folder_select_modal.js';
+import { FolderSelectModal } from './modals/folder_select_modal.js';
 
 import { copy_to_clipboard } from 'obsidian-smart-env/utils/copy_to_clipboard.js';
 import { show_stats_notice } from './utils/show_stats_notice.js';
@@ -152,7 +152,7 @@ export default class SmartContextPlugin extends SmartPlugin {
     return {
       new_context: {
         id: 'new-context-open-selector',
-        name: 'New Context: Open Context Selector',
+        name: 'Open Selector for New Context',
         checkCallback: (checking) => {
           if (!this?.env?.smart_contexts) return false;
           if (checking) return true;
@@ -162,7 +162,7 @@ export default class SmartContextPlugin extends SmartPlugin {
       },
       get_started: {
         id: 'show-getting-started',
-        name: 'Show getting started',
+        name: 'Help: Show getting started',
         callback: () => {
           StoryModal.open(this, {
             title: 'Getting Started With Smart Context',
@@ -172,7 +172,7 @@ export default class SmartContextPlugin extends SmartPlugin {
       },
       copy_current: {
         id: 'copy-current-note-with-depth',
-        name: 'Copy current note to clipboard',
+        name: 'Copy current to clipboard',
         editorCheckCallback: (checking, editor, view) => {
           const source_path = view.file?.path;
           if(!source_path) return false;
@@ -197,7 +197,7 @@ export default class SmartContextPlugin extends SmartPlugin {
       },
       copy_folder: {
         id: 'copy-folder-to-clipboard',
-        name: 'Copy folder contents to clipboard',
+        name: 'Copy entire folder to clipboard',
         callback: () => {
           new FolderSelectModal(this.app, async (folder) => {
             if (!folder) return;
