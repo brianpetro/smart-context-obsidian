@@ -16,7 +16,7 @@ import { show_stats_notice } from './utils/show_stats_notice.js';
 
 import { get_selected_note_keys } from './utils/get_selected_note_keys.js';
 
-import { StoryModal } from 'obsidian-smart-env/modals/story.js';  // ← NEW
+import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';  // ← NEW
 
 // v2
 import { ContextsDashboardView } from './views/contexts_dashboard_view.js';

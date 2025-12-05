@@ -1,4 +1,4 @@
-import { StoryModal } from 'obsidian-smart-env/modals/story.js';
+import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';
 import { SmartPluginSettingsTab } from 'obsidian-smart-env';
 
 /**

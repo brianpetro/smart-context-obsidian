@@ -1,5 +1,5 @@
 import { FolderSelectModal } from '../modals/folder_select_modal.js';
-import { StoryModal } from 'obsidian-smart-env/modals/story.js';  // ← NEW
+import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';  // ← NEW
 
 export function context_commands(plugin) {
 
