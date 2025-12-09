@@ -42,8 +42,7 @@ Smart Context is one puzzle piece alongside **Smart Connections** (semantic link
 Join the [mission-driven community](https://smartconnections.app/community-supporters/?utm_source=context-readme).
 
 ## FAQs
-> [!INFO]- Does it work on mobile?
-> Yes, the Core Smart Context plugin is mobile friendly. **Context Pro**: some features are not compatible with mobile.
+> [!INFO] <details><summary>Does it work on mobile</summary>Yes, the Core Smart Context plugin is mobile friendly. **Context Pro**: some features are not compatible with mobile.</details>
 
 
 ## Thanks to the Community
