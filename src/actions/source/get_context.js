@@ -28,9 +28,7 @@ function build_context_items_from_graph(graph = [], root_source = null) {
   /** @type {Record<string, { d:number, mtime?:number, size?:number }>} */
   const context_items = {};
 
-  const root_outlinks = Array.isArray(root_source?.data?.outlinks)
-    ? root_source.data.outlinks
-    : null;
+  const outlinks = root_source.outlinks;
 
   for (const entry of graph) {
     if (!entry || !entry.item) continue;
@@ -43,19 +41,13 @@ function build_context_items_from_graph(graph = [], root_source = null) {
     let depth = graph_depth;
 
     // Override depth for direct embedded outlinks from the root source.
-    // Pseudocode requirement:
-    // if (this.data.outlinks[].find(o => linked_key.endsWith(o.target)).embedded === true) d = 0
     if (
-      root_outlinks &&
+      Array.isArray(outlinks) &&
       graph_depth > 0 && // root itself (depth 0) is already correct
       typeof key === "string"
     ) {
-      const embedded_outlink = root_outlinks.find((o) => {
-        if (!o || typeof o !== "object") return false;
-        const target = typeof o.target === "string" ? o.target : null;
-        if (!target) return false;
-        if (!key.endsWith(target)) return false;
-        return o.embedded === true;
+      const embedded_outlink = root_source.outlinks.find((o) => {
+        return o.key === key && o.embedded === true;
       });
 
       if (embedded_outlink) {
