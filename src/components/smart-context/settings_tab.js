@@ -1,4 +1,5 @@
 import styles from './settings_tab.css';
+import { render_settings_config } from "obsidian-smart-env/src/utils/render_settings_config.js";
 
 async function build_html(settings_tab, params = {}) {
   return `<div class="smart-context-settings-tab">
@@ -28,13 +29,37 @@ export async function post_process(settings_tab, container, params = {}) {
   
   const smart_contexts = env.smart_contexts;
   const contexts_container = container.querySelector('.smart-contexts');
-  render_component('collection_settings', smart_contexts).then((settings_container) => {
-    contexts_container.appendChild(settings_container);
-  });
+  render_settings_config(
+    smart_contexts.settings_config,
+    smart_contexts,
+    contexts_container,
+    {
+      default_group_name: 'Smart Contexts',
+      heading_btn: [
+        {
+          label: 'Settings documentation for Contexts Templates',
+          btn_icon: 'help-circle',
+          callback: () => window.open('https://smartconnections.app/smart-context/settings/?utm_source=context-settings-tab#context-templates', '_external'),
+        }
+      ],
+    }
+  )
 
   const context_items = env.context_items;
   const context_items_container = container.querySelector('.context-items');
-  render_component('collection_settings', context_items).then((settings_container) => {
-    context_items_container.appendChild(settings_container);
-  });
+  render_settings_config(
+    context_items.settings_config,
+    context_items,
+    context_items_container,
+    {
+      default_group_name: 'Context Items',
+      heading_btn: [
+        {
+          label: 'Settings documentation for Context Items',
+          btn_icon: 'help-circle',
+          callback: () => window.open('https://smartconnections.app/smart-context/settings/?utm_source=context-settings-tab#context-items', '_external'),
+        }
+      ],
+    }
+  )
 }
