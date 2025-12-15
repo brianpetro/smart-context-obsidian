@@ -29,9 +29,10 @@ import {context_commands} from './commands/context_commands.js'
  * @extends Plugin
  */
 export default class SmartContextPlugin extends SmartPlugin {
+  SmartEnv = SmartEnv;
   onload() {
     this.app.workspace.onLayoutReady(this.initialize.bind(this));
-    SmartEnv.create(this, smart_env_config);
+    this.SmartEnv.create(this, smart_env_config);
   }
 
   onunload() {
@@ -47,7 +48,7 @@ export default class SmartContextPlugin extends SmartPlugin {
    */
   async initialize() {
     await this.load_new_user_state();                 // ← NEW
-    await SmartEnv.wait_for({ loaded: true });
+    await this.SmartEnv.wait_for({ loaded: true });
 
     this.register_commands();
     this.register_folder_menu();

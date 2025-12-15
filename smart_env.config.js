@@ -2,6 +2,7 @@
 
 
 
+import { render as smart_context_actions_component, version as smart_context_actions_component_version } from './src/components/smart-context/actions.js';
 import { render as smart_context_list_component } from './src/components/smart-context/list.js';
 import { render as smart_context_list_item_component } from './src/components/smart-context/list_item.js';
 import { render as smart_context_settings_tab_component } from './src/components/smart-context/settings_tab.js';
@@ -21,6 +22,7 @@ export const smart_env_config = {
 
   },
   components: {
+    smart_context_actions: { render: smart_context_actions_component, version: smart_context_actions_component_version },
     smart_context_list: { render: smart_context_list_component },
     smart_context_list_item: { render: smart_context_list_item_component },
     smart_context_settings_tab: { render: smart_context_settings_tab_component }
