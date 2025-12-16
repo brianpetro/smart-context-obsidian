@@ -1,5 +1,6 @@
 const DASHBOARD_CLASS       = 'sc-contexts-dashboard';
 const DASHBOARD_LIST_CLASS  = 'sc-contexts-dashboard-list';
+import styles from './list.css';
 
 /**
  * Normalize filter input.
@@ -52,6 +53,7 @@ export function build_html() {
  * @returns {Promise<HTMLElement>}
  */
 export async function render(smart_contexts, params = {}) {
+  this.apply_style_sheet(styles);
   const html = build_html();
   const fragment = this.create_doc_fragment(html);
   const container = fragment.querySelector(`.${DASHBOARD_CLASS}`);
