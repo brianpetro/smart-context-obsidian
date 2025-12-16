@@ -1,5 +1,12 @@
-.sc-context-dashboard-list {
+.sc-contexts-dashboard-list {
   display: flex;
   flex-direction: column;
   gap: var(--size-4-2);
+}
+
+.sc-contexts-dashboard .top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
 }

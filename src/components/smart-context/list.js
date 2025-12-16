@@ -1,6 +1,7 @@
 const DASHBOARD_CLASS       = 'sc-contexts-dashboard';
 const DASHBOARD_LIST_CLASS  = 'sc-contexts-dashboard-list';
 import styles from './list.css';
+import {setIcon} from 'obsidian';
 
 /**
  * Normalize filter input.
@@ -42,6 +43,10 @@ export function resolve_timestamp(meta) {
  */
 export function build_html() {
   return `<div class="${DASHBOARD_CLASS}">
+    <div class="top-bar">
+      <small><b>Smart Context</b></small>
+      <button class="help"></button>
+    </div>
     <div class="${DASHBOARD_LIST_CLASS}"></div>
   </div>`;
 }
@@ -74,6 +79,12 @@ export async function post_process(smart_contexts, container, params = {}) {
   const disposers = [];
   const list_el = container.querySelector(`.${DASHBOARD_LIST_CLASS}`);
   const env = smart_contexts?.env;
+
+  const help_btn = container.querySelector('button.help');
+  setIcon(help_btn, 'help-circle');
+  help_btn?.addEventListener('click', () => {
+    window.open('https://smartconnections.app/smart-context/builder/?utm_source=context-list-help#manage-named', '_external');
+  });
 
   const render_list_items = async () => {
     const items = smart_contexts.filter((ctx) => {
