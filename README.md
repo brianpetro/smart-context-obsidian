@@ -16,13 +16,27 @@
 
 ## Getting started
 
+1. Install Smart Context from Community plugins (or click Install above).
+2. Run **Smart Context: Open Selector for New Context** to open the Builder.
+3. Type to filter notes and press **Enter** to add them. Press **→** to select specific blocks when you only need sections of a note.
+4. Use **Copy current to clipboard** inside the Builder to export the selection, or name the context so you can reuse it later.
+5. Open **Show named contexts** to browse, reopen, or adjust saved bundles.
+
 [![Smart Context Getting Started](https://smartconnections.app/assets/smart-context-obsidian/smart-context-getting-started.gif)](https://smartconnections.app/story/smart-context-getting-started/)
 
-### Copy a folder in one click
+### Copy from file navigator
+
+#### Copy a folder in one click
 
 ![Folder menu - copy contents](https://smartconnections.app/assets/smart-context-obsidian/Smart-Context-Folder-menu-copy-contents-2025-06-15.png)
 
 Right click any folder, then choose **Copy contents** to send every note inside to your clipboard.
+
+#### Copy multiple files
+
+![](https://smartconnections.app/assets/context-file-nav-copy-multi-select-2025-12-16.png)
+
+### Copy folder command
 
 ![Select folder modal](https://smartconnections.app/assets/smart-context-obsidian/Smart-Context-Select-folder-to-copy-all-contents-modal-2025-06-15.png)
 
@@ -40,6 +54,7 @@ Or run the command **Select folder to copy contents** from the command palette a
 #### Block selection
 
 ![](https://smartconnections.app/assets/context-builder-blocks-suggested-2025-12-15.png)
+
 ### Grow the set with connections and links
 
 ![](https://smartconnections.app/assets/connections-send-to-context-2025-12-16.png)
@@ -50,20 +65,29 @@ Use **Send results to Smart Context** in Smart Connections to convert matches in
 
 When exporting, choose a link depth to automatically include cited sources and related topics alongside your selection.
 
-## Configure templates
+## Key commands
+
+- **Smart Context: Open Selector for New Context** — open the Builder for a fresh set.
+- **Smart Context: Copy current to clipboard** — fast export of the current selection.
+- **Smart Context: Copy entire folder to clipboard** — best when your project already lives together.
+- **Smart Context: Show named contexts** — browse and reopen saved bundles.
+- **Smart Context: Help: Show getting started** — pull up a quick reference inside Obsidian.
+
+> [!TIP] Use Obsidian Settings → Hotkeys → search "Smart Context" to assign shortcuts for your most common actions.
+
+## Templates
+
+Open **Settings → Community plugins → Smart Context**.
 
 ![](https://smartconnections.app/assets/context-settings-page-context-templates-2025-12-15.png)
 
-**Context templates** wrap every export with your own before/after blocks; insert `{{FILE_TREE}}` anywhere to include an outline of the copied set.
+**Context templates** wrap the entire export. The default XML template includes `{{FILE_TREE}}` to show a hierarchical summary; remove it for a tighter payload.
 
 ![](https://smartconnections.app/assets/context-settings-page-item-templates-2025-12-15.png)
 
-**Item templates** add headers, separators, and per-note metadata using variables like `{{KEY}}` and `{{TIME_AGO}}`.
+**Item templates** wrap each note. Useful variables: `{{KEY}}` (full path), `{{TIME_AGO}}` (last modified), and `{{LINK_DEPTH}}` (depth when including linked notes).
 
-## Commands and hotkeys
-
-- Assign a hotkey to **Open Selector for New Context** if you assemble contexts daily.
-- Quick actions: **Copy current to clipboard**, **Copy entire folder to clipboard**, **Help: Show getting started**, and **Open Management dashboard (show named contexts) view**.
+> Templates only affect the text you copy/export—they do not change your vault files.
 
 ## Mission-driven
 
@@ -74,6 +98,9 @@ The Obsidian community proved user-aligned software can out-innovate closed plat
 No data leaves your vault unless *you* copy it. All parsing, filtering, and token estimates run locally. Use local embedding models or remote APIs—it is your choice.
 
 ## FAQs
+
+<details><summary><span style="--font-weight: var(--h3-weight); font-variant: var(--h3-variant); letter-spacing: var(--h3-letter-spacing); line-height: var(--h3-line-height); font-size: var(--h3-size); color: var(--h3-color); font-weight: var(--font-weight); font-style: var(--h3-style); font-family: var(--h3-font); cursor: pointer;">Can I change how the context is formatted?</span></summary>Yes. Adjust the Context and Item templates in **Settings → Community plugins → Smart Context**. Edit variables like `{{FILE_TREE}}`, `{{KEY}}`, and `{{TIME_AGO}}` to match your workflow.</details>
+
 <details><summary><span style="--font-weight: var(--h3-weight); font-variant: var(--h3-variant); letter-spacing: var(--h3-letter-spacing); line-height: var(--h3-line-height); font-size: var(--h3-size); color: var(--h3-color); font-weight: var(--font-weight); font-style: var(--h3-style); font-family: var(--h3-font); cursor: pointer;">Does it work on mobile?</span></summary>Yes, the Core Smart Context plugin is mobile friendly. **Context Pro**: some features are not compatible with mobile.</details>
 
 <details><summary><span style="--font-weight: var(--h3-weight); font-variant: var(--h3-variant); letter-spacing: var(--h3-letter-spacing); line-height: var(--h3-line-height); font-size: var(--h3-size); color: var(--h3-color); font-weight: var(--font-weight); font-style: var(--h3-style); font-family: var(--h3-font); cursor: pointer;">What is the Smart Ecosystem?</span></summary>
