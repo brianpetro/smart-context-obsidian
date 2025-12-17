@@ -21,6 +21,12 @@ Learn the workflows in depth:
 
 [![Install Smart Context](https://smartconnections.app/assets/smart-context-obsidian/smart-context.gif)](https://obsidian.md/plugins?id=smart-context)
 
+## Quick start flows
+
+1. **Copy a folder in one click** — right click a folder in the file navigator and choose **Copy contents** to copy every note.
+2. **Build and reuse a context** — run **Open Selector for New Context**, add notes or blocks, then name and reopen the bundle later.
+3. **Export with linked sources** — send Smart Connections results to Smart Context, pick a link depth, and copy the full set.
+
 ## Getting started
 
 1. Install Smart Context from Community plugins (or click Install above).
@@ -58,6 +64,8 @@ Or run the command **Select folder to copy contents** from the command palette a
 
 ![Context selector](https://smartconnections.app/assets/smart-context-obsidian/Smart-Context-Context-selector-with-selected-items-and-search-input-2025-06-15.png)
 
+Learn more about the [Context Builder](https://smartconnections.app/smart-context/builder/) in the detailed guide.
+
 #### Block selection
 
 ![](https://smartconnections.app/assets/context-builder-blocks-suggested-2025-12-15.png)
@@ -71,6 +79,14 @@ Use **Send results to Smart Context** in Smart Connections to convert matches in
 ![Select link depth modal](https://smartconnections.app/assets/smart-context-obsidian/Smart-Context-Select-link-depth-modal-2025-06-15.png)
 
 When exporting, choose a link depth to automatically include cited sources and related topics alongside your selection.
+
+### Export with link depth
+
+- Trigger an export from the Builder or the Smart Connections link depth modal when you want related notes pulled in automatically.
+- Pick a depth to include linked sources and keep the output organized by the originating note.
+- Re-run with a smaller depth when you need lean context for strict token budgets.
+
+Learn more about the [context clipboard](https://smartconnections.app/smart-context/clipboard/) features.
 
 ## Key commands
 
@@ -94,7 +110,12 @@ Open **Settings → Community plugins → Smart Context**.
 
 **Item templates** wrap each note. Useful variables: `{{KEY}}` (full path), `{{TIME_AGO}}` (last modified), and `{{LINK_DEPTH}}` (depth when including linked notes).
 
+- Use templates to switch between structured XML, Markdown summaries, or short bullet exports without changing your vault files.
+- Adjust the default copy depth or prompt style in **Settings → Context templates** when you regularly include linked sources.
+
 > Templates only affect the text you copy/export—they do not change your vault files.
+
+Learn more in the [context settings reference](https://smartconnections.app/smart-context/settings/) guide.
 
 ## Mission-driven
 
