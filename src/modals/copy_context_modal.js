@@ -1,4 +1,4 @@
-import { SuggestModal, Notice } from 'obsidian';
+import { SuggestModal, Notice, setIcon } from 'obsidian';
 
 export class CopyContextModal extends SuggestModal {
   constructor(ctx, params = {}) {
@@ -11,6 +11,18 @@ export class CopyContextModal extends SuggestModal {
     this.plugin = plugin;
     this.ctx = ctx;
     this.params = params;
+    // add heading to this.titleEl
+    this.modalEl.prepend(this.titleEl);
+    this.setTitle('Smart Context - Copy to clipboard');
+    const button = this.titleEl.createEl('button');
+    setIcon(button, 'help-circle');
+    button.addEventListener('click', (e) => {
+      window.open('https://smartconnections.app/smart-context/clipboard/?utm_source=copy-modal', '_external');
+    });
+    this.titleEl.style.display = 'flex';
+    this.titleEl.style.justifyContent = 'space-between';
+    this.titleEl.style.margin = 'var(--size-4-4)';
+    setTimeout(() => this.inputEl.focus(), 0); // make sure input is focused (otherwise unfocussed after adding titleEl with button)
   }
 
   /* ------------------------------------------------------ */
