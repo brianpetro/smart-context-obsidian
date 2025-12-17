@@ -47,6 +47,8 @@ Right click any folder, then choose **Copy contents** to send every note inside 
 
 #### Copy multiple files
 
+Select multiple notes (Shift/Ctrl/Cmd click), then right click and choose **Copy selected notes as context** to export them using your Context templates.
+
 ![](https://smartconnections.app/assets/context-file-nav-copy-multi-select-2025-12-16.png)
 
 ### Copy folder command
