@@ -12,6 +12,13 @@
 🤖 Compatible with any AI workflow
 ⚔️ Mission-driven, community-supported
 
+Learn the workflows in depth:
+
+- [Getting started guide](https://smartconnections.app/smart-context/getting-started/) — copy folders, build sets, and grow them with links.
+- [Builder guide](https://smartconnections.app/smart-context/builder/) — filter, save, and reopen contexts.
+- [Clipboard workflows](https://smartconnections.app/smart-context/clipboard/) — copy folders, multi-select files, and export in one click.
+- [Settings reference](https://smartconnections.app/smart-context/settings/) — adjust templates and output controls.
+
 [![Install Smart Context](https://smartconnections.app/assets/smart-context-obsidian/smart-context.gif)](https://obsidian.md/plugins?id=smart-context)
 
 ## Getting started
