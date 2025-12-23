@@ -125,16 +125,29 @@ export default class SmartContextPlugin extends SmartPlugin {
   register_files_menu() {
     this.registerEvent(this.app.workspace.on('files-menu', (menu, files) => {
       const selected_keys = get_selected_note_keys(files, this.env.smart_sources);
-      if (selected_keys.length < 2) return;
+      if (selected_keys.length > 1) {
+        menu.addItem((item) => {
+          item
+            .setTitle('Copy selected notes as context')
+            .setIcon('documents')
+            .onClick(async () => {
+              await this.copy_selected_files_to_clipboard(files);
+            });
+        });
+      }
+      
+      const folder_paths = get_selected_folder_paths(files);
+      if (folder_paths.length > 1) {
+        menu.addItem((item) => {
+          item
+            .setTitle("Copy selected folders as context")
+            .setIcon("documents")
+            .onClick(async () => {
+              await this.copy_selected_folders_to_clipboard(files);
+            });
+        });
+      }
 
-      menu.addItem((item) => {
-        item
-          .setTitle('Copy selected notes as context')
-          .setIcon('documents')
-          .onClick(async () => {
-            await this.copy_selected_files_to_clipboard(files);
-          });
-      });
     }));
   }
 
@@ -188,7 +201,91 @@ export default class SmartContextPlugin extends SmartPlugin {
     ctx.actions.context_copy_to_clipboard();
   }
 
+  /**
+   * Copy all notes within the selected folders to clipboard as a single context.
+   *
+   * @param {Array<{path?: string, children?: unknown}>} files
+   * @returns {Promise<void>}
+   */
+  async copy_selected_folders_to_clipboard(files) {
+    const folder_paths = get_selected_folder_paths(files);
+    if (!folder_paths.length) {
+      new Notice("No folders found in selection.");
+      return;
+    }
+
+    const item_keys = new Set();
+
+    for (const folder_path of folder_paths) {
+      const prefix = normalize_folder_prefix(folder_path);
+      const matches = this.env.smart_sources
+        .filter({ key_starts_with: prefix })
+        .map((src) => src.key);
+
+      for (const key of matches) {
+        if (key) item_keys.add(key);
+      }
+    }
+
+    const add_items = [...item_keys];
+
+    if (!add_items.length) {
+      new Notice("No Smart Context notes found in selected folders.");
+      return;
+    }
+
+    const ctx = this.env.smart_contexts.new_context({}, { add_items });
+    ctx.actions.context_copy_to_clipboard();
+  }
+
   async copy_to_clipboard(text) { await copy_to_clipboard(text); }
 
   showStatsNotice(stats, contextMsg) { show_stats_notice(stats, contextMsg); }
+}
+
+
+/**
+ * Ensure folder prefix matches only items *inside* the folder.
+ * Prevents accidental matches like:
+ *   folder "foo" matching "foobar/file.md"
+ *
+ * @param {string} folder_path
+ * @returns {string}
+ */
+function normalize_folder_prefix(folder_path) {
+  const raw = String(folder_path ?? "").trim();
+  if (!raw) return "";
+  return raw.endsWith("/") ? raw : `${raw}/`;
+}
+
+/**
+ * Extract unique folder paths selected in the file explorer.
+ *
+ * Obsidian supplies an array of TAbstractFile entries to the `files-menu` event.
+ * TFolder instances include a `children` array; TFile instances do not.
+ *
+ * Kept dependency-free so it can be unit tested without Obsidian runtime.
+ *
+ * @param {Array<{path?: string, children?: unknown}>} files
+ * @returns {string[]}
+ */
+function get_selected_folder_paths(files = []) {
+  if (!Array.isArray(files)) return [];
+
+  const seen = new Set();
+  /** @type {string[]} */
+  const paths = [];
+
+  for (const file of files) {
+    const is_folder = Array.isArray(file?.children);
+    if (!is_folder) continue;
+
+    const folder_path = file?.path;
+    if (!folder_path || seen.has(folder_path)) continue;
+
+    seen.add(folder_path);
+    paths.push(folder_path);
+  }
+
+  return paths;
 }
