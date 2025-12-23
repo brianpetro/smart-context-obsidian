@@ -1,4 +1,5 @@
 import { FolderSelectModal } from '../modals/folder_select_modal.js';
+import { NamedContextSelectModal } from '../modals/named_context_select_modal.js';
 import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';  // ← NEW
 
 export function context_commands(plugin) {
@@ -11,6 +12,19 @@ export function context_commands(plugin) {
         if (!plugin?.env?.smart_contexts) return false;
         if (checking) return true;
         plugin.open_new_context_modal();
+        return true;
+      },
+    },
+    copy_named_context: {
+      id: 'copy-named-context-with-depth',
+      name: 'Copy named context to clipboard (choose depth)',
+      checkCallback: (checking) => {
+        if (!plugin?.env?.smart_contexts) return false;
+        if (checking) return true;
+        const modal = new NamedContextSelectModal(plugin.app, plugin, {
+          max_depth: 3,
+        });
+        modal.open();
         return true;
       },
     },
@@ -59,6 +73,6 @@ export function context_commands(plugin) {
         }).open();
       },
     }
-  }
+  };
 
 }
