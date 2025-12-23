@@ -15,6 +15,7 @@ import { copy_to_clipboard } from 'obsidian-smart-env/utils/copy_to_clipboard.js
 import { show_stats_notice } from './utils/show_stats_notice.js';
 
 import { get_selected_note_keys } from './utils/get_selected_note_keys.js';
+import { get_selected_context_item_keys } from './utils/get_selected_context_item_keys.js';
 
 import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';  // ← NEW
 
@@ -41,8 +42,8 @@ export default class SmartContextPlugin extends SmartPlugin {
   }
 
   /**
-   * Top‑level bootstrap after Obsidian workspace is ready.
-   * Handles first‑run onboarding, command registration, menus, etc.
+   * Top-level bootstrap after Obsidian workspace is ready.
+   * Handles first-run onboarding, command registration, menus, etc.
    *
    * @returns {Promise<void>}
    */
@@ -58,7 +59,7 @@ export default class SmartContextPlugin extends SmartPlugin {
     this.addSettingTab(new SmartContextSettingTab(this.app, this));
 
 
-    /* ── First‑run onboarding ───────────────────────────────────────── */
+    /* ── First-run onboarding ───────────────────────────────────────── */
     if (this.is_new_user()) {                         // ← NEW
       setTimeout(() => {
         StoryModal.open(this, {
@@ -72,7 +73,7 @@ export default class SmartContextPlugin extends SmartPlugin {
 
 
   /* ------------------------------------------------------------------ */
-  /*  New‑user state (mirrors sc‑obsidian)                              */
+  /*  New-user state (mirrors sc-obsidian)                              */
   /* ------------------------------------------------------------------ */
 
   /**
@@ -119,11 +120,40 @@ export default class SmartContextPlugin extends SmartPlugin {
           .setIcon('documents')
           .onClick(async () => { await this.copy_folder_to_clipboard(file); });
       });
+      menu.addItem((item) => {
+        item
+          .setTitle('Open folder in Context Builder')
+          .setIcon('layout-list')
+          .onClick(async () => {
+            const folder_prefix = normalize_folder_prefix(file.path);
+            const folder_item_keys = this.env.smart_sources
+              .filter({ key_starts_with: folder_prefix })
+              .map((src) => src.key)
+            ;
+            this.open_new_context_modal({ add_items: folder_item_keys });
+          });
+      });
     }));
   }
 
   register_files_menu() {
     this.registerEvent(this.app.workspace.on('files-menu', (menu, files) => {
+      const folder_paths = get_selected_folder_paths(files);
+      const has_folders = folder_paths.length > 0;
+
+      const selected_item_keys = get_selected_context_item_keys(files, this.env.smart_sources);
+
+      if (selected_item_keys.length > 0 || has_folders) {
+        menu.addItem((item) => {
+          item
+            .setTitle('Open selection in Context Builder')
+            .setIcon('layout-list')
+            .onClick(async () => {
+              this.open_new_context_modal({ add_items: selected_item_keys });
+            });
+        });
+      }
+
       const selected_keys = get_selected_note_keys(files, this.env.smart_sources);
       if (selected_keys.length > 1) {
         menu.addItem((item) => {
@@ -136,7 +166,6 @@ export default class SmartContextPlugin extends SmartPlugin {
         });
       }
       
-      const folder_paths = get_selected_folder_paths(files);
       if (folder_paths.length > 1) {
         menu.addItem((item) => {
           item
@@ -173,9 +202,16 @@ export default class SmartContextPlugin extends SmartPlugin {
    * @param {object} [params]
    */
   open_new_context_modal(params = {}) {
-    const ctx = this.env.smart_contexts.new_context();
+    const add_items = Array.isArray(params.add_items) ? params.add_items : [];
+
+    const ctx = this.env.smart_contexts.new_context({}, { add_items });
+
+    // Do not forward add_items to the selector modal event payload.
+    // The SmartContext is already hydrated with those items.
+    const { add_items: _ignored, ...selector_params } = params || {};
+
     // Open the modal bound to this new SmartContext
-    ctx.emit_event('context_selector:open', params);
+    ctx.emit_event('context_selector:open', selector_params);
   }
 
   /* ------------------------------------------------------------------ */
