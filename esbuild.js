@@ -68,21 +68,37 @@ export function css_with_plugin() {
   };
 }
 
-
+// markdown import plugin (matches smart-connections-obsidian)
+const markdown_plugin = {
+  name: 'markdown',
+  setup(build) {
+    build.onLoad({ filter: /\.md$/ }, async (args) => {
+      if (args.with && args.with.type === 'markdown') {
+        const text = await fs.promises.readFile(args.path, 'utf8');
+        return {
+          contents: `export default ${JSON.stringify(text)};`,
+          loader: 'js',
+        };
+      }
+    });
+  }
+};
 
 // if directory doesn't exist, create it
-if(!fs.existsSync(path.join(process.cwd(), 'dist'))) {
+if (!fs.existsSync(path.join(process.cwd(), 'dist'))) {
   fs.mkdirSync(path.join(process.cwd(), 'dist'), { recursive: true });
 }
 
 const main_path = path.join(process.cwd(), 'dist', 'main.js');
 const manifest_path = path.join(process.cwd(), 'manifest.json');
 const styles_path = path.join(process.cwd(), 'styles.css');
+
 // Update manifest.json version
 const package_json = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json')));
 const manifest_json = JSON.parse(fs.readFileSync(manifest_path));
 manifest_json.version = package_json.version;
 fs.writeFileSync(manifest_path, JSON.stringify(manifest_json, null, 2));
+
 // copy manifest and styles to dist
 fs.copyFileSync(manifest_path, path.join(process.cwd(), 'dist', 'manifest.json'));
 fs.copyFileSync(styles_path, path.join(process.cwd(), 'dist', 'styles.css'));
@@ -99,8 +115,8 @@ esbuild.build({
   format: 'cjs',
   bundle: true,
   write: true,
-  target: "es2022",
-  logLevel: "info",
+  target: 'es2022',
+  logLevel: 'info',
   treeShaking: true,
   platform: 'node',
   preserveSymlinks: true,
@@ -117,16 +133,16 @@ esbuild.build({
   loader: {
     '.css': 'text',
   },
-  plugins: [css_with_plugin()],
+  plugins: [css_with_plugin(), markdown_plugin],
 }).then(() => {
   console.log('Build complete');
   const release_file_paths = [manifest_path, styles_path, main_path];
-  for(let vault of destination_vaults) {
+  for (let vault of destination_vaults) {
     const destDir = path.join(process.cwd(), '..', vault, '.obsidian', 'plugins', 'smart-context');
     console.log(`Copying files to ${destDir}`);
     fs.mkdirSync(destDir, { recursive: true });
     // create .hotreload file if it doesn't exist
-    if(!fs.existsSync(path.join(destDir, '.hotreload'))) {
+    if (!fs.existsSync(path.join(destDir, '.hotreload'))) {
       fs.writeFileSync(path.join(destDir, '.hotreload'), '');
     }
     release_file_paths.forEach(file_path => {

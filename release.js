@@ -6,6 +6,7 @@ import archiver from 'archiver';
 import axios from 'axios';
 import { exec } from 'child_process';
 import { fileURLToPath } from 'url';
+import { write_plugin_release_notes } from './releases/format_release_notes.js';
 
 /**
  * Compares two SemVer strings (major.minor.patch).
@@ -75,7 +76,6 @@ function parse_cli_options(argv) {
 /*  Runtime                                                                   */
 /* -------------------------------------------------------------------------- */
 
-
 const is_main = path.resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url);
 
 if (is_main) {
@@ -117,16 +117,42 @@ async function run_release() {
   } else {
     const prior_file = latest_release_file(releases_dir, confirmed_version);
     let prior_notes = prior_file ? fs.readFileSync(prior_file, 'utf8').trim() : '';
+
     if (prior_notes.includes('## next patch')) {
       prior_notes = prior_notes.replace('## next patch', `## patch \`v${confirmed_version}\`\n`);
       version_notes = prior_notes;
-    }else{
+    } else {
       user_desc = await ask('Enter additional release description (optional): ');
       version_notes = build_combined_notes(confirmed_version, prior_notes, user_desc);
     }
-    fs.writeFileSync(prior_file, version_notes);
+
+    // Persist the updated canonical notes file (mirrors smart-connections behavior).
+    if (prior_file) {
+      fs.writeFileSync(prior_file, version_notes);
+    } else {
+      fs.mkdirSync(releases_dir, { recursive: true });
+      fs.writeFileSync(release_file, version_notes);
+    }
   }
+
+  // Generate releases/latest_release.md (for in-plugin ReleaseNotesView)
+  const target_file = fs.existsSync(release_file)
+    ? release_file
+    : latest_release_file(releases_dir, confirmed_version);
+
+  if (target_file) {
+    write_plugin_release_notes({
+      release_path: target_file,
+      output_path: './releases/latest_release.md',
+      version: confirmed_version,
+    });
+  } else {
+    console.warn('No release notes file found to format into latest_release.md');
+  }
+
   rl.close();
+
+  await new Promise((res) => setTimeout(res, 500)); // allow write to flush
 
   // re-run npm run build and wait for it to finish
   await new Promise((resolve, reject) => {
@@ -213,4 +239,3 @@ async function run_release() {
 /*  Exports for unit tests                                                    */
 /* -------------------------------------------------------------------------- */
 export { semver_compare, latest_release_file, build_combined_notes };
-

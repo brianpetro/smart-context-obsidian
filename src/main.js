@@ -3,13 +3,11 @@ import {
   Notice,
   TFolder,
 } from 'obsidian';
-import { SmartPlugin } from "obsidian-smart-env/smart_plugin.js";
+import { SmartPlugin } from 'obsidian-smart-env/smart_plugin.js';
 
 import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
 
-
 import { SmartContextSettingTab } from './views/settings_tab.js';
-
 
 import { copy_to_clipboard } from 'obsidian-smart-env/utils/copy_to_clipboard.js';
 import { show_stats_notice } from './utils/show_stats_notice.js';
@@ -17,20 +15,22 @@ import { show_stats_notice } from './utils/show_stats_notice.js';
 import { get_selected_note_keys } from './utils/get_selected_note_keys.js';
 import { get_selected_context_item_keys } from './utils/get_selected_context_item_keys.js';
 
-import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';  // ← NEW
+import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';
 
 // v2
 import { ContextsDashboardView } from './views/contexts_dashboard_view.js';
+import { ReleaseNotesView } from './views/release_notes_view.js';
 import { smart_env_config } from './default.config.js';
-import {context_commands} from './commands/context_commands.js'
+import { context_commands } from './commands/context_commands.js';
 
 /**
- * Smart Context (Obsidian) – copy & curate context for AI tools.
+ * Smart Context (Obsidian) - copy and curate context for AI tools.
  *
  * @extends Plugin
  */
 export default class SmartContextPlugin extends SmartPlugin {
   SmartEnv = SmartEnv;
+
   onload() {
     this.app.workspace.onLayoutReady(this.initialize.bind(this));
     this.SmartEnv.create(this, smart_env_config);
@@ -48,19 +48,20 @@ export default class SmartContextPlugin extends SmartPlugin {
    * @returns {Promise<void>}
    */
   async initialize() {
-    await this.load_new_user_state();                 // ← NEW
+    await this.load_new_user_state();
     await this.SmartEnv.wait_for({ loaded: true });
 
     this.register_commands();
     this.register_folder_menu();
     this.register_files_menu();
+
     ContextsDashboardView.register_item_view(this);
+    ReleaseNotesView.register_item_view(this);
 
     this.addSettingTab(new SmartContextSettingTab(this.app, this));
 
-
-    /* ── First-run onboarding ───────────────────────────────────────── */
-    if (this.is_new_user()) {                         // ← NEW
+    // First-run onboarding
+    if (this.is_new_user()) {
       setTimeout(() => {
         StoryModal.open(this, {
           title: 'Getting Started With Smart Context',
@@ -69,11 +70,69 @@ export default class SmartContextPlugin extends SmartPlugin {
       }, 1000);
       await this.save_installed_at(Date.now());
     }
+
+    await this.check_for_updates();
   }
 
+  /* ------------------------------------------------------------------ */
+  /*  Release notes (mirrors smart-connections behavior)                 */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Open ReleaseNotesView when this installed plugin version is newer than
+   * the last version this user has seen.
+   *
+   * Uses SmartPlugin helpers when available, with a safe fallback.
+   *
+   * @returns {Promise<void>}
+   */
+  async check_for_updates() {
+    const version = this.manifest?.version;
+    if (!version) return;
+
+    const can_use_base =
+      typeof this.is_new_plugin_version === 'function' &&
+      typeof this.set_last_known_version === 'function';
+
+    if (can_use_base) {
+      try {
+        const is_new = await this.is_new_plugin_version(version);
+        if (!is_new) return;
+
+        try {
+          ReleaseNotesView.open(this.app.workspace, version);
+        } catch (err) {
+          console.error('Failed to open ReleaseNotesView', err);
+        }
+
+        await this.set_last_known_version(version);
+      } catch (err) {
+        console.warn('check_for_updates failed (base helpers)', err);
+      }
+      return;
+    }
+
+    // Fallback storage in plugin data
+    try {
+      const data = (await this.loadData()) ?? {};
+      const last = data.last_known_version;
+      if (last === version) return;
+
+      try {
+        ReleaseNotesView.open(this.app.workspace, version);
+      } catch (err) {
+        console.error('Failed to open ReleaseNotesView', err);
+      }
+
+      data.last_known_version = version;
+      await this.saveData(data);
+    } catch (err) {
+      console.warn('check_for_updates failed (fallback)', err);
+    }
+  }
 
   /* ------------------------------------------------------------------ */
-  /*  New-user state (mirrors sc-obsidian)                              */
+  /*  New-user state (mirrors sc-obsidian)                               */
   /* ------------------------------------------------------------------ */
 
   /**
@@ -109,8 +168,9 @@ export default class SmartContextPlugin extends SmartPlugin {
   is_new_user() { return !this._installed_at; }
 
   /* ------------------------------------------------------------------ */
-  /*  UI helpers & menus                                                */
+  /*  UI helpers & menus                                                 */
   /* ------------------------------------------------------------------ */
+
   register_folder_menu() {
     this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
       if (!(file instanceof TFolder)) return;
@@ -165,18 +225,17 @@ export default class SmartContextPlugin extends SmartPlugin {
             });
         });
       }
-      
+
       if (folder_paths.length > 1) {
         menu.addItem((item) => {
           item
-            .setTitle("Copy selected folders as context")
-            .setIcon("documents")
+            .setTitle('Copy selected folders as context')
+            .setIcon('documents')
             .onClick(async () => {
               await this.copy_selected_folders_to_clipboard(files);
             });
         });
       }
-
     }));
   }
 
@@ -191,10 +250,11 @@ export default class SmartContextPlugin extends SmartPlugin {
   /* ------------------------------------------------------------------ */
   /*  Commands                                                          */
   /* ------------------------------------------------------------------ */
-  get commands () {
+
+  get commands() {
     return {
-      ...context_commands(this)
-    }
+      ...context_commands(this),
+    };
   }
 
   /**
@@ -217,6 +277,7 @@ export default class SmartContextPlugin extends SmartPlugin {
   /* ------------------------------------------------------------------ */
   /*  Clipboard actions                                                 */
   /* ------------------------------------------------------------------ */
+
   async copy_folder_to_clipboard(folder) {
     const add_items = this.env.smart_sources
       .filter({ key_starts_with: folder.path })
@@ -246,7 +307,7 @@ export default class SmartContextPlugin extends SmartPlugin {
   async copy_selected_folders_to_clipboard(files) {
     const folder_paths = get_selected_folder_paths(files);
     if (!folder_paths.length) {
-      new Notice("No folders found in selection.");
+      new Notice('No folders found in selection.');
       return;
     }
 
@@ -266,7 +327,7 @@ export default class SmartContextPlugin extends SmartPlugin {
     const add_items = [...item_keys];
 
     if (!add_items.length) {
-      new Notice("No Smart Context notes found in selected folders.");
+      new Notice('No Smart Context notes found in selected folders.');
       return;
     }
 
@@ -279,9 +340,8 @@ export default class SmartContextPlugin extends SmartPlugin {
   showStatsNotice(stats, contextMsg) { show_stats_notice(stats, contextMsg); }
 }
 
-
 /**
- * Ensure folder prefix matches only items *inside* the folder.
+ * Ensure folder prefix matches only items inside the folder.
  * Prevents accidental matches like:
  *   folder "foo" matching "foobar/file.md"
  *
@@ -289,9 +349,9 @@ export default class SmartContextPlugin extends SmartPlugin {
  * @returns {string}
  */
 function normalize_folder_prefix(folder_path) {
-  const raw = String(folder_path ?? "").trim();
-  if (!raw) return "";
-  return raw.endsWith("/") ? raw : `${raw}/`;
+  const raw = String(folder_path ?? '').trim();
+  if (!raw) return '';
+  return raw.endsWith('/') ? raw : `${raw}/`;
 }
 
 /**
