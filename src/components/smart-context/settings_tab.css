@@ -2,6 +2,11 @@
   .setting-item-control textarea {
     width: 100%;
   }
+
+  .setting-item-description code {
+    cursor: text;
+    user-select: all;
+  }
   
   @media (min-width: 720px) {
     .setting-item-info:has(+ .setting-item-control:not(:empty)) {
