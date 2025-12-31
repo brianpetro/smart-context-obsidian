@@ -14,3 +14,13 @@
     }
   }
 }
+
+/* hide custom inputs unles custom selected */
+.setting-group:has(.template-preset option[value='custom']:not(:checked)) {
+  .setting-item.context-explanation,
+  .setting-item.item-explanation,
+  .setting-item.template-before,
+  .setting-item.template-after {
+    display: none;
+  }
+}
