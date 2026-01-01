@@ -1,4 +1,4 @@
-import { normalize_folder_prefix } from './folder_paths.js';
+import { expand_folders_to_item_keys } from './folder_selection.js';
 
 /**
  * Extract Smart Context item keys for file explorer selections.
@@ -34,10 +34,7 @@ export function get_selected_context_item_keys(files = [], smart_sources) {
 
     if (is_folder) {
       const folder_path = file?.path;
-      const folder_prefix = normalize_folder_prefix(folder_path);
-      if (!folder_prefix) continue;
-
-      const folder_item_keys = resolve_folder_item_keys(folder_prefix, smart_sources);
+      const folder_item_keys = expand_folders_to_item_keys([folder_path], smart_sources);
       for (const key of folder_item_keys) {
         if (!key || seen.has(key)) continue;
         seen.add(key);
@@ -71,30 +68,6 @@ export function get_selected_context_item_keys(files = [], smart_sources) {
   }
 
   return keys;
-}
-
-/**
- * Resolve item keys inside a selected folder using smart_sources.filter().
- *
- * @param {string} folder_prefix must end with '/'
- * @param {any} smart_sources
- * @returns {string[]}
- */
-function resolve_folder_item_keys(folder_prefix, smart_sources) {
-  if (!folder_prefix) return [];
-  if (!smart_sources || typeof smart_sources.filter !== 'function') return [];
-
-  try {
-    const matches = smart_sources.filter({ key_starts_with: folder_prefix });
-    if (!Array.isArray(matches)) return [];
-
-    return matches
-      .map((src) => src?.key)
-      .filter((k) => typeof k === 'string' && k.length > 0);
-  } catch (err) {
-    console.warn('get_selected_context_item_keys: smart_sources.filter failed', err);
-    return [];
-  }
 }
 
 /**

@@ -1,6 +1,6 @@
 import test from 'ava';
-import { get_selected_context_item_keys } from './get_selected_context_item_keys.js';
 import { get_selected_note_keys } from './get_selected_note_keys.js';
+import { get_selected_context_item_keys } from './get_selected_context_item_keys.js';
 
 const create_sources = (entries) => ({
   get(path) {
@@ -45,20 +45,30 @@ test('get_selected_note_keys skips files without matching smart source entries',
   t.deepEqual(keys, ['source:a']);
 });
 
-test('get_selected_context_item_keys expands folders using normalized prefixes', (t) => {
-  const entries = [
-    { key: 'Projects/Alpha.md' },
-    { key: 'Projects-other/Beta.md' },
-  ];
-
+test('get_selected_context_item_keys expands folders without partial matches', (t) => {
   const smart_sources = {
-    filter({ key_starts_with }) { return entries.filter((item) => item.key.startsWith(key_starts_with)); },
-    get() { return null; },
+    get(path) { return { key: `source:${path}` }; },
+    filter({ key_starts_with }) {
+      return [
+        { key: 'folder/note-a.md' },
+        { key: 'folder/nested/note-b.md' },
+        { key: 'folderish/note-c.md' },
+      ].filter((src) => src.key.startsWith(key_starts_with));
+    },
   };
 
   const keys = get_selected_context_item_keys([
-    { path: 'Projects', children: [] },
+    { path: 'folder', children: [] },
+    { path: 'folderish', children: [] },
+    { path: 'folder/note-a.md', extension: 'md' },
+    { path: 'folderish/note-c.md', extension: 'md' },
   ], smart_sources);
 
-  t.deepEqual(keys, ['Projects/Alpha.md']);
+  t.deepEqual(keys, [
+    'folder/note-a.md',
+    'folder/nested/note-b.md',
+    'folderish/note-c.md',
+    'source:folder/note-a.md',
+    'source:folderish/note-c.md',
+  ]);
 });

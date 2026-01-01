@@ -43,3 +43,41 @@ export function get_selected_folder_paths(files = []) {
 
   return paths;
 }
+
+/**
+ * Expand folder selections into Smart Source item keys.
+ *
+ * @param {string[]} folder_paths
+ * @param {{ filter?: (query: { key_starts_with?: string }) => Array<{ key?: string }> }} smart_sources
+ * @returns {string[]}
+ */
+export function expand_folders_to_item_keys(folder_paths = [], smart_sources) {
+  if (!Array.isArray(folder_paths) || folder_paths.length === 0) return [];
+  if (!smart_sources || typeof smart_sources.filter !== 'function') return [];
+
+  const seen = new Set();
+  /** @type {string[]} */
+  const keys = [];
+
+  for (const folder_path of folder_paths) {
+    const prefix = normalize_folder_prefix(folder_path);
+    if (!prefix) continue;
+
+    try {
+      const matches = smart_sources.filter({ key_starts_with: prefix });
+      if (!Array.isArray(matches)) continue;
+
+      for (const match of matches) {
+        const key = match?.key;
+        if (!key || seen.has(key) || !key.startsWith(prefix)) continue;
+        seen.add(key);
+        keys.push(key);
+      }
+    } catch (err) {
+      console.warn('expand_folders_to_item_keys: smart_sources.filter failed', err);
+      return [];
+    }
+  }
+
+  return keys;
+}

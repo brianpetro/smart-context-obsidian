@@ -15,9 +15,10 @@ import { show_stats_notice } from './utils/show_stats_notice.js';
 import { get_selected_note_keys } from './utils/get_selected_note_keys.js';
 import { get_selected_context_item_keys } from './utils/get_selected_context_item_keys.js';
 import {
+  expand_folders_to_item_keys,
   get_selected_folder_paths,
   normalize_folder_prefix,
-} from './utils/folder_paths.js';
+} from './utils/folder_selection.js';
 
 import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';
 
@@ -283,9 +284,7 @@ export default class SmartContextPlugin extends SmartPlugin {
   /* ------------------------------------------------------------------ */
 
   async copy_folder_to_clipboard(folder) {
-    const add_items = this.env.smart_sources
-      .filter({ key_starts_with: folder.path })
-      .map((src) => src.key);
+    const add_items = expand_folders_to_item_keys([folder?.path], this.env.smart_sources);
 
     const ctx = this.env.smart_contexts.new_context({}, { add_items });
     ctx.actions.context_copy_to_clipboard();
@@ -315,20 +314,7 @@ export default class SmartContextPlugin extends SmartPlugin {
       return;
     }
 
-    const item_keys = new Set();
-
-    for (const folder_path of folder_paths) {
-      const prefix = normalize_folder_prefix(folder_path);
-      const matches = this.env.smart_sources
-        .filter({ key_starts_with: prefix })
-        .map((src) => src.key);
-
-      for (const key of matches) {
-        if (key) item_keys.add(key);
-      }
-    }
-
-    const add_items = [...item_keys];
+    const add_items = expand_folders_to_item_keys(folder_paths, this.env.smart_sources);
 
     if (!add_items.length) {
       new Notice('No Smart Context notes found in selected folders.');
@@ -343,4 +329,3 @@ export default class SmartContextPlugin extends SmartPlugin {
 
   showStatsNotice(stats, contextMsg) { show_stats_notice(stats, contextMsg); }
 }
-
