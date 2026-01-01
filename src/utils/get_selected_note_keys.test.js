@@ -1,4 +1,5 @@
 import test from 'ava';
+import { get_selected_context_item_keys } from './get_selected_context_item_keys.js';
 import { get_selected_note_keys } from './get_selected_note_keys.js';
 
 const create_sources = (entries) => ({
@@ -42,4 +43,22 @@ test('get_selected_note_keys skips files without matching smart source entries',
   ], sources);
 
   t.deepEqual(keys, ['source:a']);
+});
+
+test('get_selected_context_item_keys expands folders using normalized prefixes', (t) => {
+  const entries = [
+    { key: 'Projects/Alpha.md' },
+    { key: 'Projects-other/Beta.md' },
+  ];
+
+  const smart_sources = {
+    filter({ key_starts_with }) { return entries.filter((item) => item.key.startsWith(key_starts_with)); },
+    get() { return null; },
+  };
+
+  const keys = get_selected_context_item_keys([
+    { path: 'Projects', children: [] },
+  ], smart_sources);
+
+  t.deepEqual(keys, ['Projects/Alpha.md']);
 });

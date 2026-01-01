@@ -1,3 +1,5 @@
+import { normalize_folder_prefix } from './folder_paths.js';
+
 /**
  * Extract Smart Context item keys for file explorer selections.
  *
@@ -93,20 +95,6 @@ function resolve_folder_item_keys(folder_prefix, smart_sources) {
     console.warn('get_selected_context_item_keys: smart_sources.filter failed', err);
     return [];
   }
-}
-
-/**
- * Ensure folder prefix matches only items *inside* the folder.
- * Prevents accidental matches like:
- *   folder "foo" matching "foobar/file.md"
- *
- * @param {string} folder_path
- * @returns {string}
- */
-function normalize_folder_prefix(folder_path) {
-  const raw = String(folder_path ?? '').trim();
-  if (!raw) return '';
-  return raw.endsWith('/') ? raw : `${raw}/`;
 }
 
 /**
