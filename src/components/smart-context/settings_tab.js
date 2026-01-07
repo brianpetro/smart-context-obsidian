@@ -42,6 +42,17 @@ export async function post_process(settings_tab, container, params = {}) {
           callback: () => window.open('https://smartconnections.app/smart-context/settings/?utm_source=context-settings-tab#context-templates', '_external'),
         }
       ],
+      group_params: {
+        'External sources': {
+          heading_btn: [
+            {
+              label: 'Settings documentation for External Sources',
+              btn_icon: 'help-circle',
+              callback: () => window.open('https://smartconnections.app/smart-context/settings/?utm_source=context-settings-tab#external-sources', '_external'),
+            }
+          ]
+        }
+      }
     }
   )
 
