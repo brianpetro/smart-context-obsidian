@@ -283,10 +283,21 @@ export default class SmartContextPlugin extends SmartPlugin {
   /*  Clipboard actions                                                 */
   /* ------------------------------------------------------------------ */
 
+  /**
+   * Emit the file navigator copy milestone event.
+   *
+   * @param {import('smart-contexts').SmartContext} ctx
+   */
+  emit_file_nav_copy_event(ctx) {
+    if (!ctx?.emit_event) return;
+    ctx.emit_event('context:file_nav_copied');
+  }
+
   async copy_folder_to_clipboard(folder) {
     const add_items = expand_folders_to_item_keys([folder?.path], this.env.smart_sources);
 
     const ctx = this.env.smart_contexts.new_context({}, { add_items });
+    this.emit_file_nav_copy_event(ctx);
     ctx.actions.context_copy_to_clipboard();
   }
 
@@ -298,6 +309,7 @@ export default class SmartContextPlugin extends SmartPlugin {
     }
 
     const ctx = this.env.smart_contexts.new_context({}, { add_items });
+    this.emit_file_nav_copy_event(ctx);
     ctx.actions.context_copy_to_clipboard();
   }
 
@@ -322,6 +334,7 @@ export default class SmartContextPlugin extends SmartPlugin {
     }
 
     const ctx = this.env.smart_contexts.new_context({}, { add_items });
+    this.emit_file_nav_copy_event(ctx);
     ctx.actions.context_copy_to_clipboard();
   }
 
