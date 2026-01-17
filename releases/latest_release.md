@@ -1,10 +1,20 @@
-> [!NOTE] Patch v2.0.3
-> - Added: template presets for context and item templates
-> - Added: `{{ITEM_NAME}}` variable for context item templates
-> - Added: `{{EXT}}` variable for context item templates
-> - Added: `json_stringify` setting for custom context item templates
+> [!NOTE] Patch v2.0.4
+> - Added: "Copied context from the file navigator" milestone
+> - Fixed: left arrow should not change suggestions when input is focused and has text
+> - Improved: context tree removal performance (batched removals + coalesced renders)
+> 
+> All Smart Plugins:
+> - Fixed: verified Pro plugins login should work on mobile
+> - Fixed: settings groups now re-render when a dropdown changes (prevents stale dependent settings)
+> - Improved: notifications modal includes a "Load more" button (beyond the default 100)
 
 > [!NOTE]- Previous patches
+> > [!NOTE]- v2.0.3
+> > - Added: template presets for context and item templates
+> > - Added: `{{ITEM_NAME}}` variable for context item templates
+> > - Added: `{{EXT}}` variable for context item templates
+> > - Added: `json_stringify` setting for custom context item templates
+> 
 > > [!NOTE]- v2.0.2
 > > - Added option to open context builder using file/folder selections in file nav
 > > - Added command/modal for selecting named contexts (open copy modal or builder modal)
