@@ -76,6 +76,65 @@ function build_context_items_from_graph(graph = [], root_source = null) {
 }
 
 /**
+ * Merge context item maps and keep the smallest depth for each key.
+ *
+ * @param {Record<string, { d:number, mtime?:number, size?:number, link?:boolean, inlink?:boolean }>} target
+ * @param {Record<string, { d:number, mtime?:number, size?:number, link?:boolean, inlink?:boolean }>} incoming
+ * @returns {Record<string, { d:number, mtime?:number, size?:number, link?:boolean, inlink?:boolean }>}
+ */
+function merge_context_item_maps(target, incoming) {
+  if (!incoming) {
+    return target;
+  }
+
+  for (const [key, value] of Object.entries(incoming)) {
+    if (!value) continue;
+
+    const existing = target[key] || {};
+    const existing_depth = typeof existing.d === "number" ? existing.d : Infinity;
+    const incoming_depth = typeof value.d === "number" ? value.d : Infinity;
+    const next_depth = Math.min(existing_depth, incoming_depth);
+
+    target[key] = {
+      ...existing,
+      ...value,
+      d: Number.isFinite(next_depth) ? next_depth : 0,
+    };
+  }
+
+  return target;
+}
+
+/**
+ * Build context_items payload from separate outlink and inlink graphs.
+ *
+ * @param {object} params
+ * @param {Array<{ depth:number, item:import('smart-sources').SmartSource }>} [params.outlink_graph]
+ * @param {Array<{ depth:number, item:import('smart-sources').SmartSource }>} [params.inlink_graph]
+ * @param {import('smart-sources').SmartSource|null} [params.root_source]
+ * @returns {Record<string, { d:number, mtime?:number, size?:number, link?:boolean, inlink?:boolean }>}
+ */
+export function build_context_items_from_graphs({
+  outlink_graph = [],
+  inlink_graph = [],
+  root_source = null,
+} = {}) {
+  const outlink_items = build_context_items_from_graph(outlink_graph, root_source);
+  const inlink_items = build_context_items_from_graph(inlink_graph, root_source);
+
+  const merged_items = merge_context_item_maps({}, outlink_items);
+  merge_context_item_maps(merged_items, inlink_items);
+
+  for (const key of Object.keys(merged_items)) {
+    const has_outlink = Object.prototype.hasOwnProperty.call(outlink_items, key);
+    const has_inlink = Object.prototype.hasOwnProperty.call(inlink_items, key);
+    merged_items[key].inlink = has_inlink && !has_outlink;
+  }
+
+  return merged_items;
+}
+
+/**
  * Build or update a SmartContext for a given source, including link graph
  * up to a given depth. The SmartContext key is equal to the source key.
  *
@@ -94,13 +153,29 @@ export async function source_get_context(params = {}) {
   const include_self =
     typeof params.include_self === "boolean" ? params.include_self : true;
 
-  // Traverse the link graph using existing action.
-  const graph = await get_links_to_depth(this, LINK_DEPTH, {
-    direction,
-    include_self,
-  });
+  const include_outlinks =
+    direction === LINK_DIRECTIONS.OUT || direction === LINK_DIRECTIONS.BOTH;
+  const include_inlinks =
+    direction === LINK_DIRECTIONS.IN || direction === LINK_DIRECTIONS.BOTH;
 
-  const context_items = build_context_items_from_graph(graph, this);
+  const outlink_graph = include_outlinks
+    ? await get_links_to_depth(this, LINK_DEPTH, {
+        direction: LINK_DIRECTIONS.OUT,
+        include_self,
+      })
+    : [];
+  const inlink_graph = include_inlinks
+    ? await get_links_to_depth(this, LINK_DEPTH, {
+        direction: LINK_DIRECTIONS.IN,
+        include_self,
+      })
+    : [];
+
+  const context_items = build_context_items_from_graphs({
+    outlink_graph,
+    inlink_graph,
+    root_source: this,
+  });
 
   const smart_contexts = this.env.smart_contexts;
   const context_key = this.key;

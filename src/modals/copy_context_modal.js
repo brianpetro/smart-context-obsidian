@@ -1,4 +1,5 @@
 import { SuggestModal, Notice, setIcon } from 'obsidian';
+import { build_depth_suggestions } from '../utils/context_suggestions.js';
 
 export class CopyContextModal extends SuggestModal {
   constructor(ctx, params = {}) {
@@ -29,48 +30,31 @@ export class CopyContextModal extends SuggestModal {
 
   async onOpen() {
     // const ctx_items = Object.values(this.ctx.context_items.items);
-    const ctx_items = this.ctx.context_items.filter(i =>{
-      if (i.data.exclude) return false;
-      if (i.is_media && !this.params.with_media) return false;
+    const ctx_items = this.ctx.context_items.filter((item) => {
+      if (item.data.exclude) return false;
+      if (item.is_media && !this.params.with_media) return false;
       return true;
     });
-    const max_depth = Math.max(
-      ...ctx_items.map((item) => (typeof item.data.d === 'number' ? item.data.d : 0))
-    );
-    const suggestions = ctx_items
-      .reduce((acc, item) => {
-        if(typeof item.data.d === 'number') {
-          for(let d = item.data.d; d <= max_depth; d++) {
-            if(!acc[d]) {
-              acc[d] = { d: d, size: 0, sizes: 0, count: 0 };
-            }
-            acc[d].count += 1;
-            if(typeof item.size === 'number') {
-              if(item.size > 0) {
-                acc[d].size += item.size;
-                acc[d].sizes += 1;
-              }
-            }
-          }
-        }
-        return acc;
-      }, Array.from({ length: max_depth + 1 }));
-    ;
-    this.suggestions = suggestions.filter(Boolean);
+    this.suggestions = build_depth_suggestions(ctx_items);
     super.onOpen();
   }
 
   /* SuggestModal overrides                                  */
   getSuggestions()             { return this.suggestions; }
   renderSuggestion(item, el)   {
-    el.createDiv({ text: `Depth ${item.d} (${format_suggestion_size(item.size)} chars, ${item.count} items)` });
+    const mode_label = item.include_inlinks ? 'include inlinks' : 'outlinks only';
+    el.createDiv({
+      text: `Depth ${item.d} (${mode_label}, ${format_suggestion_size(item.size)} chars, ${item.count} items)`,
+    });
   }
 
   async onChooseSuggestion(item) {
     const wait = new Notice('Copying context…', 0);
     await this.ctx.actions.context_copy_to_clipboard({
       filter: (ctx_item) => {
-        return ctx_item.data.d <= item.d;
+        if (ctx_item.data.d > item.d) return false;
+        if (!item.include_inlinks && ctx_item.data.inlink) return false;
+        return true;
       },
       max_depth: item.d, // for stats notification
       ...this.params,
