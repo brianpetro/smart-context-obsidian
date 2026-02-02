@@ -89,6 +89,7 @@ export async function post_process(smart_contexts, container, params = {}) {
   const render_list_items = async () => {
     const items = smart_contexts.filter((ctx) => {
       // only named contexts
+      if (ctx?.deleted) return false;
       return ctx?.data?.name && String(ctx.data.name).trim().length > 0;
     });
     this.empty(list_el);
@@ -112,6 +113,8 @@ export async function post_process(smart_contexts, container, params = {}) {
 
   await render_list_items();
   disposers.push(smart_contexts?.env?.events?.on('context:created', render_list_items));
+  disposers.push(smart_contexts?.env?.events?.on('context:deleted', render_list_items));
+  disposers.push(smart_contexts?.env?.events?.on('context:named', render_list_items));
 
   // cleanup
   this.attach_disposer(container, disposers);

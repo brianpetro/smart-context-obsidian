@@ -4,6 +4,7 @@ import {
   render_btn_clear_context,
   render_btn_help,
 } from 'obsidian-smart-env/src/components/smart-context/actions.js';
+import { resolve_name_status } from './actions_utils.js';
 export function build_html() {
   return `
     <div class="sc-context-actions">
@@ -45,22 +46,44 @@ async function post_process(ctx, container, opts = {}) {
 
 export function render_name_input(ctx, container) {
   // const name_input = container.querySelector('.sc-context-name-input');
+  const name_wrapper = document.createElement('div');
+  name_wrapper.className = 'sc-context-name-wrapper';
+  name_wrapper.style.display = 'flex';
+  name_wrapper.style.alignItems = 'center';
+  name_wrapper.style.gap = 'var(--size-4-2)';
+  container.appendChild(name_wrapper);
+
   const name_input = document.createElement('input');
   name_input.type = 'text';
   name_input.className = 'sc-context-name-input';
   name_input.placeholder = 'Context name…';
   name_input.setAttribute('aria-label', 'Context name');
-  container.appendChild(name_input);
+  name_wrapper.appendChild(name_input);
 
+  const status_span = document.createElement('span');
+  status_span.className = 'sc-context-name-status';
+  status_span.setAttribute('aria-label', 'Context saved status');
+  status_span.setAttribute('aria-live', 'polite');
+  status_span.hidden = true;
+  name_wrapper.appendChild(status_span);
+
+  const update_name_status = () => {
+    const status = resolve_name_status(ctx, { input_value: name_input.value });
+    status_span.textContent = status.label;
+    status_span.hidden = !status.label;
+    status_span.dataset.state = status.is_saved ? 'saved' : 'idle';
+  };
 
   const refresh_name = () => {
     name_input.value = ctx?.data?.name ? String(ctx.data.name) : '';
+    update_name_status();
   };
 
   const save_name = () => {
     const next = sanitize_context_name(name_input.value);
     if (next === (ctx.data.name || '')) return;
     ctx.name = next;
+    update_name_status();
   };
 
   refresh_name();
@@ -79,6 +102,7 @@ export function render_name_input(ctx, container) {
     }
   });
   name_input.addEventListener('blur', () => save_name());
+  name_input.addEventListener('input', () => update_name_status());
   
   function sanitize_context_name(name) {
     const str = String(name ?? '').trim();

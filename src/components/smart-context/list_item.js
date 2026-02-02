@@ -1,6 +1,8 @@
 import { Menu } from 'obsidian';
+import { can_delete_context } from './list_item_utils.js';
 
 const DASHBOARD_ITEM_CLASS = 'sc-contexts-dashboard-item';
+const delete_context_label = 'Delete named context';
 
 /**
  * @param {import('smart-contexts').SmartContext} ctx
@@ -64,6 +66,23 @@ async function post_process(ctx, container, opts = {}) {
           ctx.actions.context_copy_to_clipboard();
         })
     );
+    if (can_delete_context(ctx)) {
+      menu.addItem(mi =>
+        mi.setTitle(delete_context_label)
+          .setIcon('trash')
+          .onClick(() => {
+            const context_name = String(ctx?.data?.name ?? '').trim();
+            const confirm_label = context_name
+              ? `Delete "${context_name}"?`
+              : 'Delete this context?';
+            const confirm_message = `${confirm_label}\nThis removes the saved context.`;
+            const should_delete = window.confirm(confirm_message);
+            if (!should_delete) return;
+            ctx.delete();
+            ctx.emit_event('context:deleted', { name: context_name });
+          })
+      );
+    }
 
     menu.showAtMouseEvent(ev);
   });
