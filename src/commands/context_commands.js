@@ -40,7 +40,7 @@ export function context_commands(plugin) {
     },
     copy_current: {
       id: 'copy-current-note-with-depth',
-      name: 'Copy current to clipboard',
+      name: 'Copy current to clipboard (choose link depth)',
       editorCheckCallback: (checking, editor, view) => {
         const source_path = view.file?.path;
         if(!source_path) return false;

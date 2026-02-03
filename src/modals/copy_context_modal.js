@@ -174,7 +174,7 @@ export class CopyContextModal extends SuggestModal {
 
     // add heading to this.titleEl
     this.modalEl.prepend(this.titleEl);
-    this.setTitle('Smart Context - Copy to clipboard');
+    this.setTitle('Smart Context - Copy to clipboard (choose link depth)');
 
     const button = this.titleEl.createEl('button');
     button.classList.add('clickable-icon');
