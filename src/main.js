@@ -35,6 +35,7 @@ import { context_commands } from './commands/context_commands.js';
  */
 export default class SmartContextPlugin extends SmartPlugin {
   SmartEnv = SmartEnv;
+  ReleaseNotesView = ReleaseNotesView;
 
   onload() {
     this.app.workspace.onLayoutReady(this.initialize.bind(this));
@@ -62,7 +63,7 @@ export default class SmartContextPlugin extends SmartPlugin {
     this.register_files_menu();
 
     ContextsDashboardView.register_item_view(this);
-    ReleaseNotesView.register_item_view(this);
+    this.ReleaseNotesView.register_item_view(this);
 
     this.addSettingTab(new SmartContextSettingTab(this.app, this));
 
