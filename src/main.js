@@ -57,6 +57,7 @@ export default class SmartContextPlugin extends SmartPlugin {
     await this.SmartEnv.wait_for({ loaded: true });
 
     this.register_commands();
+    this.register_ribbon_icons(); // from SmartPlugin
     this.register_folder_menu();
     this.register_files_menu();
 
@@ -260,6 +261,22 @@ export default class SmartContextPlugin extends SmartPlugin {
     return {
       ...context_commands(this),
     };
+  }
+  get ribbon_icons () {
+    return {
+      new_context: {
+        icon_name: "smart-context-builder",
+        description: "Smart Context: Open Builder",
+        callback: () => { this.open_new_context_modal(); }
+      },
+      copy_context: {
+        icon_name: "smart-copy-note",
+        description: "Smart Context: Copy to Clipboard (select depth)",
+        callback: async () => {
+          this.app.commands.executeCommandById('smart-context:copy-current-note-with-depth');
+        }
+      },
+    }
   }
 
   /**
