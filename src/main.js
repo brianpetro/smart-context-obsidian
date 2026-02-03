@@ -107,7 +107,7 @@ export default class SmartContextPlugin extends SmartPlugin {
         if (!is_new) return;
 
         try {
-          ReleaseNotesView.open(this.app.workspace, version);
+          this.ReleaseNotesView.open(this.app.workspace, version);
         } catch (err) {
           console.error('Failed to open ReleaseNotesView', err);
         }
@@ -126,7 +126,7 @@ export default class SmartContextPlugin extends SmartPlugin {
       if (last === version) return;
 
       try {
-        ReleaseNotesView.open(this.app.workspace, version);
+        this.ReleaseNotesView.open(this.app.workspace, version);
       } catch (err) {
         console.error('Failed to open ReleaseNotesView', err);
       }
