@@ -38,7 +38,7 @@ export class NamedContextSelectModal extends SmartFuzzySuggestModal {
     this.emptyStateText = 'No named contexts yet.';
     this.setInstructions([
       { command: 'Enter', purpose: 'Copy named context (choose depth)' },
-      { command: 'Mod + Enter', purpose: 'Edit named context' },
+      { command: '⌘/Ctrl + Enter', purpose: 'Edit named context' },
       { command: 'Esc', purpose: 'Close' },
       { command: '→', purpose: 'Edit (same as Mod+Enter)' },
     ]);
