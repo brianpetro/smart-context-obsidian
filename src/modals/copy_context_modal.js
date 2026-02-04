@@ -172,6 +172,14 @@ export class CopyContextModal extends SuggestModal {
 
     this.modalEl.classList.add('sc-copy-context-modal');
 
+    const instructions = [
+      {
+        command: 'Enter',
+        purpose: 'Copy the context using the selected depth (0 = only the current note, 1 = include linked notes, 2 = links of links).',
+      },
+    ];
+    this.setInstructions(instructions);
+
     // add heading to this.titleEl
     this.modalEl.prepend(this.titleEl);
     this.setTitle('Smart Context - Copy to clipboard (choose link depth)');
