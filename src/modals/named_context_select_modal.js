@@ -5,7 +5,7 @@
  *
  * - Select: builds a temporary copy-context that includes linked notes up to max_depth (default 3),
  *   then opens CopyContextModal to choose the copy depth.
- * - Mod+Select: opens Context Selector modal to edit the named context.
+ * - ⌘/Ctrl+Select: opens Context Selector modal to edit the named context.
  *
  * Notes:
  * - Link traversal is bounded to max_depth for performance.
@@ -38,9 +38,8 @@ export class NamedContextSelectModal extends SmartFuzzySuggestModal {
     this.emptyStateText = 'No named contexts yet.';
     this.setInstructions([
       { command: 'Enter', purpose: 'Copy named context (choose depth)' },
-      { command: '⌘/Ctrl + Enter', purpose: 'Edit named context' },
+      { command: '⌘/Ctrl + Enter / →', purpose: 'Edit named context' },
       { command: 'Esc', purpose: 'Close' },
-      { command: '→', purpose: 'Edit (same as Mod+Enter)' },
     ]);
   }
 
