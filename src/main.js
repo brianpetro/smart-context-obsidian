@@ -277,6 +277,13 @@ export default class SmartContextPlugin extends SmartPlugin {
           this.app.commands.executeCommandById('smart-context:copy-current-note-with-depth');
         }
       },
+      list_contexts: {
+        icon_name: "smart-named-contexts",
+        description: "Smart Context: List Named Contexts",
+        callback: () => {
+          ContextsDashboardView.open(this.app.workspace);
+        }
+      }
     }
   }
 
