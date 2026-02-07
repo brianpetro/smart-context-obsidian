@@ -1,7 +1,7 @@
-const DASHBOARD_CLASS       = 'sc-contexts-dashboard';
-const DASHBOARD_LIST_CLASS  = 'sc-contexts-dashboard-list';
 import styles from './list.css';
-import {setIcon} from 'obsidian';
+import { setIcon } from 'obsidian';
+const DASHBOARD_CLASS = 'sc-contexts-dashboard';
+const DASHBOARD_LIST_CLASS = 'sc-contexts-dashboard-list';
 
 /**
  * Normalize filter input.
@@ -100,14 +100,43 @@ export async function post_process(smart_contexts, container, params = {}) {
       list_el.appendChild(empty);
       return;
     }
-    for (const item of items) {
-      // ── KEY CHANGE: render each list item via the extracted component ──
+    const { root_items, grouped_items } = partition_context_hierarchy(items);
+
+    for (const item of root_items) {
       const row_el = await env.smart_components.render_component(
         'smart_context_list_item',
         item,
         params
       );
       if (row_el) list_el.appendChild(row_el);
+    }
+
+    for (const [group_name, grouped_contexts] of grouped_items.entries()) {
+      const group_details = document.createElement('details');
+      group_details.className = 'sc-contexts-dashboard-group';
+
+      const group_summary = document.createElement('summary');
+      group_summary.className = 'sc-contexts-dashboard-group-summary';
+      group_summary.textContent = `${group_name} (${grouped_contexts.length})`;
+      group_details.appendChild(group_summary);
+
+      const group_items = document.createElement('div');
+      group_items.className = 'sc-contexts-dashboard-group-items';
+      group_details.appendChild(group_items);
+
+      for (const grouped_item of grouped_contexts) {
+        const row_el = await env.smart_components.render_component(
+          'smart_context_list_item',
+          grouped_item.ctx,
+          {
+            ...params,
+            display_name: grouped_item.display_name,
+          }
+        );
+        if (row_el) group_items.appendChild(row_el);
+      }
+
+      list_el.appendChild(group_details);
     }
   };
 
@@ -119,4 +148,35 @@ export async function post_process(smart_contexts, container, params = {}) {
   // cleanup
   this.attach_disposer(container, disposers);
   return container;
+}
+/**
+ * Partition named contexts into root rows and slash-based hierarchy groups.
+ *
+ * @param {Array<import('smart-contexts').SmartContext>} items
+ * @returns {{root_items: Array<import('smart-contexts').SmartContext>, grouped_items: Map<string, Array<{ctx: import('smart-contexts').SmartContext, display_name: string}>>}}
+ */
+function partition_context_hierarchy(items = []) {
+  const root_items = [];
+  const grouped_items = new Map();
+
+  for (const ctx of items) {
+    const raw_name = String(ctx?.data?.name ?? '').trim();
+    const separator_index = raw_name.indexOf('/');
+    if (separator_index < 1 || separator_index === raw_name.length - 1) {
+      root_items.push(ctx);
+      continue;
+    }
+    const group_name = raw_name.slice(0, separator_index).trim();
+    const display_name = raw_name.slice(separator_index + 1).trim();
+    if (!group_name || !display_name) {
+      root_items.push(ctx);
+      continue;
+    }
+    if (!grouped_items.has(group_name)) {
+      grouped_items.set(group_name, []);
+    }
+    grouped_items.get(group_name).push({ ctx, display_name });
+  }
+
+  return { root_items, grouped_items };
 }

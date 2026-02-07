@@ -12,9 +12,9 @@ const delete_context_label = 'Delete named context';
 export function build_html(ctx, opts = {}) {
   return `<div>
     <div class="${DASHBOARD_ITEM_CLASS}" data-context-key="${ctx?.data?.key || ''}">
-      <div class="sc-contexts-dashboard-item-header" tabindex="0" aria-label="${ctx.name}">
-        <button class="sc-contexts-dashboard-show" aria-expanded="false" aria-label="Show ${ctx.name}">Show</button>
-        <span class="sc-contexts-dashboard-name">${ctx.name}</span>
+      <div class="sc-contexts-dashboard-item-header" tabindex="0" aria-label="${opts.display_name || ctx.name}">
+        <button class="sc-contexts-dashboard-show" aria-expanded="false" aria-label="Show ${opts.display_name || ctx.name}">Show</button>
+        <span class="sc-contexts-dashboard-name">${opts.display_name || ctx.name}</span>
         <span class="sc-contexts-dashboard-count">${ctx.item_count} items</span>
       </div>
       <div class="sc-contexts-dashboard-item-detail" hidden></div>
