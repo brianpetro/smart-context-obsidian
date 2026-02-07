@@ -149,6 +149,7 @@ export async function post_process(smart_contexts, container, params = {}) {
   this.attach_disposer(container, disposers);
   return container;
 }
+
 /**
  * Partition named contexts into root rows and slash-based hierarchy groups.
  *
@@ -176,6 +177,26 @@ function partition_context_hierarchy(items = []) {
       grouped_items.set(group_name, []);
     }
     grouped_items.get(group_name).push({ ctx, display_name });
+  }
+
+  const compare_names = (a, b) => {
+    const left = String(a?.data?.name ?? '').toLocaleLowerCase();
+    const right = String(b?.data?.name ?? '').toLocaleLowerCase();
+    if (left < right) return -1;
+    if (left > right) return 1;
+    return 0;
+  };
+
+  root_items.sort(compare_names);
+
+  for (const grouped_contexts of grouped_items.values()) {
+    grouped_contexts.sort((left, right) => {
+      const left_name = left.display_name.toLocaleLowerCase();
+      const right_name = right.display_name.toLocaleLowerCase();
+      if (left_name < right_name) return -1;
+      if (left_name > right_name) return 1;
+      return compare_names(left.ctx, right.ctx);
+    });
   }
 
   return { root_items, grouped_items };
