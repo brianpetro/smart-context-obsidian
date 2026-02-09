@@ -14,6 +14,11 @@
   padding: var(--size-4-4);
 }
 
+/* Ensure HTML `hidden` always wins (several rules below set `display` explicitly). */
+.sc-contexts-dashboard [hidden] {
+  display: none !important;
+}
+
 .sc-contexts-dashboard .top-bar {
   display: flex;
   align-items: center;
@@ -318,6 +323,72 @@
 .sc-contexts-dashboard-item-detail {
   border-top: 1px solid var(--sc-contexts-divider);
   padding: var(--size-4-3) var(--size-4-4);
+}
+
+/* Inline delete confirmation */
+.sc-contexts-dashboard-delete-confirm {
+  order: 3;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  flex: 0 0 auto;
+}
+
+.sc-contexts-dashboard-delete-label {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-contexts-dashboard-delete-cancel,
+.sc-contexts-dashboard-delete-confirm-btn {
+  height: 28px;
+  padding: 0 var(--size-4-3);
+  border-radius: 999px;
+  border: 1px solid var(--sc-contexts-border);
+  background: var(--sc-contexts-surface);
+  color: var(--text-normal);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+
+.sc-contexts-dashboard-delete-cancel:hover {
+  background: var(--sc-contexts-surface-hover);
+  border-color: var(--sc-contexts-border-strong);
+}
+
+.sc-contexts-dashboard-delete-confirm-btn {
+  border-color: color-mix(in srgb, var(--text-error) 55%, var(--sc-contexts-border));
+  background: color-mix(in srgb, var(--text-error) 14%, var(--background-primary));
+}
+
+.sc-contexts-dashboard-delete-confirm-btn:hover {
+  background: color-mix(in srgb, var(--text-error) 20%, var(--background-primary));
+  border-color: color-mix(in srgb, var(--text-error) 70%, var(--sc-contexts-border-strong));
+}
+
+.sc-contexts-dashboard-delete-cancel:active,
+.sc-contexts-dashboard-delete-confirm-btn:active {
+  transform: translateY(1px);
+}
+
+.sc-contexts-dashboard-delete-cancel:focus-visible,
+.sc-contexts-dashboard-delete-confirm-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--sc-contexts-focus);
+}
+
+.sc-contexts-dashboard-item.is-delete-confirm {
+  border-color: color-mix(in srgb, var(--text-error) 35%, var(--sc-contexts-border-strong));
+}
+
+.sc-contexts-dashboard-item.is-delete-confirm .sc-contexts-dashboard-item-header {
+  background: color-mix(in srgb, var(--text-error) 7%, transparent);
 }
 
 /* Respect reduced motion */
