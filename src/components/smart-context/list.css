@@ -1,26 +1,134 @@
-.sc-contexts-dashboard-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--size-4-2);
+.sc-contexts-dashboard {
+  --sc-contexts-surface: color-mix(in srgb, var(--background-primary) 92%, var(--background-secondary));
+  --sc-contexts-surface-hover: color-mix(in srgb, var(--background-primary) 88%, var(--background-secondary));
+  --sc-contexts-surface-subtle: color-mix(in srgb, var(--background-primary) 86%, var(--background-secondary));
+  --sc-contexts-border: color-mix(in srgb, var(--background-modifier-border) 72%, transparent);
+  --sc-contexts-border-strong: color-mix(in srgb, var(--background-modifier-border) 92%, transparent);
+  --sc-contexts-divider: color-mix(in srgb, var(--background-modifier-border) 55%, transparent);
+  --sc-contexts-pill-bg: color-mix(in srgb, var(--background-primary) 78%, var(--background-secondary));
+  --sc-contexts-pill-border: color-mix(in srgb, var(--background-modifier-border) 65%, transparent);
+  --sc-contexts-focus: color-mix(in srgb, var(--interactive-accent) 35%, transparent);
+  --sc-contexts-shadow: 0 1px 1px rgba(0, 0, 0, 0.14), 0 6px 18px rgba(0, 0, 0, 0.10);
+  --sc-contexts-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.18), 0 10px 26px rgba(0, 0, 0, 0.14);
+
+  padding: var(--size-4-4);
 }
 
 .sc-contexts-dashboard .top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  gap: var(--size-4-3);
+  max-width: 760px;
+  margin: 0 auto var(--size-4-4);
 }
+
+.sc-contexts-dashboard-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sc-contexts-dashboard-title {
+  font-size: 1.2rem;
+  font-weight: var(--font-semibold);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.sc-contexts-dashboard-subtitle {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  line-height: 1.2;
+}
+
+.sc-contexts-dashboard button.help {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--sc-contexts-border);
+  background: var(--sc-contexts-surface);
+  box-shadow: var(--sc-contexts-shadow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.sc-contexts-dashboard button.help:hover {
+  background: var(--sc-contexts-surface-hover);
+  border-color: var(--sc-contexts-border-strong);
+  box-shadow: var(--sc-contexts-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.sc-contexts-dashboard button.help:active {
+  transform: translateY(0);
+}
+
+.sc-contexts-dashboard button.help:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--sc-contexts-focus), var(--sc-contexts-shadow);
+  border-color: color-mix(in srgb, var(--interactive-accent) 55%, var(--sc-contexts-border-strong));
+}
+
+.sc-contexts-dashboard button.help svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sc-contexts-dashboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-3);
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.sc-contexts-dashboard-separator {
+  height: 1px;
+  background: var(--sc-contexts-divider);
+  border-radius: 999px;
+  margin: var(--size-4-2) 0;
+}
+
+.sc-contexts-dashboard-empty {
+  padding: var(--size-4-6) var(--size-4-4);
+  border: 1px dashed var(--sc-contexts-border);
+  border-radius: var(--radius-l);
+  background: var(--sc-contexts-surface);
+  color: var(--text-muted);
+  text-align: center;
+  box-shadow: var(--sc-contexts-shadow);
+}
+
+/* Group (folder) styling */
 .sc-contexts-dashboard-group {
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
-  border-radius: var(--radius-m);
-  padding: var(--size-4-2) var(--size-4-3);
-  background: color-mix(in srgb, var(--background-primary) 92%, var(--background-secondary));
-  box-shadow: 0 1px 4px color-mix(in srgb, var(--background-modifier-border) 40%, transparent);
+  border: 1px solid var(--sc-contexts-border);
+  border-radius: var(--radius-l);
+  background: var(--sc-contexts-surface);
+  box-shadow: var(--sc-contexts-shadow);
+  overflow: hidden;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.sc-contexts-dashboard-group:hover {
+  background: var(--sc-contexts-surface-hover);
+  border-color: var(--sc-contexts-border-strong);
+  box-shadow: var(--sc-contexts-shadow-hover);
+  transform: translateY(-1px);
 }
 
 .sc-contexts-dashboard-group-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  padding: var(--size-4-3) var(--size-4-4);
   cursor: pointer;
-  font-weight: var(--font-semibold);
+  user-select: none;
   list-style: none;
 }
 
@@ -28,20 +136,197 @@
   display: none;
 }
 
-.sc-contexts-dashboard-group-summary::before {
-  content: '▸';
-  display: inline-block;
-  margin-right: var(--size-4-2);
-  transition: transform 120ms ease-in-out;
+.sc-contexts-dashboard-group-summary:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--sc-contexts-focus);
 }
 
-.sc-contexts-dashboard-group[open] .sc-contexts-dashboard-group-summary::before {
+.sc-contexts-dashboard-group-icon,
+.sc-contexts-dashboard-group-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+.sc-contexts-dashboard-group-icon svg,
+.sc-contexts-dashboard-group-chevron svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sc-contexts-dashboard-group-name {
+  font-weight: var(--font-semibold);
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-contexts-dashboard-group-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 var(--size-4-2);
+  border-radius: 999px;
+  border: 1px solid var(--sc-contexts-pill-border);
+  background: var(--sc-contexts-pill-bg);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  flex: 0 0 auto;
+}
+
+.sc-contexts-dashboard-group-chevron {
+  transition: transform 150ms ease;
+}
+
+.sc-contexts-dashboard-group[open] .sc-contexts-dashboard-group-chevron {
   transform: rotate(90deg);
 }
 
 .sc-contexts-dashboard-group-items {
-  margin-top: var(--size-4-2);
   display: flex;
   flex-direction: column;
+  gap: 0;
+  border-top: 1px solid var(--sc-contexts-divider);
+  background: var(--sc-contexts-surface-subtle);
+}
+
+.sc-contexts-dashboard-group[open] .sc-contexts-dashboard-group-items {
+  animation: sc_contexts_group_reveal 140ms ease-out;
+}
+
+@keyframes sc_contexts_group_reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* List item styling (smart_context_list_item rows) */
+.sc-contexts-dashboard-item {
+  border: 1px solid var(--sc-contexts-border);
+  border-radius: var(--radius-l);
+  background: var(--sc-contexts-surface);
+  box-shadow: var(--sc-contexts-shadow);
+  overflow: hidden;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.sc-contexts-dashboard-item:hover {
+  background: var(--sc-contexts-surface-hover);
+  border-color: var(--sc-contexts-border-strong);
+  box-shadow: var(--sc-contexts-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.sc-contexts-dashboard-item:focus-within {
+  box-shadow: 0 0 0 3px var(--sc-contexts-focus), var(--sc-contexts-shadow);
+  border-color: color-mix(in srgb, var(--interactive-accent) 55%, var(--sc-contexts-border-strong));
+}
+
+.sc-contexts-dashboard-item-header {
+  display: flex;
+  align-items: center;
   gap: var(--size-4-2);
+  padding: var(--size-4-3) var(--size-4-4);
+}
+
+.sc-contexts-dashboard-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-contexts-dashboard-count {
+  order: 2;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 var(--size-4-2);
+  border-radius: 999px;
+  border: 1px solid var(--sc-contexts-pill-border);
+  background: var(--sc-contexts-pill-bg);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  white-space: nowrap;
+}
+
+.sc-contexts-dashboard-show {
+  order: 3;
+  margin-left: auto;
+  height: 28px;
+  padding: 0 var(--size-4-3);
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 45%, var(--sc-contexts-border));
+  background: color-mix(in srgb, var(--interactive-accent) 18%, var(--background-primary));
+  color: var(--text-normal);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+.sc-contexts-dashboard-show:hover {
+  background: color-mix(in srgb, var(--interactive-accent) 26%, var(--background-primary));
+  border-color: color-mix(in srgb, var(--interactive-accent) 60%, var(--sc-contexts-border));
+}
+
+.sc-contexts-dashboard-show:active {
+  transform: translateY(1px);
+}
+
+.sc-contexts-dashboard-show:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--sc-contexts-focus);
+}
+
+/* Make items inside a group look like native "sublist" rows */
+.sc-contexts-dashboard-group-items .sc-contexts-dashboard-item {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  transform: none;
+  transition: background 120ms ease;
+}
+
+.sc-contexts-dashboard-group-items .sc-contexts-dashboard-item + .sc-contexts-dashboard-item {
+  border-top: 1px solid var(--sc-contexts-divider);
+}
+
+.sc-contexts-dashboard-group-items .sc-contexts-dashboard-item:hover {
+  background: color-mix(in srgb, var(--interactive-accent) 8%, var(--sc-contexts-surface-subtle));
+}
+
+.sc-contexts-dashboard-group-items .sc-contexts-dashboard-item-header {
+  padding: var(--size-4-3) var(--size-4-4);
+}
+
+.sc-contexts-dashboard-item-detail {
+  border-top: 1px solid var(--sc-contexts-divider);
+  padding: var(--size-4-3) var(--size-4-4);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .sc-contexts-dashboard *,
+  .sc-contexts-dashboard *::before,
+  .sc-contexts-dashboard *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

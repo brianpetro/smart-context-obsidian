@@ -1,6 +1,7 @@
 import styles from './list.css';
 import { setIcon } from 'obsidian';
 import { partition_context_hierarchy, should_open_group } from './list_hierarchy.js';
+
 const DASHBOARD_CLASS = 'sc-contexts-dashboard';
 const DASHBOARD_LIST_CLASS = 'sc-contexts-dashboard-list';
 
@@ -45,8 +46,11 @@ export function resolve_timestamp(meta) {
 export function build_html() {
   return `<div class="${DASHBOARD_CLASS}">
     <div class="top-bar">
-      <small><b>Smart Context</b></small>
-      <button class="help"></button>
+      <div class="sc-contexts-dashboard-heading">
+        <div class="sc-contexts-dashboard-title">Smart Context</div>
+        <div class="sc-contexts-dashboard-subtitle">Named contexts</div>
+      </div>
+      <button class="help" type="button" aria-label="Help"></button>
     </div>
     <div class="${DASHBOARD_LIST_CLASS}"></div>
   </div>`;
@@ -84,7 +88,10 @@ export async function post_process(smart_contexts, container, params = {}) {
   const help_btn = container.querySelector('button.help');
   setIcon(help_btn, 'help-circle');
   help_btn?.addEventListener('click', () => {
-    window.open('https://smartconnections.app/smart-context/builder/?utm_source=context-list-help#manage-named', '_external');
+    window.open(
+      'https://smartconnections.app/smart-context/builder/?utm_source=context-list-help#manage-named',
+      '_external'
+    );
   });
 
   const render_list_items = async () => {
@@ -93,7 +100,9 @@ export async function post_process(smart_contexts, container, params = {}) {
       if (ctx?.deleted) return false;
       return ctx?.data?.name && String(ctx.data.name).trim().length > 0;
     });
+
     this.empty(list_el);
+
     if (!items.length) {
       const empty = document.createElement('div');
       empty.classList.add('sc-contexts-dashboard-empty');
@@ -101,6 +110,7 @@ export async function post_process(smart_contexts, container, params = {}) {
       list_el.appendChild(empty);
       return;
     }
+
     const { root_items, grouped_items } = partition_context_hierarchy(items);
 
     for (const item of root_items) {
@@ -112,14 +122,50 @@ export async function post_process(smart_contexts, container, params = {}) {
       if (row_el) list_el.appendChild(row_el);
     }
 
-    for (const [group_name, grouped_contexts] of grouped_items.entries()) {
+    const grouped_entries = Array.from(grouped_items.entries()).sort((left, right) => {
+      const a = String(left?.[0] ?? '').toLocaleLowerCase();
+      const b = String(right?.[0] ?? '').toLocaleLowerCase();
+      if (a < b) return -1;
+      if (a > b) return 1;
+      return 0;
+    });
+
+    if (root_items.length && grouped_entries.length) {
+      const separator = document.createElement('div');
+      separator.className = 'sc-contexts-dashboard-separator';
+      list_el.appendChild(separator);
+    }
+
+    for (const [group_name, grouped_contexts] of grouped_entries) {
       const group_details = document.createElement('details');
       group_details.className = 'sc-contexts-dashboard-group';
       group_details.open = should_open_group(grouped_contexts, params);
 
       const group_summary = document.createElement('summary');
       group_summary.className = 'sc-contexts-dashboard-group-summary';
-      group_summary.textContent = `${group_name} (${grouped_contexts.length})`;
+
+      const group_icon = document.createElement('span');
+      group_icon.className = 'sc-contexts-dashboard-group-icon';
+      setIcon(group_icon, 'folder');
+
+      const group_name_el = document.createElement('span');
+      group_name_el.className = 'sc-contexts-dashboard-group-name';
+      group_name_el.textContent = group_name;
+
+      const group_badge = document.createElement('span');
+      group_badge.className = 'sc-contexts-dashboard-group-badge';
+      group_badge.textContent = String(grouped_contexts.length);
+      group_badge.setAttribute('aria-label', `${grouped_contexts.length} contexts`);
+      group_badge.title = `${grouped_contexts.length} contexts`;
+
+      const group_chevron = document.createElement('span');
+      group_chevron.className = 'sc-contexts-dashboard-group-chevron';
+      setIcon(group_chevron, 'chevron-right');
+
+      group_summary.appendChild(group_icon);
+      group_summary.appendChild(group_name_el);
+      group_summary.appendChild(group_badge);
+      group_summary.appendChild(group_chevron);
       group_details.appendChild(group_summary);
 
       const group_items = document.createElement('div');
