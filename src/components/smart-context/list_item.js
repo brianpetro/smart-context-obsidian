@@ -1,5 +1,4 @@
 import { Menu } from 'obsidian';
-import { can_delete_context } from './list_item_utils.js';
 
 const DASHBOARD_ITEM_CLASS = 'sc-contexts-dashboard-item';
 const delete_context_label = 'Delete named context';
@@ -106,4 +105,13 @@ async function post_process(ctx, container, opts = {}) {
   this.attach_disposer(container, disposers);
 
   return container;
+}
+
+/**
+ * @param {import('smart-contexts').SmartContext} ctx
+ * @returns {boolean}
+ */
+function can_delete_context(ctx) {
+  const context_name = String(ctx?.data?.name ?? '').trim();
+  return context_name.length > 0;
 }
