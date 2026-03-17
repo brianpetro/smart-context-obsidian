@@ -1,9 +1,8 @@
 import { FolderSelectModal } from '../modals/folder_select_modal.js';
 import { NamedContextSelectModal } from '../modals/named_context_select_modal.js';
-import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';  // ← NEW
+import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';
 
 export function context_commands(plugin) {
-
   return {
     new_context: {
       id: 'new-context-open-selector',
@@ -43,18 +42,19 @@ export function context_commands(plugin) {
       name: 'Copy current to clipboard (choose link depth)',
       editorCheckCallback: (checking, editor, view) => {
         const source_path = view.file?.path;
-        if(!source_path) return false;
+        if (!source_path) return false;
         const source = plugin.env.smart_sources.get(source_path);
-        if(!source) return false;
+        if (!source) return false;
         const ModalClass = plugin.env.config.modals?.copy_context_modal?.class;
         if (!ModalClass) return false;
-        if(checking) return true; // TODO: what checks should we do here?
+        if (checking) return true; // TODO: what checks should we do here?
         source.actions.source_get_context().then((ctx) => {
-          if(!ctx) {
-            plugin.env.events.emit('notification:error', {
+          if (!ctx) {
+            plugin.env.events.emit('context:build_failed', {
+              level: 'error',
               message: 'Failed to build context for current note.',
+              event_source: 'context_commands.copy_current',
             });
-            new Notice('Failed to build context for current note.');
             return;
           }
           const modal = new ModalClass(ctx);
@@ -74,5 +74,4 @@ export function context_commands(plugin) {
       },
     }
   };
-
 }

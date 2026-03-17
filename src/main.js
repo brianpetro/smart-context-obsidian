@@ -1,6 +1,4 @@
 import {
-  Plugin,
-  Notice,
   TFolder,
 } from 'obsidian';
 import { SmartPlugin } from 'obsidian-smart-env/smart_plugin.js';
@@ -22,7 +20,6 @@ import {
 
 import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';
 
-// v2
 import { ContextsDashboardView } from './views/contexts_dashboard_view.js';
 import { ReleaseNotesView } from './views/release_notes_view.js';
 import { smart_env_config } from './default.config.js';
@@ -43,7 +40,7 @@ export default class SmartContextPlugin extends SmartPlugin {
   }
 
   onunload() {
-    try { this.unregister_event_bus_handlers(); } catch (e) { /* no-op */ }
+    try { this.unregister_event_bus_handlers(); } catch (error) { /* no-op */ }
     this.env.unload_main(this);
   }
 
@@ -58,7 +55,7 @@ export default class SmartContextPlugin extends SmartPlugin {
     await this.SmartEnv.wait_for({ loaded: true });
 
     this.register_commands();
-    this.register_ribbon_icons(); // from SmartPlugin
+    this.register_ribbon_icons();
     this.register_folder_menu();
     this.register_files_menu();
 
@@ -80,10 +77,6 @@ export default class SmartContextPlugin extends SmartPlugin {
 
     await this.check_for_updates();
   }
-
-  /* ------------------------------------------------------------------ */
-  /*  Release notes (mirrors smart-connections behavior)                 */
-  /* ------------------------------------------------------------------ */
 
   /**
    * Open ReleaseNotesView when this installed plugin version is newer than
@@ -108,18 +101,17 @@ export default class SmartContextPlugin extends SmartPlugin {
 
         try {
           this.ReleaseNotesView.open(this.app.workspace, version);
-        } catch (err) {
-          console.error('Failed to open ReleaseNotesView', err);
+        } catch (error) {
+          console.error('Failed to open ReleaseNotesView', error);
         }
 
         await this.set_last_known_version(version);
-      } catch (err) {
-        console.warn('check_for_updates failed (base helpers)', err);
+      } catch (error) {
+        console.warn('check_for_updates failed (base helpers)', error);
       }
       return;
     }
 
-    // Fallback storage in plugin data
     try {
       const data = (await this.loadData()) ?? {};
       const last = data.last_known_version;
@@ -127,23 +119,19 @@ export default class SmartContextPlugin extends SmartPlugin {
 
       try {
         this.ReleaseNotesView.open(this.app.workspace, version);
-      } catch (err) {
-        console.error('Failed to open ReleaseNotesView', err);
+      } catch (error) {
+        console.error('Failed to open ReleaseNotesView', error);
       }
 
       data.last_known_version = version;
       await this.saveData(data);
-    } catch (err) {
-      console.warn('check_for_updates failed (fallback)', err);
+    } catch (error) {
+      console.warn('check_for_updates failed (fallback)', error);
     }
   }
 
-  /* ------------------------------------------------------------------ */
-  /*  New-user state (mirrors sc-obsidian)                               */
-  /* ------------------------------------------------------------------ */
-
   /**
-   * Reads persisted install date (or migrates legacy localStorage flag).
+   * Reads persisted install date.
    *
    * @private
    * @returns {Promise<void>}
@@ -173,10 +161,6 @@ export default class SmartContextPlugin extends SmartPlugin {
    * @returns {boolean}
    */
   is_new_user() { return !this._installed_at; }
-
-  /* ------------------------------------------------------------------ */
-  /*  UI helpers & menus                                                 */
-  /* ------------------------------------------------------------------ */
 
   register_folder_menu() {
     this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
@@ -254,16 +238,13 @@ export default class SmartContextPlugin extends SmartPlugin {
     return rel;
   }
 
-  /* ------------------------------------------------------------------ */
-  /*  Commands                                                          */
-  /* ------------------------------------------------------------------ */
-
   get commands() {
     return {
       ...context_commands(this),
     };
   }
-  get ribbon_icons () {
+
+  get ribbon_icons() {
     return {
       new_context: {
         icon_name: "smart-context-builder",
@@ -284,7 +265,7 @@ export default class SmartContextPlugin extends SmartPlugin {
           ContextsDashboardView.open(this.app.workspace);
         }
       }
-    }
+    };
   }
 
   /**
@@ -303,10 +284,6 @@ export default class SmartContextPlugin extends SmartPlugin {
     // Open the modal bound to this new SmartContext
     ctx.emit_event('context_selector:open', selector_params);
   }
-
-  /* ------------------------------------------------------------------ */
-  /*  Clipboard actions                                                 */
-  /* ------------------------------------------------------------------ */
 
   /**
    * Emit the file navigator copy milestone event.
@@ -329,7 +306,11 @@ export default class SmartContextPlugin extends SmartPlugin {
   async copy_selected_files_to_clipboard(files) {
     const add_items = get_selected_note_keys(files, this.env.smart_sources);
     if (!add_items.length) {
-      new Notice('No Smart Context notes found in selection.');
+      this.env?.events?.emit('context:copy_selection_empty', {
+        level: 'warning',
+        message: 'No Smart Context notes found in selection.',
+        event_source: 'copy_selected_files_to_clipboard',
+      });
       return;
     }
 
@@ -347,14 +328,22 @@ export default class SmartContextPlugin extends SmartPlugin {
   async copy_selected_folders_to_clipboard(files) {
     const folder_paths = get_selected_folder_paths(files);
     if (!folder_paths.length) {
-      new Notice('No folders found in selection.');
+      this.env?.events?.emit('context:copy_selection_empty', {
+        level: 'warning',
+        message: 'No folders found in selection.',
+        event_source: 'copy_selected_folders_to_clipboard',
+      });
       return;
     }
 
     const add_items = expand_folders_to_item_keys(folder_paths, this.env.smart_sources);
 
     if (!add_items.length) {
-      new Notice('No Smart Context notes found in selected folders.');
+      this.env?.events?.emit('context:copy_selection_empty', {
+        level: 'warning',
+        message: 'No Smart Context notes found in selected folders.',
+        event_source: 'copy_selected_folders_to_clipboard',
+      });
       return;
     }
 
