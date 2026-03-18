@@ -1,6 +1,5 @@
 import { SuggestModal, setIcon } from 'obsidian';
 import { build_depth_suggestions } from '../utils/context_suggestions.js';
-import { emit_notice_event } from 'obsidian-smart-env/src/utils/emit_notice_event.js';
 
 const COPY_CONTEXT_MODAL_STYLE_ID = 'sc-copy-context-modal-style';
 
@@ -269,8 +268,7 @@ export class CopyContextModal extends SuggestModal {
   }
 
   async onChooseSuggestion(item) {
-    emit_notice_event(this, {
-      event_key: 'context:copy_started',
+    this?.env?.events?.emit?.('context:copy_started', {
       level: 'info',
       message: 'Copying context...',
       event_source: 'copy_context_modal.onChooseSuggestion',

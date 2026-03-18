@@ -14,7 +14,6 @@
 
 import { Keymap } from 'obsidian';
 import { SmartFuzzySuggestModal } from 'obsidian-smart-env/src/modals/smart_fuzzy_suggest_modal.js';
-import { emit_notice_event } from 'obsidian-smart-env/src/utils/emit_notice_event.js';
 import {
   get_links_to_depth,
   LINK_DIRECTIONS,
@@ -118,8 +117,7 @@ export class NamedContextSelectModal extends SmartFuzzySuggestModal {
         : 'select_action';
 
     if (typeof suggestion?.[action_key] !== 'function') {
-      emit_notice_event(this, {
-        event_key: 'context:named_context_selection_missing_action',
+      this?.env?.events?.emit?.('context:named_context_selection_missing_action', {
         level: 'warning',
         message: 'No action available for selection.',
         event_source: 'named_context_select_modal.onChooseSuggestion',
@@ -133,8 +131,7 @@ export class NamedContextSelectModal extends SmartFuzzySuggestModal {
       await suggestion[action_key]({ modal: this, event: evt });
     } catch (err) {
       console.error('NamedContextSelectModal: selection failed', err);
-      emit_notice_event(this, {
-        event_key: 'context:named_context_selection_failed',
+      this?.env?.events?.emit?.('context:named_context_selection_failed', {
         level: 'error',
         message: 'Failed to open named context action.',
         details: err?.message || '',
@@ -174,8 +171,7 @@ export class NamedContextSelectModal extends SmartFuzzySuggestModal {
 
     const CopyModalClass = this.env?.config?.modals?.copy_context_modal?.class;
     if (!CopyModalClass) {
-      emit_notice_event(this, {
-        event_key: 'context:copy_modal_missing',
+      this?.env?.events?.emit?.('context:copy_modal_missing', {
         level: 'warning',
         message: 'Copy modal not available.',
         event_source: 'named_context_select_modal.open_copy_modal_for_named_context',
@@ -183,8 +179,7 @@ export class NamedContextSelectModal extends SmartFuzzySuggestModal {
       return;
     }
 
-    emit_notice_event(this, {
-      event_key: 'context:named_context_build_started',
+    this?.env?.events?.emit?.('context:named_context_build_started', {
       level: 'info',
       message: 'Building linked context…',
       event_source: 'named_context_select_modal.open_copy_modal_for_named_context',
@@ -202,8 +197,7 @@ export class NamedContextSelectModal extends SmartFuzzySuggestModal {
     }
 
     if (!copy_ctx) {
-      emit_notice_event(this, {
-        event_key: 'context:named_context_build_failed',
+      this?.env?.events?.emit?.('context:named_context_build_failed', {
         level: 'error',
         message: 'Failed to build linked context.',
         event_source: 'named_context_select_modal.open_copy_modal_for_named_context',

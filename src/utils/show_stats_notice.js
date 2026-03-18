@@ -1,5 +1,3 @@
-import { emit_notice_event } from 'obsidian-smart-env/src/utils/emit_notice_event.js';
-
 /**
  * Show user-facing notice summarizing stats.
  */
@@ -21,8 +19,7 @@ export function show_stats_notice(stats, contextMsg, params = {}) {
       }
     }
   }
-  emit_notice_event(params.env, {
-    event_key: params.event_key || 'context:copied',
+  params.env?.events?.emit?.(params.event_key || 'context:copied', {
     level: params.level || 'info',
     message: noticeMsg,
     event_source: params.event_source || 'show_stats_notice',
