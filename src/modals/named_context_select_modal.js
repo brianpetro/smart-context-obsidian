@@ -12,8 +12,9 @@
  * - We do NOT mutate the saved context. We build a temporary SmartContext instance.
  */
 
-import { Keymap, Notice } from 'obsidian';
+import { Keymap } from 'obsidian';
 import { SmartFuzzySuggestModal } from 'obsidian-smart-env/src/modals/smart_fuzzy_suggest_modal.js';
+import { emit_notice_event } from 'obsidian-smart-env/src/utils/emit_notice_event.js';
 import {
   get_links_to_depth,
   LINK_DIRECTIONS,
@@ -117,7 +118,12 @@ export class NamedContextSelectModal extends SmartFuzzySuggestModal {
         : 'select_action';
 
     if (typeof suggestion?.[action_key] !== 'function') {
-      new Notice('No action available for selection.');
+      emit_notice_event(this, {
+        event_key: 'context:named_context_selection_missing_action',
+        level: 'warning',
+        message: 'No action available for selection.',
+        event_source: 'named_context_select_modal.onChooseSuggestion',
+      });
       this.prevent_close = false;
       super.close();
       return;
@@ -127,7 +133,13 @@ export class NamedContextSelectModal extends SmartFuzzySuggestModal {
       await suggestion[action_key]({ modal: this, event: evt });
     } catch (err) {
       console.error('NamedContextSelectModal: selection failed', err);
-      new Notice('Failed to open named context action.');
+      emit_notice_event(this, {
+        event_key: 'context:named_context_selection_failed',
+        level: 'error',
+        message: 'Failed to open named context action.',
+        details: err?.message || '',
+        event_source: 'named_context_select_modal.onChooseSuggestion',
+      });
     }
 
     this.prevent_close = false;
@@ -162,11 +174,21 @@ export class NamedContextSelectModal extends SmartFuzzySuggestModal {
 
     const CopyModalClass = this.env?.config?.modals?.copy_context_modal?.class;
     if (!CopyModalClass) {
-      new Notice('Copy modal not available.');
+      emit_notice_event(this, {
+        event_key: 'context:copy_modal_missing',
+        level: 'warning',
+        message: 'Copy modal not available.',
+        event_source: 'named_context_select_modal.open_copy_modal_for_named_context',
+      });
       return;
     }
 
-    const wait = new Notice('Building linked context…', 0);
+    emit_notice_event(this, {
+      event_key: 'context:named_context_build_started',
+      level: 'info',
+      message: 'Building linked context…',
+      event_source: 'named_context_select_modal.open_copy_modal_for_named_context',
+    });
 
     let copy_ctx = null;
     try {
@@ -177,12 +199,15 @@ export class NamedContextSelectModal extends SmartFuzzySuggestModal {
     } catch (err) {
       console.error('NamedContextSelectModal: build_named_context_copy_ctx failed', err);
       copy_ctx = null;
-    } finally {
-      wait.hide();
     }
 
     if (!copy_ctx) {
-      new Notice('Failed to build linked context.');
+      emit_notice_event(this, {
+        event_key: 'context:named_context_build_failed',
+        level: 'error',
+        message: 'Failed to build linked context.',
+        event_source: 'named_context_select_modal.open_copy_modal_for_named_context',
+      });
       return;
     }
 

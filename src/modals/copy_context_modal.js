@@ -1,5 +1,6 @@
-import { SuggestModal, Notice, setIcon } from 'obsidian';
+import { SuggestModal, setIcon } from 'obsidian';
 import { build_depth_suggestions } from '../utils/context_suggestions.js';
+import { emit_notice_event } from 'obsidian-smart-env/src/utils/emit_notice_event.js';
 
 const COPY_CONTEXT_MODAL_STYLE_ID = 'sc-copy-context-modal-style';
 
@@ -268,7 +269,12 @@ export class CopyContextModal extends SuggestModal {
   }
 
   async onChooseSuggestion(item) {
-    const wait = new Notice('Copying context...', 0);
+    emit_notice_event(this, {
+      event_key: 'context:copy_started',
+      level: 'info',
+      message: 'Copying context...',
+      event_source: 'copy_context_modal.onChooseSuggestion',
+    });
     await this.ctx.actions.context_copy_to_clipboard({
       filter: (ctx_item) => {
         if (ctx_item.data.d > item.d) return false;
@@ -278,7 +284,6 @@ export class CopyContextModal extends SuggestModal {
       max_depth: item.d, // for stats notification
       ...this.params,
     });
-    wait.hide();
   }
 }
 

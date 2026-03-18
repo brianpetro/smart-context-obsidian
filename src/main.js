@@ -352,7 +352,7 @@ export default class SmartContextPlugin extends SmartPlugin {
     ctx.actions.context_copy_to_clipboard();
   }
 
-  async copy_to_clipboard(text) { await copy_to_clipboard(text); }
+  async copy_to_clipboard(text, params = {}) { await copy_to_clipboard(text, params); }
 
-  showStatsNotice(stats, contextMsg) { show_stats_notice(stats, contextMsg); }
+  showStatsNotice(stats, contextMsg, params = {}) { show_stats_notice(stats, contextMsg, params); }
 }
