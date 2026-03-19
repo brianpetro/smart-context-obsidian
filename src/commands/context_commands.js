@@ -1,6 +1,13 @@
 import { FolderSelectModal } from '../modals/folder_select_modal.js';
 import { NamedContextSelectModal } from '../modals/named_context_select_modal.js';
 import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';
+import { default_context_codeblock_type } from '../utils/context_codeblock_constants.js';
+import {
+  ensure_context_codeblock_in_editor,
+  get_context_codeblock_ctx_key,
+  open_context_selector_for_codeblock,
+  register_context_codeblock_sync_listener,
+} from '../utils/context_codeblock_utils.js';
 
 export function context_commands(plugin) {
   return {
@@ -11,6 +18,32 @@ export function context_commands(plugin) {
         if (!plugin?.env?.smart_contexts) return false;
         if (checking) return true;
         plugin.open_new_context_modal();
+        return true;
+      },
+    },
+    insert_codeblock: {
+      id: 'external-file-codeblock',
+      name: 'Insert codeblock (add notes & named contexts)',
+      editorCheckCallback: (checking, editor, view) => {
+        const source_path = view?.file?.path;
+        if (!source_path) return false;
+        if (!plugin?.env?.smart_contexts) return false;
+        if (checking) return true;
+
+        ensure_context_codeblock_in_editor(editor, {
+          codeblock_type: default_context_codeblock_type,
+        });
+
+        const ctx_key = get_context_codeblock_ctx_key(source_path);
+        const smart_contexts = plugin.env.smart_contexts;
+        const ctx = smart_contexts.get(ctx_key) || smart_contexts.new_context({ key: ctx_key });
+
+        register_context_codeblock_sync_listener(ctx, {
+          plugin,
+          source_path,
+        });
+
+        open_context_selector_for_codeblock(ctx);
         return true;
       },
     },
@@ -61,7 +94,7 @@ export function context_commands(plugin) {
           modal.open();
         });
         return true;
-      }
+      },
     },
     copy_folder: {
       id: 'copy-folder-to-clipboard',
@@ -72,6 +105,6 @@ export function context_commands(plugin) {
           await plugin.copy_folder_to_clipboard(folder);
         }).open();
       },
-    }
+    },
   };
 }

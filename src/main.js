@@ -24,6 +24,7 @@ import { ContextsDashboardView } from './views/contexts_dashboard_view.js';
 import { ReleaseNotesView } from './views/release_notes_view.js';
 import { smart_env_config } from './default.config.js';
 import { context_commands } from './commands/context_commands.js';
+import { register_smart_context_codeblock } from './views/context_codeblock.js';
 
 /**
  * Smart Context (Obsidian) - copy and curate context for AI tools.
@@ -55,6 +56,7 @@ export default class SmartContextPlugin extends SmartPlugin {
     await this.SmartEnv.wait_for({ loaded: true });
 
     this.register_commands();
+    this.register_codeblock_processors();
     this.register_ribbon_icons();
     this.register_folder_menu();
     this.register_files_menu();
@@ -76,6 +78,10 @@ export default class SmartContextPlugin extends SmartPlugin {
     }
 
     await this.check_for_updates();
+  }
+
+  register_codeblock_processors() {
+    register_smart_context_codeblock(this);
   }
 
   /**
@@ -160,7 +166,9 @@ export default class SmartContextPlugin extends SmartPlugin {
   /**
    * @returns {boolean}
    */
-  is_new_user() { return !this._installed_at; }
+  is_new_user() {
+    return !this._installed_at;
+  }
 
   register_folder_menu() {
     this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
@@ -247,24 +255,24 @@ export default class SmartContextPlugin extends SmartPlugin {
   get ribbon_icons() {
     return {
       new_context: {
-        icon_name: "smart-context-builder",
-        description: "Smart Context: Open Builder",
-        callback: () => { this.open_new_context_modal(); }
+        icon_name: 'smart-context-builder',
+        description: 'Smart Context: Open Builder',
+        callback: () => { this.open_new_context_modal(); },
       },
       copy_context: {
-        icon_name: "smart-copy-note",
-        description: "Smart Context: Copy to Clipboard (select depth)",
+        icon_name: 'smart-copy-note',
+        description: 'Smart Context: Copy to Clipboard (select depth)',
         callback: async () => {
           this.app.commands.executeCommandById('smart-context:copy-current-note-with-depth');
-        }
+        },
       },
       list_contexts: {
-        icon_name: "smart-named-contexts",
-        description: "Smart Context: List Named Contexts",
+        icon_name: 'smart-named-contexts',
+        description: 'Smart Context: List Named Contexts',
         callback: () => {
           ContextsDashboardView.open(this.app.workspace);
-        }
-      }
+        },
+      },
     };
   }
 
@@ -352,7 +360,11 @@ export default class SmartContextPlugin extends SmartPlugin {
     ctx.actions.context_copy_to_clipboard();
   }
 
-  async copy_to_clipboard(text, params = {}) { await copy_to_clipboard(text, params); }
+  async copy_to_clipboard(text, params = {}) {
+    await copy_to_clipboard(text, params);
+  }
 
-  showStatsNotice(stats, contextMsg, params = {}) { show_stats_notice(stats, contextMsg, params); }
+  showStatsNotice(stats, contextMsg, params = {}) {
+    show_stats_notice(stats, contextMsg, params);
+  }
 }
