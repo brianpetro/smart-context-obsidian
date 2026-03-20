@@ -50,6 +50,17 @@ function show_menu(menu, event, anchor_el) {
   }));
 }
 
+/**
+ * @param {HTMLElement} button
+ * @param {string} label
+ * @returns {void}
+ */
+function set_button_label(button, label) {
+  if (!button) return;
+  // button.title = label; // NO using both title and aria-label as it causes double tooltip
+  button.setAttribute('aria-label', label);
+}
+
 export async function render(ctx, opts = {}) {
   this.apply_style_sheet(styles);
   const html = build_html();
@@ -75,8 +86,18 @@ export async function post_process(ctx, container, params = {}) {
 
   const update_action_state = () => {
     const has_active_items = (ctx?.item_count || 0) > 0;
+    const builder_label = has_active_items ? 'Open context builder' : 'Add context';
+
+    set_button_label(menu_btn, 'Context actions');
+    set_button_label(open_builder_btn, builder_label);
+    set_button_label(help_btn, 'Help');
+
+    copy_btn.hidden = !has_active_items;
     copy_btn.disabled = !has_active_items;
-    copy_btn.title = has_active_items ? 'Copy to clipboard' : 'No context items to copy';
+    set_button_label(
+      copy_btn,
+      has_active_items ? 'Copy to clipboard' : 'No context items to copy',
+    );
   };
 
   open_builder_btn.addEventListener('click', () => {
@@ -97,10 +118,8 @@ export async function post_process(ctx, container, params = {}) {
           })
         ;
       });
-      // separator
       menu.addSeparator();
     }
-    // open builder item view
     menu.addItem((item) => {
       item
         .setTitle('Open context builder')
@@ -110,7 +129,6 @@ export async function post_process(ctx, container, params = {}) {
         })
       ;
     });
-    // copy to clipboard
     menu.addItem((item) => {
       item
         .setTitle('Copy context to clipboard')
@@ -121,20 +139,16 @@ export async function post_process(ctx, container, params = {}) {
         })
       ;
     });
-    // open named contexts item view
     menu.addItem((item) => {
       item
         .setTitle('Open named contexts dashboard')
         .setIcon('smart-named-contexts')
         .onClick(() => {
-          //run command smart-contexts-dashboard
           app.commands.executeCommandById('smart-context:smart-contexts-dashboard');
         })
       ;
     });
-    // separator
     menu.addSeparator();
-    // help
     menu.addItem((item) => {
       item
         .setTitle('Help')
@@ -163,8 +177,6 @@ export async function post_process(ctx, container, params = {}) {
     await ctx.actions.context_copy_to_clipboard();
   });
 
-  // menu_btn.title = 'Context actions';
-  help_btn.title = 'Help';
   setIcon(open_builder_btn, 'smart-context-builder');
   setIcon(menu_btn, 'menu');
   setIcon(copy_btn, 'smart-copy-note');
@@ -185,4 +197,4 @@ export async function post_process(ctx, container, params = {}) {
   return container;
 }
 
-export const version = '2.1.0';
+export const version = '2.1.1';
