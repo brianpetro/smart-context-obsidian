@@ -15,6 +15,7 @@ export function register_smart_context_codeblock(plugin) {
     parse_codeblock: (cb_content, { env }) => {
       return parse_codeblock_to_context_items(cb_content, {
         smart_contexts: env.smart_contexts,
+        smart_sources: env.smart_sources,
       });
     },
   });

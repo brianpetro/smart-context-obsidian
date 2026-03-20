@@ -30,6 +30,38 @@ function is_item_in_folder(item_key, folder_path) {
 }
 
 /**
+ * Keep only top-level folder paths.
+ *
+ * Example:
+ * - `src`
+ * - `src/utils`
+ *
+ * becomes:
+ * - `src`
+ *
+ * @param {string[]} folder_paths
+ * @returns {string[]}
+ */
+function get_unique_root_folder_paths(folder_paths = []) {
+  const normalized_paths = folder_paths
+    .map((folder_path) => normalize_item_key(folder_path))
+    .filter(Boolean)
+    .sort((left, right) => {
+      if (left.length !== right.length) return left.length - right.length;
+      return left.localeCompare(right);
+    })
+  ;
+
+  return normalized_paths.reduce((acc, folder_path) => {
+    if (acc.some((existing_path) => is_item_in_folder(folder_path, existing_path))) {
+      return acc;
+    }
+    acc.push(folder_path);
+    return acc;
+  }, []);
+}
+
+/**
  * @param {string} context_name
  * @param {object} params
  * @param {string} [params.named_context_line_prefix]
@@ -77,9 +109,13 @@ export function build_codeblock_entries(params = {}) {
   /** @type {string[]} */
   const entries = [];
   /** @type {string[]} */
-  const folder_lines = [];
+  const folder_paths = [];
   /** @type {string[]} */
   const explicit_lines = [];
+  /** @type {string[]} */
+  const excluded_folder_paths = [];
+  /** @type {string[]} */
+  const excluded_explicit_lines = [];
 
   codeblock_named_contexts.forEach((context_name) => {
     const line = build_named_context_line(context_name, params);
@@ -96,13 +132,11 @@ export function build_codeblock_entries(params = {}) {
     if (item_data.from_named_context) return;
 
     const folder_path = typeof item_data.folder === 'string'
-      ? normalize_string(item_data.folder)
+      ? normalize_item_key(item_data.folder)
       : ''
     ;
     if (folder_path) {
-      if (!folder_lines.includes(folder_path)) {
-        folder_lines.push(folder_path);
-      }
+      folder_paths.push(folder_path);
       return;
     }
 
@@ -110,6 +144,8 @@ export function build_codeblock_entries(params = {}) {
     if (!explicit_line) return;
     explicit_lines.push(explicit_line);
   });
+
+  const folder_lines = get_unique_root_folder_paths(folder_paths);
 
   folder_lines.forEach((folder_line) => {
     entries.push(folder_line);
@@ -126,10 +162,34 @@ export function build_codeblock_entries(params = {}) {
 
   Object.entries(context_items).forEach(([item_key, item_data]) => {
     if (!item_data?.exclude) return;
-    const exclusion_line = build_exclusion_line(item_data.key || item_key);
-    if (!exclusion_line) return;
-    entries.push(exclusion_line);
+
+    const exclusion_key = normalize_item_key(item_data.key || item_key);
+    if (!exclusion_key) return;
+
+    if (item_data.folder === true) {
+      excluded_folder_paths.push(exclusion_key);
+      return;
+    }
+
+    excluded_explicit_lines.push(exclusion_key);
   });
+
+  const excluded_folder_lines = get_unique_root_folder_paths(excluded_folder_paths);
+
+  excluded_folder_lines.forEach((folder_line) => {
+    const exclusion_line = build_exclusion_line(folder_line);
+    if (exclusion_line) entries.push(exclusion_line);
+  });
+
+  excluded_explicit_lines
+    .filter((excluded_line) => {
+      return !excluded_folder_lines.some((folder_line) => is_item_in_folder(excluded_line, folder_line));
+    })
+    .forEach((excluded_line) => {
+      const exclusion_line = build_exclusion_line(excluded_line);
+      if (exclusion_line) entries.push(exclusion_line);
+    })
+  ;
 
   return entries.filter(Boolean).filter((entry, index, arr) => arr.indexOf(entry) === index);
 }

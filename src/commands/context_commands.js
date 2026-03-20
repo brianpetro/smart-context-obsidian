@@ -100,6 +100,7 @@ export function context_commands(plugin) {
             parse_codeblock: (cb_content) => {
               return parse_codeblock_to_context_items(cb_content, {
                 smart_contexts: plugin.env.smart_contexts,
+                smart_sources: plugin.env.smart_sources,
               });
             },
           });
