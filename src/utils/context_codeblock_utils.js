@@ -9,6 +9,7 @@ import {
 } from './context_codeblock_constants.js';
 
 export { build_default_named_context_name } from './named_context_utils.js';
+export { build_copy_current_context } from './temp_context_utils.js';
 export {
   context_codeblock_types,
   default_context_codeblock_type,
@@ -361,117 +362,6 @@ export function get_active_codeblock_item_payloads(ctx) {
       return payload;
     })
   ;
-}
-
-/**
- * @param {Record<string, object>} context_items
- * @returns {Record<string, object>}
- */
-function clone_context_items_map(context_items = {}) {
-  return Object.entries(context_items || {}).reduce((acc, [item_key, item_data]) => {
-    if (!item_key) return acc;
-    acc[item_key] = {
-      ...(item_data && typeof item_data === 'object' ? item_data : {}),
-      key: item_data?.key || item_key,
-    };
-    return acc;
-  }, {});
-}
-
-/**
- * @param {string} item_key
- * @param {Record<string, unknown>} item_data
- * @returns {Record<string, unknown>}
- */
-function normalize_codeblock_copy_item(item_key, item_data = {}) {
-  const existing_item = item_data && typeof item_data === 'object'
-    ? item_data
-    : {}
-  ;
-  return {
-    ...existing_item,
-    key: existing_item.key || item_key,
-    d: 0,
-  };
-}
-
-/**
- * Merge source-get-context items with codeblock items for copy-current flows.
- * Codeblock items are always treated as depth zero.
- *
- * @param {Record<string, object>} source_context_items
- * @param {Record<string, object>} codeblock_context_items
- * @returns {Record<string, object>}
- */
-function merge_copy_context_items(source_context_items = {}, codeblock_context_items = {}) {
-  const merged_context_items = clone_context_items_map(source_context_items);
-
-  Object.entries(codeblock_context_items || {}).forEach(([item_key, item_data]) => {
-    if (!item_key) return;
-
-    const existing_item = merged_context_items[item_key] || {};
-    const normalized_item = normalize_codeblock_copy_item(item_key, item_data);
-
-    merged_context_items[item_key] = {
-      ...existing_item,
-      ...normalized_item,
-      key: normalized_item.key || item_key,
-      d: 0,
-    };
-  });
-
-  return merged_context_items;
-}
-
-/**
- * @param {import('smart-contexts').SmartContext} ctx
- * @param {object} [params={}]
- * @param {string} [params.key]
- * @param {Record<string, object>} [params.context_items]
- * @returns {import('smart-contexts').SmartContext|null}
- */
-function create_temp_context(ctx, params = {}) {
-  if (!ctx?.env) return null;
-
-  const TempClass = ctx.constructor;
-  const temp_data = {
-    ...(ctx.data || {}),
-    key: normalize_string(params.key) || `${ctx.key}#temp`,
-    context_items: clone_context_items_map(
-      params.context_items || ctx?.data?.context_items || {},
-    ),
-  };
-
-  const temp_ctx = new TempClass(ctx.env, temp_data);
-  temp_ctx.collection = ctx.collection;
-  return temp_ctx;
-}
-
-/**
- * Build a temporary copy-current context that includes codeblock items at depth zero.
- *
- * @param {import('smart-contexts').SmartContext} ctx
- * @param {object} [params={}]
- * @param {import('smart-contexts').SmartContext} [params.codeblock_ctx]
- * @param {string} [params.key]
- * @returns {import('smart-contexts').SmartContext|null}
- */
-export function build_copy_current_context(ctx, params = {}) {
-  if (!ctx) return null;
-
-  const codeblock_ctx = params.codeblock_ctx;
-  const codeblock_context_items = codeblock_ctx?.data?.context_items || {};
-  if (!Object.keys(codeblock_context_items).length) return ctx;
-
-  const merged_context_items = merge_copy_context_items(
-    ctx?.data?.context_items || {},
-    codeblock_context_items,
-  );
-
-  return create_temp_context(ctx, {
-    key: normalize_string(params.key) || `${ctx.key}#copy_current`,
-    context_items: merged_context_items,
-  }) || ctx;
 }
 
 /**
