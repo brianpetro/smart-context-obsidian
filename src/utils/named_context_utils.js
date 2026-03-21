@@ -1,12 +1,5 @@
 import { context_named_context_prefixes } from './context_codeblock_constants.js';
-
-/**
- * @param {string} value
- * @returns {string}
- */
-export function normalize_named_context_name(value = '') {
-  return String(value ?? '').trim();
-}
+import { normalize_string } from './pure_utils.js';
 
 /**
  * @param {string} line
@@ -20,7 +13,7 @@ export function parse_named_context_line(line = '') {
     const prefix = context_named_context_prefixes[i];
     if (!normalized_line.startsWith(prefix)) continue;
 
-    const context_name = normalize_named_context_name(
+    const context_name = normalize_string(
       normalized_line.slice(prefix.length),
     );
     return context_name || null;
@@ -35,7 +28,7 @@ export function parse_named_context_line(line = '') {
  * @returns {import('smart-contexts').SmartContext|null}
  */
 export function get_named_context(smart_contexts, context_name = '') {
-  const normalized_name = normalize_named_context_name(context_name);
+  const normalized_name = normalize_string(context_name);
   if (!normalized_name || !smart_contexts) return null;
 
   const by_key = smart_contexts.get?.(normalized_name);
@@ -43,7 +36,7 @@ export function get_named_context(smart_contexts, context_name = '') {
 
   const normalized_lookup = normalized_name.toLowerCase();
   const by_name = smart_contexts.filter?.((item) => {
-    return normalize_named_context_name(item?.data?.name).toLowerCase() === normalized_lookup;
+    return normalize_string(item?.data?.name).toLowerCase() === normalized_lookup;
   })?.[0];
 
   return by_name || null;
@@ -55,7 +48,7 @@ export function get_named_context(smart_contexts, context_name = '') {
  * @returns {Array<{ key: string, d: number, size?: number, mtime?: number, ctx_codeblock: boolean, from_named_context: string }>}
  */
 export function get_named_context_items(named_context, smart_contexts) {
-  const normalized_name = normalize_named_context_name(named_context);
+  const normalized_name = normalize_string(named_context);
   if (!normalized_name || !smart_contexts) return [];
 
   const context = get_named_context(smart_contexts, normalized_name);
@@ -111,7 +104,7 @@ function get_existing_context_names(smart_contexts) {
   const items = smart_contexts?.items ? Object.values(smart_contexts.items) : [];
 
   items.forEach((item) => {
-    const name = normalize_named_context_name(item?.data?.name);
+    const name = normalize_string(item?.data?.name);
     if (!name) return;
     names.add(name.toLowerCase());
   });
@@ -125,7 +118,7 @@ function get_existing_context_names(smart_contexts) {
  * @returns {string}
  */
 function build_unique_context_name(base_name, existing_names) {
-  const normalized_base_name = normalize_named_context_name(base_name) || 'Context';
+  const normalized_base_name = normalize_string(base_name) || 'Context';
   if (!existing_names.has(normalized_base_name.toLowerCase())) {
     return normalized_base_name;
   }

@@ -4,7 +4,12 @@ import {
   render_btn_clear_context,
   render_btn_help,
 } from 'obsidian-smart-env/src/components/smart-context/actions.js';
-import { resolve_name_status } from './actions_utils.js';
+import {
+  get_context_name_input_value,
+  persist_context_name,
+  resolve_name_status,
+} from './actions_utils.js';
+
 export function build_html() {
   return `
     <div class="sc-context-actions">
@@ -23,6 +28,7 @@ export async function render(ctx, opts = {}) {
   post_process.call(this, ctx, container, opts);
   return container;
 }
+
 async function post_process(ctx, container, opts = {}) {
   const render_ctx_actions = () => {
     const actions_left = container.querySelector('.sc-context-actions-left');
@@ -35,7 +41,7 @@ async function post_process(ctx, container, opts = {}) {
     render_btn_copy_context(ctx, actions_right);
     render_btn_clear_context(ctx, actions_right);
     render_btn_help(ctx, actions_right);
-  }
+  };
   render_ctx_actions();
   const disposers = [];
   disposers.push(ctx.on_event('context:updated', render_ctx_actions));
@@ -45,7 +51,6 @@ async function post_process(ctx, container, opts = {}) {
 }
 
 export function render_name_input(ctx, container) {
-  // const name_input = container.querySelector('.sc-context-name-input');
   const name_wrapper = document.createElement('div');
   name_wrapper.className = 'sc-context-name-wrapper';
   name_wrapper.style.display = 'flex';
@@ -75,15 +80,26 @@ export function render_name_input(ctx, container) {
   };
 
   const refresh_name = () => {
-    name_input.value = ctx?.data?.name ? String(ctx.data.name) : '';
+    name_input.value = get_context_name_input_value(ctx);
     update_name_status();
   };
 
   const save_name = () => {
-    const next = sanitize_context_name(name_input.value);
-    if (next === (ctx.data.name || '')) return;
-    ctx.name = next;
-    update_name_status();
+    const next_name = sanitize_context_name(name_input.value);
+    const current_name = get_context_name_input_value(ctx);
+
+    if (next_name === current_name) {
+      update_name_status();
+      return;
+    }
+
+    const result = persist_context_name(ctx, {
+      input_value: next_name,
+      open_selector: false,
+    });
+
+    name_input.value = result?.context_name ?? next_name;
+    refresh_name();
   };
 
   refresh_name();
@@ -103,7 +119,7 @@ export function render_name_input(ctx, container) {
   });
   name_input.addEventListener('blur', () => save_name());
   name_input.addEventListener('input', () => update_name_status());
-  
+
   function sanitize_context_name(name) {
     const str = String(name ?? '').trim();
     if (!str) return '';
@@ -112,4 +128,5 @@ export function render_name_input(ctx, container) {
     return collapsed.length > max ? collapsed.slice(0, max) : collapsed;
   }
 }
-export const version = '2.0.0';
+
+export const version = '2.1.0';

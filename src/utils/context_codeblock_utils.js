@@ -7,44 +7,25 @@ import {
   default_context_codeblock_type,
   default_named_context_line_prefix,
 } from './context_codeblock_constants.js';
+import { escape_regex, is_codeblock_context_key, normalize_codeblock_contents, normalize_string } from './pure_utils.js';
 
 export { build_default_named_context_name } from './named_context_utils.js';
-export { build_copy_current_context } from './temp_context_utils.js';
 export {
   context_codeblock_types,
   default_context_codeblock_type,
 } from './context_codeblock_constants.js';
 
 /**
- * @param {string} value
+ * @param {import('smart-contexts').SmartContext} ctx
  * @returns {string}
  */
-function normalize_string(value = '') {
-  return String(value ?? '').trim();
-}
-
-/**
- * @param {string} value
- * @returns {string}
- */
-function escape_regex(value = '') {
-  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * @param {string} source_path
- * @returns {string}
- */
-export function get_context_codeblock_ctx_key(source_path = '') {
-  return `${String(source_path || '').trim()}#codeblock`;
-}
-
-/**
- * @param {string} key
- * @returns {boolean}
- */
-export function is_codeblock_context_key(key = '') {
-  return typeof key === 'string' && key.endsWith('#codeblock');
+export function get_codeblock_named_context_name(ctx) {
+  const named_contexts = Array.isArray(ctx?.data?.codeblock_named_contexts)
+    ? ctx.data.codeblock_named_contexts
+    : []
+  ;
+  if (named_contexts.length !== 1) return '';
+  return normalize_string(named_contexts[0]);
 }
 
 /**
@@ -73,6 +54,39 @@ function build_codeblock_entries_for_ctx(ctx) {
     ),
   });
 }
+
+
+/**
+ * @param {string} markdown
+ * @returns {{ codeblock_type: string, cb_content: string } | null}
+ */
+export function get_context_codeblock_snapshot(markdown = '') {
+  const lines = String(markdown || '').replace(/\r\n/g, '\n').split('\n');
+  const range = find_context_codeblock_range(lines);
+  if (!range) return null;
+
+  return {
+    codeblock_type: range.codeblock_type || default_context_codeblock_type,
+    cb_content: lines.slice(range.start + 1, range.end).join('\n'),
+  };
+}
+
+/**
+ * @param {import('obsidian').App} app
+ * @param {string} source_path
+ * @returns {Promise<string>}
+ */
+async function read_note_markdown(app, source_path) {
+  const active_view = app?.workspace?.getActiveViewOfType?.(MarkdownView);
+  if (active_view?.file?.path === source_path && active_view.editor) {
+    return active_view.editor.getValue();
+  }
+
+  const file = app?.vault?.getFileByPath?.(source_path) || app?.vault?.getAbstractFileByPath?.(source_path);
+  if (!file) return '';
+  return await app.vault.read(file);
+}
+
 
 /**
  * @param {import('smart-contexts').SmartContext} smart_context
@@ -113,38 +127,13 @@ export function apply_parsed_codeblock_context(smart_context, params = {}) {
     };
   });
 }
-
 /**
- * @param {string} markdown
- * @returns {{ codeblock_type: string, cb_content: string } | null}
- */
-export function get_context_codeblock_snapshot(markdown = '') {
-  const lines = String(markdown || '').replace(/\r\n/g, '\n').split('\n');
-  const range = find_context_codeblock_range(lines);
-  if (!range) return null;
-
-  return {
-    codeblock_type: range.codeblock_type || default_context_codeblock_type,
-    cb_content: lines.slice(range.start + 1, range.end).join('\n'),
-  };
-}
-
-/**
- * @param {import('obsidian').App} app
  * @param {string} source_path
- * @returns {Promise<string>}
+ * @returns {string}
  */
-async function read_note_markdown(app, source_path) {
-  const active_view = app?.workspace?.getActiveViewOfType?.(MarkdownView);
-  if (active_view?.file?.path === source_path && active_view.editor) {
-    return active_view.editor.getValue();
-  }
-
-  const file = app?.vault?.getFileByPath?.(source_path) || app?.vault?.getAbstractFileByPath?.(source_path);
-  if (!file) return '';
-  return await app.vault.read(file);
+export function get_context_codeblock_ctx_key(source_path = '') {
+  return `${String(source_path || '').trim()}#codeblock`;
 }
-
 /**
  * Hydrate a codeblock context on demand from note contents.
  *
@@ -239,18 +228,6 @@ export function find_context_codeblock_range(lines = []) {
 export function has_context_codeblock(markdown = '') {
   const lines = String(markdown || '').split('\n');
   return Boolean(find_context_codeblock_range(lines));
-}
-
-/**
- * @param {string} contents
- * @returns {string}
- */
-function normalize_codeblock_contents(contents = '') {
-  const normalized_contents = String(contents ?? '').replace(/\r\n/g, '\n');
-  return normalized_contents.endsWith('\n')
-    ? normalized_contents
-    : `${normalized_contents}\n`
-  ;
 }
 
 /**
@@ -625,6 +602,7 @@ export function sync_codeblock_context_to_named_context(ctx, params = {}) {
   ;
   const next_payloads = build_codeblock_named_context_payloads(context_name, payloads);
 
+  delete ctx.data.name;
   ctx.data.context_items = {};
   ctx.data.codeblock_named_contexts = context_name ? [context_name] : [];
   ctx.data.codeblock_passthrough_lines = [];
@@ -750,7 +728,9 @@ export function create_named_context_from_codeblock(ctx, params = {}) {
  */
 export function convert_codeblock_to_named_context(ctx, params = {}) {
   const named_ctx = create_named_context_from_codeblock(ctx, params);
-  named_ctx?.emit_event?.('context_selector:open');
+  if (params.open_selector !== false) {
+    named_ctx?.emit_event?.('context_selector:open');
+  }
   return named_ctx;
 }
 

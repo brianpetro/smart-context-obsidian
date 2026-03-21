@@ -1,5 +1,6 @@
 import styles from './list.css';
 import { setIcon } from 'obsidian';
+import { is_codeblock_context_key } from '../../utils/pure_utils.js';
 
 const DASHBOARD_CLASS = 'sc-contexts-dashboard';
 const DASHBOARD_LIST_CLASS = 'sc-contexts-dashboard-list';
@@ -97,6 +98,7 @@ export async function post_process(smart_contexts, container, params = {}) {
     const items = smart_contexts.filter((ctx) => {
       // only named contexts
       if (ctx?.deleted) return false;
+      if (is_codeblock_context_key(ctx?.key)) return false;
       return ctx?.data?.name && String(ctx.data.name).trim().length > 0;
     });
 
@@ -191,11 +193,13 @@ export async function post_process(smart_contexts, container, params = {}) {
   disposers.push(smart_contexts?.env?.events?.on('context:created', render_list_items));
   disposers.push(smart_contexts?.env?.events?.on('context:deleted', render_list_items));
   disposers.push(smart_contexts?.env?.events?.on('context:named', render_list_items));
+  disposers.push(smart_contexts?.env?.events?.on('context:renamed', render_list_items));
 
   // cleanup
   this.attach_disposer(container, disposers);
   return container;
 }
+
 /**
  * Partition named contexts into root rows and slash-based hierarchy groups.
  *

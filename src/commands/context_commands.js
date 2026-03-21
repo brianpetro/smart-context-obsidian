@@ -4,13 +4,16 @@ import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';
 import { parse_codeblock_to_context_items } from '../utils/parse_codeblock_to_context_items.js';
 import { default_context_codeblock_type } from '../utils/context_codeblock_constants.js';
 import {
-  build_copy_current_context,
   ensure_context_codeblock_in_editor,
   get_context_codeblock_ctx_key,
-  get_or_create_codeblock_context_from_note,
   open_context_selector_for_codeblock,
   register_context_codeblock_sync_listener,
 } from '../utils/context_codeblock_utils.js';
+import {
+  get_copy_current_dependencies,
+  open_copy_current_modal,
+  resolve_active_source_path,
+} from '../utils/commands_helpers.js';
 
 export function context_commands(plugin) {
   return {
@@ -78,39 +81,20 @@ export function context_commands(plugin) {
       id: 'copy-current-note-with-depth',
       name: 'Copy current to clipboard (choose link depth)',
       editorCheckCallback: (checking, editor, view) => {
-        const source_path = view.file?.path;
-        if (!source_path) return false;
-        const source = plugin.env.smart_sources.get(source_path);
-        if (!source) return false;
-        const ModalClass = plugin.env.config.modals?.copy_context_modal?.class;
-        if (!ModalClass) return false;
-        if (checking) return true; // TODO: what checks should we do here?
-        source.actions.source_get_context().then(async (ctx) => {
-          if (!ctx) {
-            plugin.env.events.emit('context:build_failed', {
-              level: 'error',
-              message: 'Failed to build context for current note.',
-              event_source: 'context_commands.copy_current',
+        const source_path = resolve_active_source_path({ view });
+        const copy_deps = get_copy_current_dependencies(plugin.env, { source_path });
+        if (!copy_deps) return false;
+        if (checking) return true;
+
+        void open_copy_current_modal(plugin, {
+          ...copy_deps,
+          markdown: editor?.getValue?.(),
+          parse_codeblock: (cb_content) => {
+            return parse_codeblock_to_context_items(cb_content, {
+              smart_contexts: plugin.env.smart_contexts,
+              smart_sources: plugin.env.smart_sources,
             });
-            return;
-          }
-
-          const codeblock_ctx = await get_or_create_codeblock_context_from_note(plugin, source_path, {
-            markdown: editor?.getValue?.(),
-            parse_codeblock: (cb_content) => {
-              return parse_codeblock_to_context_items(cb_content, {
-                smart_contexts: plugin.env.smart_contexts,
-                smart_sources: plugin.env.smart_sources,
-              });
-            },
-          });
-          const copy_ctx = build_copy_current_context(ctx, {
-            codeblock_ctx,
-            key: `${source_path}#copy_current`,
-          }) || ctx;
-
-          const modal = new ModalClass(copy_ctx);
-          modal.open();
+          },
         });
         return true;
       },

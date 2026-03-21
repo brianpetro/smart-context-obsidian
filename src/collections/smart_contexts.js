@@ -1,6 +1,6 @@
 import base from 'smart-contexts';
 import { SmartContexts as BaseClass } from 'smart-contexts/smart_contexts.js';
-import { is_codeblock_context_key } from '../utils/context_codeblock_utils.js';
+import { is_codeblock_context_key } from '../utils/pure_utils.js';
 
 export class SmartContexts extends BaseClass {
   async process_load_queue() {
