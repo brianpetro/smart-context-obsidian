@@ -1,14 +1,14 @@
 import {
-  render_btn_open_selector,
-  render_btn_copy_context,
   render_btn_clear_context,
   render_btn_help,
-} from 'obsidian-smart-env/src/components/smart-context/actions.js';
+  render_btn_copy_menu,
+  render_btn_quick_copy,
+} from 'obsidian-smart-env/src/utils/smart-context/copy_actions.js';
 import {
   get_context_name_input_value,
   persist_context_name,
   resolve_name_status,
-} from './actions_utils.js';
+} from '../../utils/actions_utils.js';
 
 export function build_html() {
   return `
@@ -36,9 +36,8 @@ async function post_process(ctx, container, opts = {}) {
     render_name_input(ctx, actions_left);
     const actions_right = container.querySelector('.sc-context-actions-right');
     this.empty(actions_right);
-    // Add context -> open selector (hidden by CSS in certain views)
-    render_btn_open_selector(ctx, actions_right);
-    render_btn_copy_context(ctx, actions_right);
+    render_btn_quick_copy(ctx, actions_right);
+    render_btn_copy_menu(ctx, actions_right);
     render_btn_clear_context(ctx, actions_right);
     render_btn_help(ctx, actions_right);
   };
@@ -129,4 +128,4 @@ export function render_name_input(ctx, container) {
   }
 }
 
-export const version = '2.1.0';
+export const version = '2.2.0';

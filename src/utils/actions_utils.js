@@ -1,8 +1,8 @@
 import {
   convert_codeblock_to_named_context,
-} from '../../utils/context_codeblock_utils.js';
-import { is_codeblock_context_key } from '../../utils/pure_utils.js';
-import { get_named_context } from '../../utils/named_context_utils.js';
+} from './context_codeblock_utils.js';
+import { is_codeblock_context_key } from './pure_utils.js';
+import { get_named_context } from './named_context_utils.js';
 
 /**
  * @param {import('smart-contexts').SmartContext} ctx

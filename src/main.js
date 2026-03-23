@@ -7,7 +7,7 @@ import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
 
 import { SmartContextSettingTab } from './views/settings_tab.js';
 
-import { copy_to_clipboard } from 'obsidian-smart-env/utils/copy_to_clipboard.js';
+import { copy_to_clipboard } from 'obsidian-smart-env/src/utils/copy_to_clipboard.js';
 import { show_stats_notice } from './utils/show_stats_notice.js';
 
 import { get_selected_note_keys } from './utils/get_selected_note_keys.js';
