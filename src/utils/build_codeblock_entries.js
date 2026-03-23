@@ -1,12 +1,5 @@
 import { default_named_context_line_prefix } from './context_codeblock_constants.js';
-
-/**
- * @param {string} value
- * @returns {string}
- */
-function normalize_string(value = '') {
-  return String(value ?? '').trim();
-}
+import { normalize_string } from './pure_utils.js';
 
 /**
  * @param {string} key

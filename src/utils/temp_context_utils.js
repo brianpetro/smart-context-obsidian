@@ -9,14 +9,7 @@ import {
   merge_context_items_min_depth,
   normalize_link_direction,
 } from './link_graph_context_items.js';
-
-/**
- * @param {string} value
- * @returns {string}
- */
-function normalize_string(value = '') {
-  return String(value ?? '').trim();
-}
+import { normalize_string } from './pure_utils.js';
 
 /**
  * @param {unknown} value
