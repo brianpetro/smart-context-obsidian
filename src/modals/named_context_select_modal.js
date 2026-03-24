@@ -70,11 +70,7 @@ export class NamedContextSelectModal extends SmartFuzzySuggestModal {
         const name = ctx?.data?.name ? String(ctx.data.name).trim() : '';
         return name.length > 0;
       })
-      .sort((a, b) => {
-        const a_name = (a?.data?.name || '').toString().toLowerCase();
-        const b_name = (b?.data?.name || '').toString().toLowerCase();
-        return a_name.localeCompare(b_name);
-      });
+    ;
 
     return named.map((ctx) => {
       const name = String(ctx.data.name || '').trim();

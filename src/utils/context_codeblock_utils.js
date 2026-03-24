@@ -382,9 +382,6 @@ export function get_context_codeblock_suggest_action_keys(ctx) {
 
   const remaining_action_keys = all_action_keys
     .filter((action_key) => !prioritized_action_keys.includes(action_key))
-    .sort((left, right) => {
-      return get_action_display_name(env, left).localeCompare(get_action_display_name(env, right));
-    })
   ;
 
   return [...new Set([...prioritized_action_keys, ...remaining_action_keys])];
