@@ -29,7 +29,7 @@ import { register_smart_context_codeblock } from './views/context_codeblock.js';
 /**
  * Smart Context (Obsidian) - copy and curate context for AI tools.
  *
- * @extends Plugin
+ * @extends SmartPlugin
  */
 export default class SmartContextPlugin extends SmartPlugin {
   SmartEnv = SmartEnv;
@@ -78,6 +78,8 @@ export default class SmartContextPlugin extends SmartPlugin {
     }
 
     await this.check_for_updates();
+
+    this.register_event_listeners();
   }
 
   register_codeblock_processors() {
@@ -366,5 +368,41 @@ export default class SmartContextPlugin extends SmartPlugin {
 
   showStatsNotice(stats, contextMsg, params = {}) {
     show_stats_notice(stats, contextMsg, params);
+  }
+
+  register_event_listeners() {
+    /**
+     * Listen for context renames to update any codeblocks that reference the renamed context by name.
+     */
+    this.register(
+      this.env.events.on('context:renamed', async (payload) => {
+        const ctx = this.env.smart_contexts.get(payload.context_key);
+        if (!ctx) return;
+        const old_name = payload.old_name;
+        const new_name = payload.new_name;
+        const line_starts_with = `ctx:: ${old_name}`;
+        const source_keys = Object.keys(ctx.data.codeblock_inclusions || {});
+        for (let i = 0; i < source_keys.length; i++) {
+          const source_key = source_keys[i];
+          const tfile = this.env.smart_sources.get(source_key)?.tfile;
+          if (!tfile) continue;
+          const content = await this.app.vault.read(tfile);
+          const has_line = content.split('\n').some((line) => line.trim().startsWith(line_starts_with));
+          if (!has_line) {
+            // If the line isn't found, remove the codeblock inclusion reference to avoid future unnecessary checks.
+            delete ctx.data.codeblock_inclusions[source_key];
+            ctx.queue_save();
+            continue;
+          };
+          const new_content = content.replace(line_starts_with, `ctx:: ${new_name}`);
+          this.app.vault.modify(tfile, new_content);
+          ctx.emit_info_event('context:named_context_name_synced', {
+            codeblock_source_key: source_key,
+            old_name,
+            new_name,
+          });
+        }
+      })
+    );
   }
 }
