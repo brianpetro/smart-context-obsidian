@@ -221,7 +221,7 @@ export function is_internal_folder_path(folder_path = '', smart_sources) {
  * @param {object} smart_sources
  * @param {object} [params={}]
  * @param {Record<string, unknown>} [params.item_overrides]
- * @returns {Array<{ key: string, folder: string, ctx_codeblock: boolean }>}
+ * @returns {Array<{ key: string, folder: string }>}
  */
 export function build_internal_folder_context_items(folder_path = '', smart_sources, params = {}) {
   const normalized_folder_path = normalize_codeblock_path(folder_path);
@@ -240,7 +240,6 @@ export function build_internal_folder_context_items(folder_path = '', smart_sour
       return {
         key: source_key,
         folder: normalized_folder_path,
-        ctx_codeblock: true,
         ...item_overrides,
       };
     })
@@ -253,7 +252,7 @@ export function build_internal_folder_context_items(folder_path = '', smart_sour
  * @property {Set<string>} excluded_source_keys
  * @property {string[]} excluded_folder_paths
  * @property {string[]} excluded_glob_patterns
- * @property {Array<{ key: string, exclude: true, folder?: true, ctx_codeblock: boolean }>} excluded_items
+ * @property {Array<{ key: string, exclude: true, folder?: true }>} excluded_items
  */
 
 /**
@@ -293,7 +292,6 @@ export function build_internal_codeblock_exclusions(context_lines = [], smart_so
       ...item_data,
       key: item_key,
       exclude: true,
-      ctx_codeblock: true,
     });
   };
 

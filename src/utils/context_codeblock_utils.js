@@ -580,7 +580,6 @@ function build_codeblock_named_context_payloads(context_name, payloads = []) {
   return payloads.map((payload) => ({
     ...payload,
     from_named_context: context_name,
-    ctx_codeblock: true,
   }));
 }
 

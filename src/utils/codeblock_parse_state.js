@@ -77,7 +77,6 @@ export function create_codeblock_parse_state(cb_content, deps = {}) {
         state.context_items.push({
           ...item_data,
           key: item_key,
-          ctx_codeblock: true,
         });
       });
     },
