@@ -119,10 +119,6 @@ export function apply_parsed_codeblock_context(smart_context, params = {}) {
   const codeblock_type = normalize_string(params.codeblock_type);
   smart_context.data.context_items = {};
   smart_context.data.codeblock_type = codeblock_type || smart_context.data.codeblock_type || default_context_codeblock_type;
-  smart_context.data.codeblock_named_contexts = Array.isArray(params.named_contexts)
-    ? [...params.named_contexts]
-    : []
-  ;
   smart_context.data.codeblock_passthrough_lines = Array.isArray(params.passthrough_lines)
     ? [...params.passthrough_lines]
     : []
