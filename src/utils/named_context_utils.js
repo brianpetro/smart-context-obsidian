@@ -1,6 +1,7 @@
 import { resolve_name_status, get_context_name_input_value, persist_context_name } from './actions_utils.js';
 import { context_named_context_prefixes } from './context_codeblock_constants.js';
 import { normalize_string } from './pure_utils.js';
+import { setIcon } from 'obsidian';
 
 /**
  * @param {string} line
@@ -172,9 +173,15 @@ export function render_name_input(ctx, container) {
 
   const update_name_status = () => {
     const status = resolve_name_status(ctx, { input_value: name_input.value });
-    status_span.textContent = status.label;
     status_span.hidden = !status.label;
     status_span.dataset.state = status.is_saved ? 'saved' : 'idle';
+    if(status.is_saved) {
+      status_span.setAttribute('aria-label', 'Context saved as ' + name_input.value);
+      setIcon(status_span, 'checkmark');
+    } else {
+      status_span.setAttribute('aria-label', 'Context name has unsaved changes');
+      status_span.style.removeProperty('--icon');
+    }
   };
 
   const refresh_name = () => {
