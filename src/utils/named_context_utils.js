@@ -47,7 +47,7 @@ export function get_named_context(smart_contexts, context_name = '') {
 /**
  * @param {string} named_context
  * @param {import('smart-contexts').SmartContexts} smart_contexts
- * @returns {Array<{ key: string, d: number, size?: number, mtime?: number, ctx_codeblock: boolean, from_named_context: string }>}
+ * @returns {Array<{ key: string, size?: number, mtime?: number, ctx_codeblock: boolean, from_named_context: string }>}
  */
 export function get_named_context_items(named_context, smart_contexts) {
   const normalized_name = normalize_string(named_context);
@@ -60,7 +60,6 @@ export function get_named_context_items(named_context, smart_contexts) {
     .filter(([, item_data]) => !item_data?.exclude)
     .map(([key, item_data]) => ({
       key,
-      d: Number.isFinite(item_data?.d) ? item_data.d : 0,
       size: item_data?.size,
       mtime: item_data?.mtime,
       ctx_codeblock: true,
