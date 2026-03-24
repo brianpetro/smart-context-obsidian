@@ -1,5 +1,4 @@
-import base from 'smart-contexts';
-import { SmartContexts as BaseClass } from 'smart-contexts/smart_contexts.js';
+import base, { SmartContexts as BaseClass } from 'obsidian-smart-env/src/collections/smart_contexts.js';
 import { is_codeblock_context_key } from '../utils/pure_utils.js';
 
 export class SmartContexts extends BaseClass {
