@@ -2,8 +2,6 @@ import { context_codeblock_types } from './context_codeblock_constants.js';
 import {
   apply_parsed_codeblock_context,
   get_context_codeblock_ctx_key,
-  register_context_codeblock_sync_listener,
-  register_named_context_codeblock_rename_sync,
 } from './context_codeblock_utils.js';
 
 /**
@@ -34,11 +32,6 @@ export function register_context_codeblock_processors(plugin, params = {}) {
   }
 
   plugin._smart_context_codeblock_registered = true;
-
-  const rename_sync_disposer = register_named_context_codeblock_rename_sync(env);
-  if (typeof plugin.register === 'function' && typeof rename_sync_disposer === 'function') {
-    plugin.register(() => rename_sync_disposer());
-  }
 
   context_codeblock_types.forEach((codeblock_type) => {
     plugin.registerMarkdownCodeBlockProcessor(
@@ -83,13 +76,6 @@ export function register_context_codeblock_processors(plugin, params = {}) {
             text: error?.message || 'Failed to render context codeblock.',
           });
         }
-
-        register_context_codeblock_sync_listener(smart_context, {
-          plugin,
-          source_path,
-          replace_code: mpp_ctx?.replaceCode,
-          codeblock_el: el,
-        });
       },
     );
   });

@@ -141,64 +141,6 @@ export function resolve_internal_source_key(smart_sources, source_path = '') {
 }
 
 /**
- * @param {string} source_key
- * @param {string} folder_path
- * @returns {boolean}
- */
-export function is_source_key_in_folder(source_key = '', folder_path = '') {
-  const normalized_source_key = normalize_codeblock_path(source_key);
-  const normalized_folder_path = normalize_codeblock_path(folder_path);
-  if (!normalized_source_key || !normalized_folder_path) return false;
-  if (normalized_source_key === normalized_folder_path) return true;
-  return normalized_source_key.startsWith(`${normalized_folder_path}/`)
-    || normalized_source_key.startsWith(`${normalized_folder_path}#`)
-  ;
-}
-
-/**
- * @param {string} source_key
- * @param {string[]} folder_paths
- * @returns {boolean}
- */
-export function is_source_key_in_any_folder(source_key = '', folder_paths = []) {
-  if (!Array.isArray(folder_paths) || !folder_paths.length) return false;
-
-  return folder_paths.some((folder_path) => {
-    return is_source_key_in_folder(source_key, folder_path);
-  });
-}
-
-/**
- * @param {string} folder_path
- * @param {object} smart_sources
- * @returns {Array<{ key: string }>}
- */
-export function get_internal_folder_sources(folder_path = '', smart_sources) {
-  const normalized_folder_path = normalize_codeblock_path(folder_path);
-  if (!normalized_folder_path || typeof smart_sources?.filter !== 'function') {
-    return [];
-  }
-
-  const prefix = normalize_folder_prefix(normalized_folder_path);
-  if (!prefix) return [];
-
-  try {
-    const matches = smart_sources.filter({ key_starts_with: prefix });
-    if (!Array.isArray(matches)) return [];
-
-    return matches.filter((source) => {
-      return is_source_key_in_folder(source?.key || '', normalized_folder_path);
-    });
-  } catch (error) {
-    console.warn('codeblock_folder_utils: failed to read internal folder sources', {
-      folder_path: normalized_folder_path,
-      error,
-    });
-    return [];
-  }
-}
-
-/**
  * @param {string} folder_path
  * @param {object} smart_sources
  * @returns {boolean}
@@ -206,45 +148,7 @@ export function get_internal_folder_sources(folder_path = '', smart_sources) {
 export function is_internal_folder_path(folder_path = '', smart_sources) {
   const normalized_folder_path = normalize_codeblock_path(folder_path);
   if (!normalized_folder_path) return false;
-  if (resolve_internal_source_key(smart_sources, normalized_folder_path)) return false;
-
-  return get_internal_folder_sources(normalized_folder_path, smart_sources).length > 0;
-}
-
-/**
- * Expand an internal vault folder line into concrete Smart Context items.
- *
- * The returned items carry the originating folder path so
- * `build_codeblock_entries(...)` can re-collapse them back into one folder line.
- *
- * @param {string} folder_path
- * @param {object} smart_sources
- * @param {object} [params={}]
- * @param {Record<string, unknown>} [params.item_overrides]
- * @returns {Array<{ key: string, folder: string }>}
- */
-export function build_internal_folder_context_items(folder_path = '', smart_sources, params = {}) {
-  const normalized_folder_path = normalize_codeblock_path(folder_path);
-  if (!normalized_folder_path) return [];
-
-  const item_overrides = params.item_overrides && typeof params.item_overrides === 'object'
-    ? params.item_overrides
-    : {}
-  ;
-
-  return get_internal_folder_sources(normalized_folder_path, smart_sources)
-    .map((source) => {
-      const source_key = normalize_codeblock_path(source?.key || '');
-      if (!source_key) return null;
-
-      return {
-        key: source_key,
-        folder: normalized_folder_path,
-        ...item_overrides,
-      };
-    })
-    .filter(Boolean)
-  ;
+  return Boolean(smart_sources.env.fs.folders[normalized_folder_path]);
 }
 
 /**
@@ -359,9 +263,9 @@ export function should_exclude_codeblock_item(item_key = '', exclusions = {}) {
     ? exclusions.excluded_source_keys
     : new Set()
   ;
-  const excluded_folder_paths = Array.isArray(exclusions?.excluded_folder_paths)
+  const excluded_folder_paths = (Array.isArray(exclusions?.excluded_folder_paths)
     ? exclusions.excluded_folder_paths
-    : []
+    : []).map((folder_path) => normalize_folder_prefix(folder_path)).filter(Boolean)
   ;
   const excluded_glob_patterns = Array.isArray(exclusions?.excluded_glob_patterns)
     ? exclusions.excluded_glob_patterns
@@ -373,7 +277,7 @@ export function should_exclude_codeblock_item(item_key = '', exclusions = {}) {
     if (normalized_item_key.startsWith(`${excluded_source_key}#`)) return true;
   }
 
-  if (is_source_key_in_any_folder(normalized_item_key, excluded_folder_paths)) return true;
+  if (excluded_folder_paths.some((folder_path) => normalized_item_key.startsWith(folder_path))) return true;
   if (matches_codeblock_glob_patterns(normalized_item_key, excluded_glob_patterns)) return true;
 
   return false;

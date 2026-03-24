@@ -8,7 +8,6 @@ import {
   ensure_context_codeblock_in_editor,
   get_context_codeblock_ctx_key,
   open_context_selector_for_codeblock,
-  register_context_codeblock_sync_listener,
 } from '../utils/context_codeblock_utils.js';
 import {
   copy_current_as_link_tree,
@@ -113,11 +112,6 @@ export function context_commands(plugin) {
         const smart_contexts = plugin.env.smart_contexts;
         const ctx = smart_contexts.get(ctx_key) || smart_contexts.new_context({ key: ctx_key });
         ctx.data.codeblock_type = default_context_codeblock_type;
-
-        register_context_codeblock_sync_listener(ctx, {
-          plugin,
-          source_path,
-        });
 
         open_context_selector_for_codeblock(ctx);
         return true;
