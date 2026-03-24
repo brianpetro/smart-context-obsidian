@@ -75,6 +75,12 @@ export async function render(smart_contexts, params = {}) {
  * Post-process DOM with live data and events.
  * Renders each context via <smart_context_list_item>.
  *
+ * Uses a latest-render-wins flow:
+ * - each new render aborts the previous in-flight render
+ * - rows are built off-DOM in a DocumentFragment
+ * - the list is replaced atomically after a full successful render
+ * - bursty lifecycle events are coalesced into a single queued render
+ *
  * @param {import('smart-contexts').SmartContexts} smart_contexts
  * @param {HTMLElement} container
  * @param {object} params
@@ -94,22 +100,56 @@ export async function post_process(smart_contexts, container, params = {}) {
     );
   });
 
-  const render_list_items = async () => {
-    const items = smart_contexts.filter((ctx) => {
+  let active_render_controller = null;
+  let render_queued = false;
+
+  /**
+   * Create an abort error compatible with normal cancellation handling.
+   * @returns {Error}
+   */
+  const create_abort_error = () => {
+    const error = new Error('Render aborted.');
+    error.name = 'AbortError';
+    return error;
+  };
+
+  /**
+   * Throw when the current render has been aborted.
+   * @param {AbortSignal|undefined|null} signal
+   * @returns {void}
+   */
+  const throw_if_aborted = (signal) => {
+    if (signal?.aborted) throw create_abort_error();
+  };
+
+  /**
+   * Resolve current named contexts for display.
+   * @returns {Array<import('smart-contexts').SmartContext>}
+   */
+  const get_named_contexts = () => {
+    return smart_contexts.filter((ctx) => {
       // only named contexts
       if (ctx?.deleted) return false;
       if (is_codeblock_context_key(ctx?.key)) return false;
       return ctx?.data?.name && String(ctx.data.name).trim().length > 0;
     });
+  };
 
-    this.empty(list_el);
+  /**
+   * Build list contents off-DOM so UI updates commit atomically.
+   * @param {AbortSignal} signal
+   * @returns {Promise<DocumentFragment>}
+   */
+  const build_list_fragment = async (signal) => {
+    const fragment = document.createDocumentFragment();
+    const items = get_named_contexts();
 
     if (!items.length) {
       const empty = document.createElement('div');
       empty.classList.add('sc-contexts-dashboard-empty');
       empty.textContent = 'No named contexts yet. Save a context to see it here.';
-      list_el.appendChild(empty);
-      return;
+      fragment.appendChild(empty);
+      return fragment;
     }
 
     const { root_items, grouped_items } = partition_context_hierarchy(items);
@@ -120,7 +160,8 @@ export async function post_process(smart_contexts, container, params = {}) {
         item,
         params
       );
-      if (row_el) list_el.appendChild(row_el);
+      throw_if_aborted(signal);
+      if (row_el) fragment.appendChild(row_el);
     }
 
     const grouped_entries = Array.from(grouped_items.entries()).sort((left, right) => {
@@ -134,10 +175,12 @@ export async function post_process(smart_contexts, container, params = {}) {
     if (root_items.length && grouped_entries.length) {
       const separator = document.createElement('div');
       separator.className = 'sc-contexts-dashboard-separator';
-      list_el.appendChild(separator);
+      fragment.appendChild(separator);
     }
 
     for (const [group_name, grouped_contexts] of grouped_entries) {
+      throw_if_aborted(signal);
+
       const group_details = document.createElement('details');
       group_details.className = 'sc-contexts-dashboard-group';
       group_details.open = should_open_group(grouped_contexts, params);
@@ -182,18 +225,59 @@ export async function post_process(smart_contexts, container, params = {}) {
             display_name: grouped_item.display_name,
           }
         );
+        throw_if_aborted(signal);
         if (row_el) group_items.appendChild(row_el);
       }
 
-      list_el.appendChild(group_details);
+      fragment.appendChild(group_details);
+    }
+
+    return fragment;
+  };
+
+  /**
+   * Render list contents with latest-render-wins semantics.
+   * @returns {Promise<void>}
+   */
+  const render_list_items = async () => {
+    active_render_controller?.abort();
+
+    const render_controller = new AbortController();
+    active_render_controller = render_controller;
+
+    try {
+      const fragment = await build_list_fragment(render_controller.signal);
+      throw_if_aborted(render_controller.signal);
+      list_el.replaceChildren(fragment);
+    } catch (error) {
+      if (error?.name !== 'AbortError') throw error;
+    } finally {
+      if (active_render_controller === render_controller) {
+        active_render_controller = null;
+      }
     }
   };
 
+  /**
+   * Coalesce bursty context lifecycle events into a single queued render.
+   * @returns {void}
+   */
+  const request_render = () => {
+    if (render_queued) return;
+    render_queued = true;
+
+    queueMicrotask(() => {
+      render_queued = false;
+      void render_list_items();
+    });
+  };
+
   await render_list_items();
-  disposers.push(smart_contexts?.env?.events?.on('context:created', render_list_items));
-  disposers.push(smart_contexts?.env?.events?.on('context:deleted', render_list_items));
-  disposers.push(smart_contexts?.env?.events?.on('context:named', render_list_items));
-  disposers.push(smart_contexts?.env?.events?.on('context:renamed', render_list_items));
+  disposers.push(smart_contexts?.env?.events?.on('context:created', request_render));
+  disposers.push(smart_contexts?.env?.events?.on('context:deleted', request_render));
+  disposers.push(smart_contexts?.env?.events?.on('context:named', request_render));
+  disposers.push(smart_contexts?.env?.events?.on('context:renamed', request_render));
+  disposers.push(() => active_render_controller?.abort());
 
   // cleanup
   this.attach_disposer(container, disposers);
