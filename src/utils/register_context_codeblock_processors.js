@@ -3,6 +3,7 @@ import {
   apply_parsed_codeblock_context,
   get_context_codeblock_ctx_key,
 } from './context_codeblock_utils.js';
+import { build_codeblock_entries } from './build_codeblock_entries.js';
 
 /**
  * Register markdown processors for all context codeblock aliases.
@@ -59,10 +60,33 @@ export function register_context_codeblock_processors(plugin, params = {}) {
           : {}
         ;
 
+        // HANDLE WHEN CODEBLOCK CONTENTS CHANGE
         if (smart_context._cb_hash !== parsed.cb_hash) {
           apply_parsed_codeblock_context(smart_context, {
             codeblock_type,
             ...parsed,
+          });
+          // dispose of any existing context update listener so new one can be created with the updated mpp_ctx
+          smart_context?._update_disposer?.();
+          smart_context._update_disposer = null;
+        }
+
+        // HANDLE WHEN CONTEXT ITEMS CHANGE
+        if (!smart_context._update_disposer) {
+          smart_context._update_disposer = smart_context.on_event('context:updated', async () => {
+            console.log({mpp_ctx, smart_context});
+            const updated_cb_content = build_codeblock_entries(smart_context.data);
+            try {
+              mpp_ctx.replaceCode(updated_cb_content.join('\n'));
+            } catch (error) {
+              smart_context.emit_error_event('context_codeblock:update', { message: 'Failed to update codeblock content', error_message: error?.message });
+              console.error('Failed to update context codeblock content', { error, mpp_ctx, smart_context });
+              smart_context._update_disposer?.();
+              smart_context._update_disposer = null;
+            }
+          });
+          plugin.register(() => {
+            smart_context._update_disposer?.();
           });
         }
 
