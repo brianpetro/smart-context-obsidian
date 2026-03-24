@@ -1,6 +1,7 @@
 import { FolderSelectModal } from '../modals/folder_select_modal.js';
 import { NamedContextSelectModal } from '../modals/named_context_select_modal.js';
 import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';
+import { MarkdownView } from 'obsidian';
 import { parse_codeblock_to_context_items } from '../utils/parse_codeblock_to_context_items.js';
 import { default_context_codeblock_type } from '../utils/context_codeblock_constants.js';
 import {
@@ -14,6 +15,8 @@ import {
   open_copy_current_modal,
   resolve_active_source_path,
 } from '../utils/commands_helpers.js';
+
+const CORE_COPY_CURRENT_FILE_TYPES = ['md', 'canvas', 'excalidraw.md'];
 
 export function context_commands(plugin) {
   return {
@@ -80,15 +83,25 @@ export function context_commands(plugin) {
     copy_current: {
       id: 'copy-current-note-with-depth',
       name: 'Copy current to clipboard (choose link depth)',
-      editorCheckCallback: (checking, editor, view) => {
-        const source_path = resolve_active_source_path({ view });
-        const copy_deps = get_copy_current_dependencies(plugin.env, { source_path });
+      checkCallback: (checking) => {
+        const active_view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+        const active_file = plugin.app.workspace.getActiveFile?.();
+        const source_path = resolve_active_source_path({
+          view: active_view,
+          active_file,
+        });
+        const copy_deps = get_copy_current_dependencies(plugin.env, {
+          source_path,
+          allowed_file_types: CORE_COPY_CURRENT_FILE_TYPES,
+        });
         if (!copy_deps) return false;
         if (checking) return true;
 
         void open_copy_current_modal(plugin, {
           ...copy_deps,
-          markdown: editor?.getValue?.(),
+          markdown: active_view?.file?.path === source_path
+            ? active_view?.editor?.getValue?.()
+            : undefined,
           parse_codeblock: (cb_content) => {
             return parse_codeblock_to_context_items(cb_content, {
               smart_contexts: plugin.env.smart_contexts,

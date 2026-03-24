@@ -17,11 +17,48 @@ export function resolve_active_source_path(params = {}) {
 }
 
 /**
+ * Normalize allowed file-type filters.
+ *
+ * @param {string[]|undefined} allowed_file_types
+ * @returns {Set<string>}
+ */
+function normalize_allowed_file_types(allowed_file_types) {
+  if (!Array.isArray(allowed_file_types)) return new Set();
+
+  return new Set(
+    allowed_file_types
+      .map((file_type) => String(file_type || '').trim())
+      .filter(Boolean)
+  );
+}
+
+/**
+ * Determine whether a source can be used by the current-note copy flow.
+ *
+ * @param {object} source
+ * @param {object} [params={}]
+ * @param {string[]} [params.allowed_file_types]
+ * @returns {boolean}
+ */
+export function is_copy_current_supported_source(source, params = {}) {
+  if (!source) return false;
+
+  const allowed_file_types = normalize_allowed_file_types(params.allowed_file_types);
+  if (!allowed_file_types.size) return true;
+
+  const source_file_type = String(source?.file_type || '').trim();
+  if (!source_file_type) return false;
+
+  return allowed_file_types.has(source_file_type);
+}
+
+/**
  * Resolve the shared dependencies needed by copy-current commands.
  *
  * @param {object} env
  * @param {object} [params={}]
  * @param {string=} params.source_path
+ * @param {string[]} [params.allowed_file_types]
  * @returns {{ source_path: string, source: object, modal_class: Function }|null}
  */
 export function get_copy_current_dependencies(env, params = {}) {
@@ -35,6 +72,11 @@ export function get_copy_current_dependencies(env, params = {}) {
 
   const source = env.smart_sources.get(source_path);
   if (!source) return null;
+  if (!is_copy_current_supported_source(source, {
+    allowed_file_types: params.allowed_file_types,
+  })) {
+    return null;
+  }
 
   const modal_class = env.config?.modals?.copy_context_modal?.class;
   if (!modal_class) return null;
