@@ -80,7 +80,6 @@ function build_exclusion_line(key = '') {
 /**
  * @param {object} [params={}]
  * @param {Record<string, object>} [params.context_items]
- * @param {string[]} [params.codeblock_named_contexts]
  * @param {string[]} [params.passthrough_lines]
  * @param {string} [params.named_context_line_prefix]
  * @returns {string[]}
@@ -89,10 +88,6 @@ export function build_codeblock_entries(params = {}) {
   const context_items = params.context_items && typeof params.context_items === 'object'
     ? params.context_items
     : {}
-  ;
-  const codeblock_named_contexts = Array.isArray(params.codeblock_named_contexts)
-    ? params.codeblock_named_contexts
-    : []
   ;
   const passthrough_lines = Array.isArray(params.passthrough_lines)
     ? params.passthrough_lines
@@ -110,19 +105,23 @@ export function build_codeblock_entries(params = {}) {
   /** @type {string[]} */
   const excluded_explicit_lines = [];
 
-  codeblock_named_contexts.forEach((context_name) => {
-    const line = build_named_context_line(context_name, params);
-    if (line) entries.push(line);
-  });
-
   passthrough_lines.forEach((line) => {
     const normalized_line = normalize_string(line);
     if (normalized_line) entries.push(normalized_line);
   });
+  
+  // add named context lines
+  Object.entries(context_items).forEach(([item_key, item_data]) => {
+    if (!item_data) return;
+    if (item_data.named_context) {
+      entries.push('ctx:: ' + item_data.key || item_key);
+      return;
+    }
+  });
 
   Object.entries(context_items).forEach(([item_key, item_data]) => {
     if (!item_data || item_data.exclude) return;
-    if (item_data.from_named_context) return;
+    if (item_data.named_context) return;
 
     const folder_path = typeof item_data.folder === 'string'
       ? normalize_item_key(item_data.folder)
@@ -183,6 +182,7 @@ export function build_codeblock_entries(params = {}) {
       if (exclusion_line) entries.push(exclusion_line);
     })
   ;
+
 
   return entries.filter(Boolean).filter((entry, index, arr) => arr.indexOf(entry) === index);
 }

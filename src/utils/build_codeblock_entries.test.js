@@ -3,16 +3,15 @@ import { build_codeblock_entries } from './build_codeblock_entries.js';
 
 test('build_codeblock_entries keeps named context line without expanded items', (t) => {
   const entries = build_codeblock_entries({
-    codeblock_named_contexts: ['Backend notes'],
     context_items: {
-      'Project/Backend.md': {
-        key: 'Project/Backend.md',
-        from_named_context: 'Backend notes',
+      'some name': {
+        key: 'some name',
+        named_context: true,
       },
     },
   });
 
-  t.deepEqual(entries, ['smart-context:: Backend notes']);
+  t.deepEqual(entries, ['ctx:: some name']);
 });
 
 test('build_codeblock_entries compresses folder items and preserves exclusions', (t) => {

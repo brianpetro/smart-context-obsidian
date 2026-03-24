@@ -1,6 +1,5 @@
 import {
   build_internal_codeblock_exclusions,
-  build_internal_folder_context_items,
   is_internal_folder_path,
   resolve_internal_source_key,
 } from './codeblock_folder_utils.js';
@@ -67,7 +66,7 @@ export function parse_codeblock_to_context_items(cb_content, deps = {}) {
     }
 
     if (is_internal_folder_path(line, smart_sources)) {
-      state.add_context_items(build_internal_folder_context_items(line, smart_sources));
+      state.add_context_items([{ key: line, folder: true }]);
       continue;
     }
 
