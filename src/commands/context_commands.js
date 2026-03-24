@@ -11,12 +11,78 @@ import {
   register_context_codeblock_sync_listener,
 } from '../utils/context_codeblock_utils.js';
 import {
+  copy_current_as_link_tree,
+  copy_current_to_clipboard,
   get_copy_current_dependencies,
   open_copy_current_modal,
   resolve_active_source_path,
 } from '../utils/commands_helpers.js';
 
 const CORE_COPY_CURRENT_FILE_TYPES = ['md', 'canvas', 'excalidraw.md'];
+
+/**
+ * Build the shared current-note copy params used by modal and fixed-depth
+ * command paths.
+ *
+ * @param {object} plugin
+ * @returns {object|null}
+ */
+function get_current_copy_params(plugin) {
+  const active_view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+  const active_file = plugin.app.workspace.getActiveFile?.();
+  const source_path = resolve_active_source_path({
+    view: active_view,
+    active_file,
+  });
+  const copy_deps = get_copy_current_dependencies(plugin.env, {
+    source_path,
+    allowed_file_types: CORE_COPY_CURRENT_FILE_TYPES,
+  });
+  if (!copy_deps) return null;
+
+  return {
+    ...copy_deps,
+    markdown: active_view?.file?.path === source_path
+      ? active_view?.editor?.getValue?.()
+      : undefined,
+    parse_codeblock: (cb_content) => {
+      return parse_codeblock_to_context_items(cb_content, {
+        smart_contexts: plugin.env.smart_contexts,
+        smart_sources: plugin.env.smart_sources,
+      });
+    },
+  };
+}
+
+/**
+ * Build a direct fixed-depth current-note copy command.
+ *
+ * @param {object} plugin
+ * @param {object} params
+ * @param {string} params.id
+ * @param {string} params.name
+ * @param {number} params.max_depth
+ * @param {boolean} [params.include_inlinks=false]
+ * @returns {object}
+ */
+function build_direct_copy_command(plugin, params = {}) {
+  return {
+    id: params.id,
+    name: params.name,
+    checkCallback: (checking) => {
+      const copy_params = get_current_copy_params(plugin);
+      if (!copy_params) return false;
+      if (checking) return true;
+
+      void copy_current_to_clipboard(plugin, {
+        ...copy_params,
+        max_depth: params.max_depth,
+        include_inlinks: params.include_inlinks === true,
+      });
+      return true;
+    },
+  };
+}
 
 export function context_commands(plugin) {
   return {
@@ -84,31 +150,39 @@ export function context_commands(plugin) {
       id: 'copy-current-note-with-depth',
       name: 'Copy current to clipboard (choose link depth)',
       checkCallback: (checking) => {
-        const active_view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
-        const active_file = plugin.app.workspace.getActiveFile?.();
-        const source_path = resolve_active_source_path({
-          view: active_view,
-          active_file,
-        });
-        const copy_deps = get_copy_current_dependencies(plugin.env, {
-          source_path,
-          allowed_file_types: CORE_COPY_CURRENT_FILE_TYPES,
-        });
-        if (!copy_deps) return false;
+        const copy_params = get_current_copy_params(plugin);
+        if (!copy_params) return false;
         if (checking) return true;
 
-        void open_copy_current_modal(plugin, {
-          ...copy_deps,
-          markdown: active_view?.file?.path === source_path
-            ? active_view?.editor?.getValue?.()
-            : undefined,
-          parse_codeblock: (cb_content) => {
-            return parse_codeblock_to_context_items(cb_content, {
-              smart_contexts: plugin.env.smart_contexts,
-              smart_sources: plugin.env.smart_sources,
-            });
-          },
-        });
+        void open_copy_current_modal(plugin, copy_params);
+        return true;
+      },
+    },
+    copy_current_depth_0: build_direct_copy_command(plugin, {
+      id: 'copy-current-note-depth-0',
+      name: 'Copy current to clipboard (depth 0)',
+      max_depth: 0,
+    }),
+    copy_current_depth_1: build_direct_copy_command(plugin, {
+      id: 'copy-current-note-depth-1',
+      name: 'Copy current to clipboard (depth 1)',
+      max_depth: 1,
+    }),
+    copy_current_depth_1_with_backlinks: build_direct_copy_command(plugin, {
+      id: 'copy-current-note-depth-1-with-backlinks',
+      name: 'Copy current to clipboard (depth 1, include backlinks)',
+      max_depth: 1,
+      include_inlinks: true,
+    }),
+    copy_current_link_tree: {
+      id: 'copy-current-note-link-tree',
+      name: 'Copy current as link tree',
+      checkCallback: (checking) => {
+        const copy_params = get_current_copy_params(plugin);
+        if (!copy_params) return false;
+        if (checking) return true;
+
+        void copy_current_as_link_tree(plugin, copy_params);
         return true;
       },
     },
