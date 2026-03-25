@@ -39,6 +39,12 @@ export function build_codeblock_entries(params = {}) {
 
   // add exclusions
   Object.entries(exclusions).forEach(([exclusion_key, exclusion_data]) => {
+    if(exclusion_key.startsWith('external:')) {
+      exclusion_key = exclusion_key.slice('external:'.length);
+    }
+    if(exclusion_key.startsWith('../')) {
+      exclusion_key = exclusion_key.slice('../'.length);
+    }
     entries.push('!' + exclusion_key);
   });
 
