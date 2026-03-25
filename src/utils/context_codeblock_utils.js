@@ -3,7 +3,7 @@ import {
   context_codeblock_types,
   default_context_codeblock_type,
 } from './context_codeblock_constants.js';
-import { escape_regex, is_codeblock_context_key, normalize_codeblock_contents, normalize_string } from './pure_utils.js';
+import { escape_regex, normalize_string } from './pure_utils.js';
 
 /**
  * @param {Date|number|string} value
@@ -105,41 +105,6 @@ async function read_note_markdown(app, source_path) {
 
 
 /**
- * @param {import('smart-contexts').SmartContext} smart_context
- * @param {object} [params={}]
- * @param {string} [params.codeblock_type]
- * @param {string} [params.cb_hash]
- * @param {object[]} [params.context_items]
- * @param {string[]} [params.named_contexts]
- * @param {string[]} [params.passthrough_lines]
- * @returns {void}
- */
-export function apply_parsed_codeblock_context(smart_context, params = {}) {
-  const context_items = Array.isArray(params.context_items) ? params.context_items : [];
-  const codeblock_type = normalize_string(params.codeblock_type);
-  smart_context.data.context_items = {};
-  smart_context.data.codeblock_type = codeblock_type || smart_context.data.codeblock_type || default_context_codeblock_type;
-  smart_context.data.codeblock_passthrough_lines = Array.isArray(params.passthrough_lines)
-    ? [...params.passthrough_lines]
-    : []
-  ;
-
-  if (typeof params.cb_hash === 'string' && params.cb_hash) {
-    smart_context._cb_hash = params.cb_hash;
-  }
-
-  context_items.forEach((item_data) => {
-    const item_key = item_data?.key || item_data?.path;
-    if (!item_key) return;
-    smart_context.data.context_items[item_key] = {
-      d: 0,
-      at: Date.now(),
-      ...item_data,
-      key: item_key,
-    };
-  });
-}
-/**
  * @param {string} source_path
  * @returns {string}
  */
@@ -153,15 +118,11 @@ export function get_context_codeblock_ctx_key(source_path = '') {
  * @param {string} source_path
  * @param {object} [params={}]
  * @param {string} [params.markdown]
- * @param {(cb_content: string, snapshot?: { codeblock_type: string, cb_content: string }) => Promise<object>|object} [params.parse_codeblock]
  * @returns {Promise<import('smart-contexts').SmartContext|null>}
  */
 export async function get_or_create_codeblock_context_from_note(plugin, source_path, params = {}) {
   const smart_contexts = plugin?.env?.smart_contexts;
   if (!smart_contexts?.new_context || !source_path) return null;
-
-  const parse_codeblock = params.parse_codeblock;
-  if (typeof parse_codeblock !== 'function') return null;
 
   const markdown = typeof params.markdown === 'string'
     ? params.markdown
@@ -172,19 +133,10 @@ export async function get_or_create_codeblock_context_from_note(plugin, source_p
   const snapshot = get_context_codeblock_snapshot(markdown);
   if (!snapshot) return null;
 
-  const parsed = await parse_codeblock(snapshot.cb_content, snapshot);
   const ctx_key = get_context_codeblock_ctx_key(source_path);
   const smart_context = smart_contexts.get(ctx_key) || smart_contexts.new_context({ key: ctx_key });
+  smart_context.actions.context_parse_codeblock({ cb_content: snapshot.cb_content });
 
-  if (
-    smart_context._cb_hash !== parsed?.cb_hash
-    || smart_context?.data?.codeblock_type !== snapshot.codeblock_type
-  ) {
-    apply_parsed_codeblock_context(smart_context, {
-      codeblock_type: snapshot.codeblock_type,
-      ...(parsed && typeof parsed === 'object' ? parsed : {}),
-    });
-  }
 
   return smart_context;
 }

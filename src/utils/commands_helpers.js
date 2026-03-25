@@ -200,7 +200,6 @@ function emit_copy_current_build_failed(plugin, params = {}) {
  * @param {object} [params={}]
  * @param {string} params.source_path
  * @param {object} params.source
- * @param {Function} params.parse_codeblock
  * @param {string} [params.markdown]
  * @param {string} [params.key]
  * @returns {Promise<import('smart-contexts').SmartContext|null>}
@@ -209,21 +208,11 @@ export async function build_current_copy_context(plugin, params = {}) {
   const {
     source_path,
     source,
-    parse_codeblock,
     markdown,
   } = params;
 
   if (!plugin?.env || !source_path || !source) {
     emit_copy_current_build_failed(plugin, {
-      event_source: 'copy_current_command_utils.build_current_copy_context',
-    });
-    return null;
-  }
-
-  if (typeof parse_codeblock !== 'function') {
-    plugin.env?.events?.emit?.('context:copy_missing_codeblock_parser', {
-      level: 'error',
-      message: 'Missing codeblock parser for copy-current flow.',
       event_source: 'copy_current_command_utils.build_current_copy_context',
     });
     return null;
@@ -240,7 +229,6 @@ export async function build_current_copy_context(plugin, params = {}) {
 
     const codeblock_ctx = await get_or_create_codeblock_context_from_note(plugin, source_path, {
       markdown,
-      parse_codeblock,
     });
 
     return build_copy_current_context(ctx, {
@@ -296,7 +284,6 @@ function build_filtered_temp_context(ctx, filter, key_suffix = 'filtered') {
  * @param {string} params.source_path
  * @param {object} params.source
  * @param {Function} params.modal_class
- * @param {Function} params.parse_codeblock
  * @param {string} [params.markdown]
  * @param {boolean} [params.with_media]
  * @returns {Promise<boolean>}
@@ -331,7 +318,6 @@ export async function open_copy_current_modal(plugin, params = {}) {
  * @param {object} [params={}]
  * @param {string} params.source_path
  * @param {object} params.source
- * @param {Function} params.parse_codeblock
  * @param {number} [params.max_depth]
  * @param {boolean} [params.include_inlinks=false]
  * @param {boolean} [params.with_media]

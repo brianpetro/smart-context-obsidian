@@ -31,12 +31,13 @@ export function context_parse_codeblock(params = {}) {
       item_data.exclude = true;
       item_data.key = line.slice(1).trim();
     }
-    if (item_data.key.startsWith('../')) {
-      item_data.key = `external:${item_data.key}`;
-    }
     if (item_data.key.startsWith('ctx:: ')) {
       item_data.key = `${item_data.key.slice(6).trim()}`;
       item_data.named_context = true;
+    }
+    if (!is_text_file(item_data.key)) {
+      this.emit_error_event('context_codeblock:parse', { message: 'Invalid context item key (not a text file)', key: item_data.key });
+      continue;
     }
     this.data.context_items[item_data.key] = item_data;
   }
