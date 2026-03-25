@@ -202,41 +202,6 @@ export function ensure_context_codeblock_in_editor(editor, params = {}) {
 }
 
 /**
- * @param {Record<string, unknown>} item_data
- * @returns {Record<string, unknown>}
- */
-function sanitize_codeblock_item_payload(item_data = {}) {
-  const next_payload = {};
-  const allowed_keys = ['key', 'd', 'at', 'mtime', 'size', 'link', 'inlink'];
-
-  allowed_keys.forEach((key) => {
-    if (!Object.prototype.hasOwnProperty.call(item_data, key)) return;
-    next_payload[key] = item_data[key];
-  });
-
-  return next_payload;
-}
-
-/**
- * @param {import('smart-contexts').SmartContext} ctx
- * @returns {Array<Record<string, unknown>>}
- */
-function get_active_codeblock_item_payloads(ctx) {
-  return Object.entries(ctx?.data?.context_items || {})
-    .filter(([, item_data]) => !item_data?.exclude)
-    .map(([item_key, item_data]) => {
-      const payload = sanitize_codeblock_item_payload({
-        ...item_data,
-        key: item_data?.key || item_key,
-      });
-      payload.key = payload.key || item_key;
-      payload.d = Number.isFinite(payload.d) ? payload.d : 0;
-      return payload;
-    })
-  ;
-}
-
-/**
  * @param {import('smart-contexts').SmartContext} ctx
  * @returns {string[]}
  */
@@ -305,13 +270,15 @@ export function convert_codeblock_to_named_context(ctx, params = {}) {
     || build_default_named_context_name(source_path, smart_contexts, params)
   );
 
-  const payloads = get_active_codeblock_item_payloads(ctx);
   const named_ctx = smart_contexts.new_context({});
-  named_ctx.name = context_name;
-
-  if (payloads.length) {
-    named_ctx.add_items(payloads);
-  }
+  named_ctx.data.context_items = {
+    ...ctx.data.context_items,
+  };
+  named_ctx.data.exclusions = {
+    ...ctx.data.exclusions,
+  };
+  named_ctx.data.codeblock_inclusions = { [source_path]: Date.now() };
+  named_ctx.name = context_name; // triggers name event
 
   ctx.data.context_items = {
     [named_ctx.name]: {
@@ -319,7 +286,7 @@ export function convert_codeblock_to_named_context(ctx, params = {}) {
       named_context: true,
     }
   };
-
+  ctx.data.exclusions = {};
   ctx.emit_event('context:updated', {
     message: 'Created named context from codeblock',
     context_name,
