@@ -1,7 +1,6 @@
 import styles from './codeblock.css';
 import { Menu, setIcon } from 'obsidian';
 import {
-  convert_codeblock_to_named_context,
   open_context_selector_for_codeblock,
 } from '../../utils/context_codeblock_utils.js';
 
@@ -112,7 +111,7 @@ export async function post_process(ctx, container, params = {}) {
         .setTitle('Create named context')
         .setIcon('smart-named-contexts')
         .onClick(() => {
-          convert_codeblock_to_named_context(ctx);
+          ctx.actions.context_convert_to_named();
         })
       ;
     });

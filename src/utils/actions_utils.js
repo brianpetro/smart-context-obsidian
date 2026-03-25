@@ -1,6 +1,3 @@
-import {
-  convert_codeblock_to_named_context,
-} from './context_codeblock_utils.js';
 import { is_codeblock_context_key } from './pure_utils.js';
 
 /**
@@ -57,7 +54,7 @@ export function persist_context_name(ctx, params = {}) {
     };
   }
 
-  const named_ctx = convert_codeblock_to_named_context(ctx, {
+  const named_ctx = ctx.actions.context_convert_to_named({
     context_name: next_name,
     open_selector: params.open_selector === true,
   });

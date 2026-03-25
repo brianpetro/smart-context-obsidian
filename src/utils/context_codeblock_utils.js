@@ -3,59 +3,8 @@ import {
   context_codeblock_types,
   default_context_codeblock_type,
 } from './context_codeblock_constants.js';
-import { escape_regex, normalize_string, get_basename, format_ymd } from './pure_utils.js';
+import { escape_regex } from './pure_utils.js';
 
-/**
- * @param {import('smart-contexts').SmartContexts} smart_contexts
- * @returns {Set<string>}
- */
-function get_existing_context_names(smart_contexts) {
-  const names = new Set();
-  const items = smart_contexts?.items ? Object.values(smart_contexts.items) : [];
-
-  items.forEach((item) => {
-    const name = normalize_string(item?.data?.name);
-    if (!name) return;
-    names.add(name.toLowerCase());
-  });
-
-  return names;
-}
-
-/**
- * @param {string} base_name
- * @param {Set<string>} existing_names
- * @returns {string}
- */
-function build_unique_context_name(base_name, existing_names) {
-  const normalized_base_name = normalize_string(base_name) || 'Context';
-  if (!existing_names.has(normalized_base_name.toLowerCase())) {
-    return normalized_base_name;
-  }
-
-  let suffix = 2;
-  let next_name = `${normalized_base_name} ${suffix}`;
-
-  while (existing_names.has(next_name.toLowerCase())) {
-    suffix += 1;
-    next_name = `${normalized_base_name} ${suffix}`;
-  }
-
-  return next_name;
-}
-
-/**
- * @param {string} source_path
- * @param {import('smart-contexts').SmartContexts} smart_contexts
- * @param {object} [params={}]
- * @param {Date} [params.now]
- * @returns {string}
- */
-function build_default_named_context_name(source_path, smart_contexts, params = {}) {
-  const now = params.now instanceof Date ? params.now : new Date();
-  const base_name = `${get_basename(source_path)} ${format_ymd(now)}`;
-  return build_unique_context_name(base_name, get_existing_context_names(smart_contexts));
-}
 
 /**
  * @param {string} markdown
@@ -255,49 +204,3 @@ export function open_context_selector_for_codeblock(ctx, params = {}) {
   });
 }
 
-/**
- * @param {import('smart-contexts').SmartContext} ctx
- * @param {object} [params={}]
- * @returns {import('smart-contexts').SmartContext|null}
- */
-export function convert_codeblock_to_named_context(ctx, params = {}) {
-  const smart_contexts = ctx?.env?.smart_contexts;
-  if (!smart_contexts?.new_context) return null;
-
-  const source_path = params.source_path || ctx?.key?.replace(/#codeblock$/, '') || '';
-  const context_name = normalize_string(
-    params.context_name
-    || build_default_named_context_name(source_path, smart_contexts, params)
-  );
-
-  const named_ctx = smart_contexts.new_context({});
-  const ctx_named_exclusions = Object.fromEntries(
-    ctx.named_contexts.map((named_ctx) => Object.entries(named_ctx.data.exclusions || {})).flat()
-  );
-  named_ctx.data.exclusions = {
-    ...ctx_named_exclusions,
-    ...ctx.data.exclusions,
-  };
-  const ctx_named_context_entries = ctx.named_contexts.map((named_ctx) => Object.entries(named_ctx.data.context_items || {})).flat();
-  const ctx_other_context_entries = Object.entries(ctx.data.context_items || {}).filter(([key, item_data]) => !item_data.named_context);
-  const all_entries = [...ctx_named_context_entries, ...ctx_other_context_entries];
-  named_ctx.data.context_items = Object.fromEntries(all_entries);
-  named_ctx.data.codeblock_inclusions = { [source_path]: Date.now() };
-  named_ctx.name = context_name; // triggers name event
-
-  ctx.data.context_items = {
-    [named_ctx.name]: {
-      key: named_ctx.name,
-      named_context: true,
-    }
-  };
-  ctx.data.exclusions = {};
-  ctx.emit_event('context:updated', {
-    message: 'Created named context from codeblock',
-    context_name,
-  });
-  if (params.open_selector !== false) {
-    named_ctx?.emit_event?.('context_selector:open');
-  }
-  return named_ctx;
-}
