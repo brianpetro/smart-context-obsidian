@@ -10,6 +10,7 @@ export class SmartContexts extends BaseClass {
       // remove items that endsWith '#codeblock'
       if (!is_codeblock_context_key(key)) return;
       item.delete?.();
+      // 2026-03-25: clarified which contexts must be persisted: named, associated with chat (needs clarified data structure for detection)
     });
 
     this.process_save_queue?.();
