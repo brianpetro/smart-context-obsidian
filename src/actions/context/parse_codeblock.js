@@ -24,22 +24,17 @@ export function context_parse_codeblock(params = {}) {
   const context_lines = cb_content.split('\n').map((line) => line.trim()).filter((line) => line);
   for (let i = 0; i < context_lines.length; i += 1) {
     const line = context_lines[i];
-    const item_data = {
-      key: line,
-    };
-    if (line.startsWith('!')) {
-      item_data.exclude = true;
-      item_data.key = line.slice(1).trim();
-    }
-    if (item_data.key.startsWith('ctx:: ')) {
-      item_data.key = `${item_data.key.slice(6).trim()}`;
-      item_data.named_context = true;
-    }
-    if (!is_text_file(item_data.key)) {
-      this.emit_error_event('context_codeblock:parse', { message: 'Invalid context item key (not a text file)', key: item_data.key });
-      continue;
-    }
+    const item_data = parse_codeblock_line(line);
     this.data.context_items[item_data.key] = item_data;
   }
   console.log('context_parse_codeblock', { context_lines });
+}
+
+export function parse_codeblock_line(line) {
+  const item_data = { key: line };
+  if (item_data.key.startsWith('ctx:: ')) {
+    item_data.key = `${item_data.key.slice(6).trim()}`;
+    item_data.named_context = true;
+  }
+  return item_data;
 }

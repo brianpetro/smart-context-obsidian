@@ -293,12 +293,9 @@ export function open_context_selector_for_codeblock(ctx, params = {}) {
 /**
  * @param {import('smart-contexts').SmartContext} ctx
  * @param {object} [params={}]
- * @param {string} [params.context_name]
- * @param {string} [params.source_path]
- * @param {Date} [params.now]
  * @returns {import('smart-contexts').SmartContext|null}
  */
-function create_named_context_from_codeblock(ctx, params = {}) {
+export function convert_codeblock_to_named_context(ctx, params = {}) {
   const smart_contexts = ctx?.env?.smart_contexts;
   if (!smart_contexts?.new_context) return null;
 
@@ -317,22 +314,16 @@ function create_named_context_from_codeblock(ctx, params = {}) {
   }
 
   ctx.data.context_items = {
-    [named_ctx.key]: {
-      key: named_ctx.key,
+    [named_ctx.name]: {
+      key: named_ctx.name,
       named_context: true,
     }
   };
 
-  return named_ctx;
-}
-
-/**
- * @param {import('smart-contexts').SmartContext} ctx
- * @param {object} [params={}]
- * @returns {import('smart-contexts').SmartContext|null}
- */
-export function convert_codeblock_to_named_context(ctx, params = {}) {
-  const named_ctx = create_named_context_from_codeblock(ctx, params);
+  ctx.emit_event('context:updated', {
+    message: 'Created named context from codeblock',
+    context_name,
+  });
   if (params.open_selector !== false) {
     named_ctx?.emit_event?.('context_selector:open');
   }

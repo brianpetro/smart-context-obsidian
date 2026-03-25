@@ -39,15 +39,15 @@ export function is_codeblock_context_key(key = '') {
   return typeof key === 'string' && key.endsWith('#codeblock');
 }
 
-function normalize_path(_path) {
+export function normalize_path(_path) {
   return _path.replace(/\\/g, "/");
 }
 
-export function get_abs_path(vault_path, relative_path) {
-  vault_path = normalize_path(vault_path);
+export function get_abs_path_from_vault_rel(vault_abs_path, relative_path) {
+  vault_abs_path = normalize_path(vault_abs_path);
   relative_path = normalize_path(relative_path);
   // handle ../ in paths by resolving against vault path
-  const vault_pcs = vault_path.split("/");
+  const vault_pcs = vault_abs_path.split("/");
   const relative_pcs = relative_path.split("/");
 
   const resolved_pcs = [];
@@ -60,7 +60,23 @@ export function get_abs_path(vault_path, relative_path) {
   }
 
   return [...vault_pcs, ...resolved_pcs].join("/");
+}
 
+export function get_vault_rel_from_abs_path(vault_abs_path, abs_path) {
+  vault_abs_path = normalize_path(vault_abs_path);
+  abs_path = normalize_path(abs_path);
+  const vault_pcs = vault_abs_path.split("/");
+  const abs_pcs = abs_path.split("/");
+  let i = 0;
+  while (i < vault_pcs.length && i < abs_pcs.length && vault_pcs[i] === abs_pcs[i]) {
+    i++;
+  }
+  const up_levels = vault_pcs.length - i;
+  const relative_pcs = [
+    ...Array(up_levels).fill(".."),
+    ...abs_pcs.slice(i),
+  ];
+  return relative_pcs.join("/");
 }
 
 /**
