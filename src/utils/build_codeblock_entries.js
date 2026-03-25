@@ -1,72 +1,7 @@
-import { normalize_string } from './pure_utils.js';
-
-/**
- * @param {string} key
- * @returns {string}
- */
-function normalize_item_key(key = '') {
-  return normalize_string(key).replace(/^external:/, '');
-}
-
-/**
- * @param {string} item_key
- * @param {string} folder_path
- * @returns {boolean}
- */
-function is_item_in_folder(item_key, folder_path) {
-  const normalized_key = normalize_item_key(item_key);
-  const normalized_folder = normalize_string(folder_path).replace(/\/+$/g, '');
-  if (!normalized_key || !normalized_folder) return false;
-  if (normalized_key === normalized_folder) return true;
-  return normalized_key.startsWith(`${normalized_folder}/`);
-}
-
-/**
- * Keep only top-level folder paths.
- *
- * Example:
- * - `src`
- * - `src/utils`
- *
- * becomes:
- * - `src`
- *
- * @param {string[]} folder_paths
- * @returns {string[]}
- */
-function get_unique_root_folder_paths(folder_paths = []) {
-  const normalized_paths = folder_paths
-    .map((folder_path) => normalize_item_key(folder_path))
-    .filter(Boolean)
-    .sort((left, right) => {
-      if (left.length !== right.length) return left.length - right.length;
-      return left.localeCompare(right);
-    })
-  ;
-
-  return normalized_paths.reduce((acc, folder_path) => {
-    if (acc.some((existing_path) => is_item_in_folder(folder_path, existing_path))) {
-      return acc;
-    }
-    acc.push(folder_path);
-    return acc;
-  }, []);
-}
-
-/**
- * @param {string} key
- * @returns {string}
- */
-function build_exclusion_line(key = '') {
-  const normalized_key = normalize_item_key(key);
-  if (!normalized_key) return '';
-  return `!${normalized_key}`;
-}
-
+import { is_text_file } from "smart-file-system/utils/ignore.js";
 /**
  * @param {object} [params={}]
  * @param {Record<string, object>} [params.context_items]
- * @param {string[]} [params.passthrough_lines]
  * @param {string} [params.named_context_line_prefix]
  * @returns {string[]}
  */
@@ -75,100 +10,37 @@ export function build_codeblock_entries(params = {}) {
     ? params.context_items
     : {}
   ;
-  const passthrough_lines = Array.isArray(params.passthrough_lines)
-    ? params.passthrough_lines
-    : []
+  const exclusions = params.exclusions && typeof params.exclusions === 'object'
+    ? params.exclusions
+    : {}
   ;
 
   /** @type {string[]} */
   const entries = [];
-  /** @type {string[]} */
-  const folder_paths = [];
-  /** @type {string[]} */
-  const explicit_lines = [];
-  /** @type {string[]} */
-  const excluded_folder_paths = [];
-  /** @type {string[]} */
-  const excluded_explicit_lines = [];
 
-  passthrough_lines.forEach((line) => {
-    const normalized_line = normalize_string(line);
-    if (normalized_line) entries.push(normalized_line);
-  });
-
-  // add named context lines
+  // add context lines
   Object.entries(context_items).forEach(([item_key, item_data]) => {
     if (!item_data) return;
     if (item_data.named_context) {
       entries.push('ctx:: ' + item_data.key || item_key);
       return;
     }
-  });
-
-  Object.entries(context_items).forEach(([item_key, item_data]) => {
-    if (!item_data || item_data.exclude) return;
-    if (item_data.named_context) return;
-
-    const folder_path = typeof item_data.folder === 'string'
-      ? normalize_item_key(item_data.folder)
-      : ''
-    ;
-    if (folder_path) {
-      folder_paths.push(folder_path);
+    if (item_key.startsWith('external:')) {
+      const external_key = item_key.replace(/^external:/, '');
+      if (item_data.folder === true && is_text_file(item_key)) {
+        entries.push(external_key + '/'); // handle folders that look like files by adding trailing slash
+      } else {
+        entries.push(external_key);
+      }
       return;
     }
-
-    const explicit_line = normalize_item_key(item_data.key || item_key);
-    if (!explicit_line) return;
-    explicit_lines.push(explicit_line);
+    entries.push(item_key);
   });
 
-  const folder_lines = get_unique_root_folder_paths(folder_paths);
-
-  folder_lines.forEach((folder_line) => {
-    entries.push(folder_line);
+  // add exclusions
+  Object.entries(exclusions).forEach(([exclusion_key, exclusion_data]) => {
+    entries.push('!' + exclusion_key);
   });
-
-  explicit_lines
-    .filter((explicit_line) => {
-      return !folder_lines.some((folder_line) => is_item_in_folder(explicit_line, folder_line));
-    })
-    .forEach((explicit_line) => {
-      entries.push(explicit_line);
-    })
-  ;
-
-  Object.entries(context_items).forEach(([item_key, item_data]) => {
-    if (!item_data?.exclude) return;
-
-    const exclusion_key = normalize_item_key(item_data.key || item_key);
-    if (!exclusion_key) return;
-
-    if (item_data.folder === true) {
-      excluded_folder_paths.push(exclusion_key);
-      return;
-    }
-
-    excluded_explicit_lines.push(exclusion_key);
-  });
-
-  const excluded_folder_lines = get_unique_root_folder_paths(excluded_folder_paths);
-
-  excluded_folder_lines.forEach((folder_line) => {
-    const exclusion_line = build_exclusion_line(folder_line);
-    if (exclusion_line) entries.push(exclusion_line);
-  });
-
-  excluded_explicit_lines
-    .filter((excluded_line) => {
-      return !excluded_folder_lines.some((folder_line) => is_item_in_folder(excluded_line, folder_line));
-    })
-    .forEach((excluded_line) => {
-      const exclusion_line = build_exclusion_line(excluded_line);
-      if (exclusion_line) entries.push(exclusion_line);
-    })
-  ;
-
 
   return entries
     .filter(Boolean)
