@@ -67,20 +67,6 @@ export function get_named_context_items(named_context, smart_contexts) {
   ;
 }
 
-/**
- * @param {string} source_path
- * @returns {string}
- */
-export function get_note_basename(source_path = '') {
-  const normalized_path = String(source_path || '').trim().replace(/\\+/g, '/');
-  if (!normalized_path) return 'Context';
-
-  const file_name = normalized_path.split('/').pop() || '';
-  const base_name = file_name.replace(/\.[^.]+$/u, '');
-  return base_name || 'Context';
-}
-
-
 export function render_name_input(ctx, container) {
   const name_wrapper = document.createElement('div');
   name_wrapper.className = 'sc-context-name-wrapper';
