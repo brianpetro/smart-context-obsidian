@@ -42,7 +42,7 @@ export function register_context_codeblock_processors(plugin) {
           smart_context._update_disposer = smart_context.on_event('context:updated', async () => {
             const updated_cb_content = build_codeblock_entries(smart_context.data);
             try {
-              mpp_ctx.replaceCode(updated_cb_content.join('\n'));
+              mpp_ctx.replaceCode(updated_cb_content.join('\n') + '\n');
             } catch (error) {
               smart_context.emit_error_event('context_codeblock:update', { message: 'Failed to update codeblock content', error_message: error?.message });
               console.error('Failed to update context codeblock content', { error, mpp_ctx, smart_context });
