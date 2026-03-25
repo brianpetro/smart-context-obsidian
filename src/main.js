@@ -376,26 +376,41 @@ export default class SmartContextPlugin extends SmartPlugin {
      */
     this.register(
       this.env.events.on('context:renamed', async (payload) => {
-        const ctx = this.env.smart_contexts.get(payload.context_key);
-        if (!ctx) return;
+        const ctx = this.env.smart_contexts.get(payload.item_key);
+        if (!ctx) {
+          console.warn('Context not found for context:renamed event', payload);
+          return;
+        }
         const old_name = payload.old_name;
-        const new_name = payload.new_name;
+        const new_name = payload.name;
         const line_starts_with = `ctx:: ${old_name}`;
         const source_keys = Object.keys(ctx.data.codeblock_inclusions || {});
         for (let i = 0; i < source_keys.length; i++) {
           const source_key = source_keys[i];
-          const tfile = this.env.smart_sources.get(source_key)?.tfile;
-          if (!tfile) continue;
-          const content = await this.app.vault.read(tfile);
+          const t_file = this.env.smart_sources.get(source_key)?.t_file;
+          if (!t_file){
+            console.warn(`Source file not found for context codeblock inclusion with key "${source_key}"`);
+            continue;
+          }
+          const content = await this.app.vault.read(t_file);
           const has_line = content.split('\n').some((line) => line.trim().startsWith(line_starts_with));
           if (!has_line) {
+            console.warn(`Line starting with "${line_starts_with}" not found in file "${t_file.path}". Removing codeblock inclusion reference.`);
             // If the line isn't found, remove the codeblock inclusion reference to avoid future unnecessary checks.
             delete ctx.data.codeblock_inclusions[source_key];
             ctx.queue_save();
             continue;
           };
           const new_content = content.replace(line_starts_with, `ctx:: ${new_name}`);
-          this.app.vault.modify(tfile, new_content);
+          this.app.vault.modify(t_file, new_content);
+          const cb_ctx = this.env.smart_contexts.get(source_key + '#codeblock');
+          if (cb_ctx?.data?.context_items?.[old_name]) {
+            delete cb_ctx.data.context_items[old_name];
+            cb_ctx.data.context_items[new_name] = {
+              key: new_name,
+              named_context: true,
+            };
+          }
           ctx.emit_info_event('context:named_context_name_synced', {
             codeblock_source_key: source_key,
             old_name,
