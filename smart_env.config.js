@@ -7,6 +7,7 @@ import { render as smart_context_actions_component, version as smart_context_act
 import { render as smart_context_list_component } from './src/components/smart-context/list.js';
 import { render as smart_context_list_item_component } from './src/components/smart-context/list_item.js';
 import { render as smart_context_settings_tab_component } from './src/components/smart-context/settings_tab.js';
+import { context_parse_codeblock as context_parse_codeblock_action } from './src/actions/context/parse_codeblock.js';
 import { source_get_context as source_get_context_action } from './src/actions/source/get_context.js';
 
 export const smart_env_config = {
@@ -30,6 +31,7 @@ export const smart_env_config = {
     smart_context_settings_tab: { render: smart_context_settings_tab_component }
   },
   actions: {
+    context_parse_codeblock: { action: context_parse_codeblock_action },
     source_get_context: { action: source_get_context_action }
   }
 };

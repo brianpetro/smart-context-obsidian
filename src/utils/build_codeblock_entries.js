@@ -184,7 +184,21 @@ export function build_codeblock_entries(params = {}) {
   ;
 
 
-  return entries.filter(Boolean).filter((entry, index, arr) => arr.indexOf(entry) === index);
+  return entries
+    .filter(Boolean)
+    .filter((entry, index, arr) => arr.indexOf(entry) === index)
+    // sort alphabetically, number of segments, and then separate exclude items to the end
+    .sort((left, right) => {
+      const left_is_exclusion = left.startsWith('!');
+      const right_is_exclusion = right.startsWith('!');
+      if (left_is_exclusion && !right_is_exclusion) return 1;
+      if (!left_is_exclusion && right_is_exclusion) return -1;
+      const left_segments = left.split('/').length;
+      const right_segments = right.split('/').length;
+      if (left_segments !== right_segments) return left_segments - right_segments;
+      return left.localeCompare(right);
+    })
+  ;
 }
 
 export default build_codeblock_entries;

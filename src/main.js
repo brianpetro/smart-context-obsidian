@@ -24,7 +24,7 @@ import { ContextsDashboardView } from './views/contexts_dashboard_view.js';
 import { ReleaseNotesView } from './views/release_notes_view.js';
 import { smart_env_config } from './default.config.js';
 import { context_commands } from './commands/context_commands.js';
-import { register_smart_context_codeblock } from './views/context_codeblock.js';
+import { register_context_codeblock_processors } from './utils/register_context_codeblock_processors.js';
 
 /**
  * Smart Context (Obsidian) - copy and curate context for AI tools.
@@ -83,7 +83,7 @@ export default class SmartContextPlugin extends SmartPlugin {
   }
 
   register_codeblock_processors() {
-    register_smart_context_codeblock(this);
+    register_context_codeblock_processors(this);
   }
 
   /**

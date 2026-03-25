@@ -37,3 +37,32 @@ test('build_codeblock_entries compresses folder items and preserves exclusions',
     '!../repo/src/lib/ignore.js',
   ]);
 });
+
+test('build_codeblock_entries sorts alphabetically, number of segments, and then separate exclude items to the end', (t) => {
+  const entries = build_codeblock_entries({
+    context_items: 
+    {
+      'external:../repo/src/index.js': {
+        key: 'external:../repo/src/index.js',
+      },
+      'external:../repo/src/lib/util.js': {
+        key: 'external:../repo/src/lib/util.js',
+      },
+      'external:../repo-full': {
+        key: 'external:../repo-full',
+        folder: true,
+      },
+      'external:../ignore/this.js': {
+        key: 'external:../ignore/this.js',
+        exclude: true,
+      },
+    },
+  });
+
+  t.deepEqual(entries, [
+    '../repo-full',
+    '../repo/src/index.js',
+    '../repo/src/lib/util.js',
+    '!../ignore/this.js',
+  ]);
+});
