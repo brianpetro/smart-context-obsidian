@@ -271,12 +271,17 @@ export function convert_codeblock_to_named_context(ctx, params = {}) {
   );
 
   const named_ctx = smart_contexts.new_context({});
-  named_ctx.data.context_items = {
-    ...ctx.data.context_items,
-  };
+  const ctx_named_exclusions = Object.fromEntries(
+    ctx.named_contexts.map((named_ctx) => Object.entries(named_ctx.data.exclusions || {})).flat()
+  );
   named_ctx.data.exclusions = {
+    ...ctx_named_exclusions,
     ...ctx.data.exclusions,
   };
+  const ctx_named_context_entries = ctx.named_contexts.map((named_ctx) => Object.entries(named_ctx.data.context_items || {})).flat();
+  const ctx_other_context_entries = Object.entries(ctx.data.context_items || {}).filter(([key, item_data]) => !item_data.named_context);
+  const all_entries = [...ctx_named_context_entries, ...ctx_other_context_entries];
+  named_ctx.data.context_items = Object.fromEntries(all_entries);
   named_ctx.data.codeblock_inclusions = { [source_path]: Date.now() };
   named_ctx.name = context_name; // triggers name event
 
