@@ -1,4 +1,3 @@
-import { default_named_context_line_prefix } from './context_codeblock_constants.js';
 import { normalize_string } from './pure_utils.js';
 
 /**
@@ -55,19 +54,6 @@ function get_unique_root_folder_paths(folder_paths = []) {
 }
 
 /**
- * @param {string} context_name
- * @param {object} params
- * @param {string} [params.named_context_line_prefix]
- * @returns {string}
- */
-function build_named_context_line(context_name, params = {}) {
-  const normalized_name = normalize_string(context_name);
-  if (!normalized_name) return '';
-  const prefix = normalize_string(params.named_context_line_prefix) || default_named_context_line_prefix;
-  return `${prefix}:: ${normalized_name}`;
-}
-
-/**
  * @param {string} key
  * @returns {string}
  */
@@ -109,7 +95,7 @@ export function build_codeblock_entries(params = {}) {
     const normalized_line = normalize_string(line);
     if (normalized_line) entries.push(normalized_line);
   });
-  
+
   // add named context lines
   Object.entries(context_items).forEach(([item_key, item_data]) => {
     if (!item_data) return;
