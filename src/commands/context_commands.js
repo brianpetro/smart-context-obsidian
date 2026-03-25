@@ -2,7 +2,6 @@ import { FolderSelectModal } from '../modals/folder_select_modal.js';
 import { NamedContextSelectModal } from '../modals/named_context_select_modal.js';
 import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';
 import { MarkdownView } from 'obsidian';
-import { parse_codeblock_to_context_items } from '../utils/parse_codeblock_to_context_items.js';
 import { default_context_codeblock_type } from '../utils/context_codeblock_constants.js';
 import {
   ensure_context_codeblock_in_editor,
@@ -44,12 +43,6 @@ function get_current_copy_params(plugin) {
     markdown: active_view?.file?.path === source_path
       ? active_view?.editor?.getValue?.()
       : undefined,
-    parse_codeblock: (cb_content) => {
-      return parse_codeblock_to_context_items(cb_content, {
-        smart_contexts: plugin.env.smart_contexts,
-        smart_sources: plugin.env.smart_sources,
-      });
-    },
   };
 }
 
