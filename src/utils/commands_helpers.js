@@ -149,7 +149,6 @@ export function toggle_copy_current_with_media_setting(env) {
  * @param {object} [params={}]
  * @param {number} [params.max_depth]
  * @param {boolean} [params.include_inlinks=false]
- * @param {(ctx_item: any) => boolean} [params.filter]
  * @returns {(ctx_item: any) => boolean}
  */
 export function build_copy_current_filter(params = {}) {
@@ -159,16 +158,11 @@ export function build_copy_current_filter(params = {}) {
   ;
   const has_inlink_preference = typeof params.include_inlinks === 'boolean';
   const include_inlinks = params.include_inlinks === true;
-  const additional_filter = typeof params.filter === 'function'
-    ? params.filter
-    : null
-  ;
 
   return (ctx_item) => {
     const depth = Number.isFinite(ctx_item?.data?.d) ? ctx_item.data.d : 0;
     if (depth > max_depth) return false;
     if (has_inlink_preference && !include_inlinks && ctx_item?.data?.inlink) return false;
-    if (additional_filter && !additional_filter(ctx_item)) return false;
     return true;
   };
 }
