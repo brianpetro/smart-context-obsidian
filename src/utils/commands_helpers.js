@@ -186,16 +186,40 @@ export async function build_current_copy_context(plugin, params = {}) {
     });
     const codeblock_context_items = codeblock_ctx?.data?.context_items || {};
     if (!Object.keys(codeblock_context_items).length) return ctx;
+
     const merged_ctx_items_data = {};
     // rebuild to preserve original ctx.data.context_items
     Object.entries(ctx.data?.context_items || {}).forEach(([key, item]) => {
-      merged_ctx_items_data[key] = { ...item };
+      const base_item = item && typeof item === 'object' ? item : {};
+      merged_ctx_items_data[key] = {
+        key,
+        ...base_item,
+        base_context: true,
+        base_d: Number.isFinite(base_item?.d) ? base_item.d : 0,
+        base_inlink: base_item?.inlink === true,
+      };
     });
     // codeblock items win over any existing items at the same key
-    // this allows codeblock items to merge in at depth 0
+    // this allows codeblock items to merge in at depth 0 while preserving
+    // the original base-context depth metadata for the "without codeblock" copy path
     Object.entries(codeblock_context_items).forEach(([key, cb_item]) => {
-      merged_ctx_items_data[key] = { ...cb_item };
+      const existing_item = merged_ctx_items_data[key] || {};
+      const codeblock_item = cb_item && typeof cb_item === 'object' ? cb_item : {};
+      merged_ctx_items_data[key] = {
+        key,
+        ...existing_item,
+        ...codeblock_item,
+        from_codeblock: true,
+        ...(existing_item?.base_context === true
+          ? {}
+          : {
+            base_context: false,
+            base_d: Number.POSITIVE_INFINITY,
+            base_inlink: false,
+          }),
+      };
     });
+
     const Class = ctx.constructor;
     const temp_ctx = new Class(ctx.env, {
       key: `${ctx.key}#temp_copy_current`,
@@ -209,7 +233,7 @@ export async function build_current_copy_context(plugin, params = {}) {
       return null;
     }
     return temp_ctx;
-    
+
   } catch (error) {
     console.error('build_current_copy_context failed', error);
     emit_copy_current_build_failed(plugin, {
@@ -297,7 +321,7 @@ export async function copy_current_as_link_tree(plugin, params = {}) {
   if (!copy_ctx) return false;
 
   const filter = build_copy_current_filter(params);
-  const filtered_items = ctx?.context_items?.filter?.(filter) || [];
+  const filtered_items = copy_ctx?.context_items?.filter?.(filter) || [];
   if (!filtered_items.length) return null;
   const context_items_data = filtered_items.reduce((acc, item) => {
     acc[item.key] = {
@@ -306,9 +330,9 @@ export async function copy_current_as_link_tree(plugin, params = {}) {
     };
     return acc;
   }, {});
-  const Class = ctx.constructor;
-  const filtered_ctx = new Class(ctx.env, {
-    key: `${ctx.key}#temp_copy_current_tree`,
+  const Class = copy_ctx.constructor;
+  const filtered_ctx = new Class(copy_ctx.env, {
+    key: `${copy_ctx.key}#temp_copy_current_tree`,
     context_items: context_items_data,
   });
   const md_tree = context_to_md_tree(filtered_ctx).trim();

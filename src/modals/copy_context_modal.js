@@ -1,5 +1,10 @@
 import { SuggestModal, setIcon } from 'obsidian';
-import { build_depth_suggestions } from '../utils/context_suggestions.js';
+import {
+  build_depth_suggestions,
+  build_without_codeblock_depth_zero_context_items,
+  estimate_tokens,
+  format_context_estimate,
+} from '../utils/context_suggestions.js';
 
 const COPY_CONTEXT_MODAL_STYLE_ID = 'sc-copy-context-modal-style';
 
@@ -18,6 +23,7 @@ function ensure_copy_context_modal_styles_installed() {
   style.textContent = `
   .sc-copy-context-modal .sc-copy-modal__suggestion {
     padding: 0;
+    margin: 0 8px;
   }
 
   .sc-copy-context-modal .sc-copy-modal__row {
@@ -26,7 +32,6 @@ function ensure_copy_context_modal_styles_installed() {
     justify-content: space-between;
     gap: 12px;
 
-    margin: 0 8px;
     padding: 10px 12px;
 
     border: 1px solid var(--background-modifier-border);
@@ -149,12 +154,83 @@ function decorate_depth_suggestions(suggestions = []) {
 }
 
 /**
+ * Build the special temp context used for "depth 0 without codeblock".
+ *
+ * @param {import('smart-contexts').SmartContext} ctx
+ * @returns {import('smart-contexts').SmartContext|null}
+ */
+function build_without_codeblock_depth_zero_context(ctx) {
+  const raw_context_items = Object.values(ctx?.data?.context_items || {});
+  const context_items = build_without_codeblock_depth_zero_context_items(raw_context_items);
+  if (!Object.keys(context_items).length) {
+    return null;
+  }
+
+  const Class = ctx?.constructor;
+  if (typeof Class !== 'function') {
+    return null;
+  }
+
+  return new Class(ctx.env, {
+    key: `${ctx.key}#temp_copy_current_without_codeblock_depth_0`,
+    context_items,
+  });
+}
+
+/**
  * @param {number} count
  * @returns {string}
  */
 function format_items_count(count) {
   const value = Number(count) || 0;
   return value.toLocaleString();
+}
+
+/**
+ * @param {object} item
+ * @returns {{ icon: string, text: string, title: string }}
+ */
+function get_suggestion_badge(item) {
+  if (item?.without_codeblock) {
+    return {
+      icon: 'minus-circle',
+      text: 'No codeblock',
+      title: 'Copy the depth 0 context without items added by the note codeblock.',
+    };
+  }
+
+  if (item?.include_inlinks) {
+    return {
+      icon: 'arrow-left-right',
+      text: 'Include backlinks',
+      title: 'Include inlinks (backlinks) in addition to outlinks.',
+    };
+  }
+
+  if (item?.d === 0) {
+    return {
+      icon: 'dot',
+      text: 'Current note',
+      title: 'Only include context items from the root note.',
+    };
+  }
+
+  return {
+    icon: 'arrow-right',
+    text: 'Outlinks only',
+    title: 'Only include outgoing links from the root note.',
+  };
+}
+
+/**
+ * @param {object} item
+ * @returns {string}
+ */
+function build_suggestion_stats_text(item) {
+  const char_text = `${format_context_estimate(item?.size || 0)} chars`;
+  const token_text = `${format_context_estimate(estimate_tokens(item?.size || 0))} tokens`;
+  const item_text = `${format_items_count(item?.count || 0)} items`;
+  return `${char_text} | ${token_text} | ${item_text}`;
 }
 
 export class CopyContextModal extends SuggestModal {
@@ -182,7 +258,8 @@ export class CopyContextModal extends SuggestModal {
 
     // add heading to this.titleEl
     this.modalEl.prepend(this.titleEl);
-    this.setTitle('Smart Context - Copy to clipboard (choose link depth)');
+    // this.setTitle('Smart Context - Copy to clipboard (choose link depth)');
+    this.setTitle('Copy current note as context');
 
     const button = this.titleEl.createEl('button');
     button.classList.add('clickable-icon');
@@ -213,8 +290,11 @@ export class CopyContextModal extends SuggestModal {
       if (item.is_media && !this.params.with_media) return false;
       return true;
     });
+    const raw_context_items = Object.values(this.ctx?.data?.context_items || {});
 
-    this.suggestions = decorate_depth_suggestions(build_depth_suggestions(ctx_items));
+    this.suggestions = decorate_depth_suggestions(build_depth_suggestions(ctx_items, {
+      raw_context_items,
+    }));
     super.onOpen();
   }
 
@@ -227,7 +307,9 @@ export class CopyContextModal extends SuggestModal {
     el.textContent = '';
     el.classList.add('sc-copy-modal__suggestion');
 
-    if (item.include_inlinks) {
+    if (item.without_codeblock) {
+      el.classList.add('sc-copy-modal__suggestion--without-codeblock');
+    } else if (item.include_inlinks) {
       el.classList.add('sc-copy-modal__suggestion--include-inlinks');
     } else {
       el.classList.add('sc-copy-modal__suggestion--outlinks-only');
@@ -248,22 +330,17 @@ export class CopyContextModal extends SuggestModal {
     const left = row.createDiv({ cls: 'sc-copy-modal__left' });
     left.createSpan({ text: `Depth ${item.d}`, cls: 'sc-copy-modal__depth' });
 
+    const badge_meta = get_suggestion_badge(item);
     const badge = left.createSpan({ cls: 'sc-copy-modal__badge' });
     const badge_icon = badge.createSpan({ cls: 'sc-copy-modal__badge-icon' });
-    setIcon(badge_icon, item.include_inlinks ? 'arrow-left-right' : 'arrow-right');
+    setIcon(badge_icon, badge_meta.icon);
 
-    badge.setAttribute(
-      'title',
-      item.include_inlinks
-        ? 'Include inlinks (backlinks) in addition to outlinks.'
-        : 'Only include outgoing links from the root note.',
-    );
-
-    badge.createSpan({ text: item.include_inlinks ? 'Include backlinks' : 'Outlinks only' });
+    badge.setAttribute('title', badge_meta.title);
+    badge.createSpan({ text: badge_meta.text });
 
     row.createDiv({
       cls: 'sc-copy-modal__right',
-      text: `${format_suggestion_size(item.size)} chars | ${format_items_count(item.count)} items`,
+      text: build_suggestion_stats_text(item),
     });
   }
 
@@ -273,6 +350,25 @@ export class CopyContextModal extends SuggestModal {
       message: 'Copying context...',
       event_source: 'copy_context_modal.onChooseSuggestion',
     });
+
+    if (item?.without_codeblock) {
+      const without_codeblock_ctx = build_without_codeblock_depth_zero_context(this.ctx);
+      if (!without_codeblock_ctx) {
+        this?.env?.events?.emit?.('context:copy_empty', {
+          level: 'warning',
+          message: 'No non-codeblock depth 0 context items to copy.',
+          event_source: 'copy_context_modal.onChooseSuggestion',
+        });
+        return;
+      }
+
+      await without_codeblock_ctx.actions.context_copy_to_clipboard({
+        max_depth: 0,
+        ...this.params,
+      });
+      return;
+    }
+
     await this.ctx.actions.context_copy_to_clipboard({
       filter: (ctx_item) => {
         if (ctx_item.data.d > item.d) return false;
@@ -283,23 +379,4 @@ export class CopyContextModal extends SuggestModal {
       ...this.params,
     });
   }
-}
-
-function format_suggestion_size(size) {
-  const value = Number(size) || 0;
-  if (value >= 10000000) {
-    const millions = value / 1000000;
-    const rounded = millions >= 10
-      ? Math.round(millions)
-      : Math.round(millions * 10) / 10;
-    return `${rounded}M`;
-  }
-  if (value >= 10000) {
-    const thousands = value / 1000;
-    const rounded = thousands >= 10
-      ? Math.round(thousands)
-      : Math.round(thousands * 10) / 10;
-    return `${rounded}K`;
-  }
-  return value.toLocaleString();
 }
