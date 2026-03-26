@@ -11,7 +11,6 @@
   --sc-contexts-shadow: 0 1px 1px rgba(0, 0, 0, 0.14), 0 6px 18px rgba(0, 0, 0, 0.10);
   --sc-contexts-shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.18), 0 10px 26px rgba(0, 0, 0, 0.14);
 
-  padding: var(--size-4-4);
 }
 
 /* Ensure HTML `hidden` always wins (several rules below set `display` explicitly). */
