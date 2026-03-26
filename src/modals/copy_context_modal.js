@@ -269,7 +269,7 @@ export class CopyContextModal extends SuggestModal {
 
   async onChooseSuggestion(item) {
     this?.env?.events?.emit?.('context:copy_started', {
-      level: 'info',
+      // level: 'info',
       message: 'Copying context...',
       event_source: 'copy_context_modal.onChooseSuggestion',
     });

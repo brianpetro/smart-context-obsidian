@@ -23,9 +23,11 @@ const CORE_COPY_CURRENT_FILE_TYPES = ['md', 'canvas', 'excalidraw.md'];
  * command paths.
  *
  * @param {object} plugin
+ * @param {object} params
+ * @param {string[]} [params.allowed_file_types] - Optional list of allowed file types to copy (e.g. ['md', 'canvas'])
  * @returns {object|null}
  */
-function get_current_copy_params(plugin) {
+export function get_current_copy_params(plugin, params = {}) {
   const active_view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
   const active_file = plugin.app.workspace.getActiveFile?.();
   const source_path = resolve_active_source_path({
@@ -34,7 +36,7 @@ function get_current_copy_params(plugin) {
   });
   const copy_deps = get_copy_current_dependencies(plugin.env, {
     source_path,
-    allowed_file_types: CORE_COPY_CURRENT_FILE_TYPES,
+    allowed_file_types: params.allowed_file_types || CORE_COPY_CURRENT_FILE_TYPES,
   });
   if (!copy_deps) return null;
 
@@ -55,14 +57,17 @@ function get_current_copy_params(plugin) {
  * @param {string} params.name
  * @param {number} params.max_depth
  * @param {boolean} [params.include_inlinks=false]
+ * @param {string[]} [params.allowed_file_types] - Passed to get_current_copy_params.
  * @returns {object}
  */
-function build_direct_copy_command(plugin, params = {}) {
+export function build_direct_copy_command(plugin, params = {}) {
   return {
     id: params.id,
     name: params.name,
     checkCallback: (checking) => {
-      const copy_params = get_current_copy_params(plugin);
+      const copy_params = get_current_copy_params(plugin, {
+        allowed_file_types: params.allowed_file_types,
+      });
       if (!copy_params) return false;
       if (checking) return true;
 
