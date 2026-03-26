@@ -3,10 +3,6 @@ import { context_to_md_tree } from 'obsidian-smart-env/src/utils/smart-context/t
 import {
   get_or_create_codeblock_context_from_note,
 } from './context_codeblock_utils.js';
-import {
-  build_copy_current_context,
-  create_temp_context,
-} from './temp_context_utils.js';
 
 /**
  * Resolve the current active source path from a Markdown view or active file.
@@ -55,42 +51,6 @@ export function is_copy_current_supported_source(source, params = {}) {
   if (!source_file_type) return false;
 
   return allowed_file_types.has(source_file_type);
-}
-
-/**
- * Resolve the shared dependencies needed by copy-current commands.
- *
- * @param {object} env
- * @param {object} [params={}]
- * @param {string=} params.source_path
- * @param {string[]} [params.allowed_file_types]
- * @returns {{ source_path: string, source: object, modal_class: Function }|null}
- */
-export function get_copy_current_dependencies(env, params = {}) {
-  if (!env?.smart_sources) return null;
-
-  const source_path = typeof params.source_path === 'string'
-    ? params.source_path
-    : ''
-  ;
-  if (!source_path) return null;
-
-  const source = env.smart_sources.get(source_path);
-  if (!source) return null;
-  if (!is_copy_current_supported_source(source, {
-    allowed_file_types: params.allowed_file_types,
-  })) {
-    return null;
-  }
-
-  const modal_class = env.config?.modals?.copy_context_modal?.class;
-  if (!modal_class) return null;
-
-  return {
-    source_path,
-    source,
-    modal_class,
-  };
 }
 
 /**
@@ -207,7 +167,7 @@ export async function build_current_copy_context(plugin, params = {}) {
 
   if (!plugin?.env || !source_path || !source) {
     emit_copy_current_build_failed(plugin, {
-      event_source: 'copy_current_command_utils.build_current_copy_context',
+      event_source: 'build_current_copy_context',
     });
     return null;
   }
@@ -216,7 +176,7 @@ export async function build_current_copy_context(plugin, params = {}) {
     const ctx = await source.actions.source_get_context();
     if (!ctx) {
       emit_copy_current_build_failed(plugin, {
-        event_source: 'copy_current_command_utils.build_current_copy_context',
+        event_source: 'build_current_copy_context',
       });
       return null;
     }
@@ -224,46 +184,40 @@ export async function build_current_copy_context(plugin, params = {}) {
     const codeblock_ctx = await get_or_create_codeblock_context_from_note(plugin, source_path, {
       markdown,
     });
-
-    return build_copy_current_context(ctx, {
-      codeblock_ctx,
-      key: params.key || `${source_path}#copy_current`,
-    }) || ctx;
+    const codeblock_context_items = codeblock_ctx?.data?.context_items || {};
+    if (!Object.keys(codeblock_context_items).length) return ctx;
+    const merged_ctx_items_data = {};
+    // rebuild to preserve original ctx.data.context_items
+    Object.entries(ctx.data?.context_items || {}).forEach(([key, item]) => {
+      merged_ctx_items_data[key] = { ...item };
+    });
+    // codeblock items win over any existing items at the same key
+    // this allows codeblock items to merge in at depth 0
+    Object.entries(codeblock_context_items).forEach(([key, cb_item]) => {
+      merged_ctx_items_data[key] = { ...cb_item };
+    });
+    const Class = ctx.constructor;
+    const temp_ctx = new Class(ctx.env, {
+      key: `${ctx.key}#temp_copy_current`,
+      context_items: merged_ctx_items_data,
+    });
+    if (!temp_ctx) {
+      emit_copy_current_build_failed(plugin, {
+        event_source: 'build_current_copy_context',
+        message: 'Failed to create temporary merged context for current note.',
+      });
+      return null;
+    }
+    return temp_ctx;
+    
   } catch (error) {
     console.error('build_current_copy_context failed', error);
     emit_copy_current_build_failed(plugin, {
       details: error?.message || '',
-      event_source: 'copy_current_command_utils.build_current_copy_context',
+      event_source: 'build_current_copy_context',
     });
     return null;
   }
-}
-
-/**
- * Build a filtered temporary context for exports that should not use the full
- * in-memory context item set.
- *
- * @param {import('smart-contexts').SmartContext} ctx
- * @param {(ctx_item: any) => boolean} filter
- * @param {string} [key_suffix='filtered']
- * @returns {import('smart-contexts').SmartContext|null}
- */
-function build_filtered_temp_context(ctx, filter, key_suffix = 'filtered') {
-  const filtered_items = ctx?.context_items?.filter?.(filter) || [];
-  if (!filtered_items.length) return null;
-
-  const context_items = filtered_items.reduce((acc, item) => {
-    acc[item.key] = {
-      ...(item?.data && typeof item.data === 'object' ? item.data : {}),
-      key: item.key,
-    };
-    return acc;
-  }, {});
-
-  return create_temp_context(ctx, {
-    key: `${ctx.key}#${key_suffix}`,
-    context_items,
-  });
 }
 
 /**
@@ -289,7 +243,7 @@ export async function open_copy_current_modal(plugin, params = {}) {
 
   if (typeof modal_class !== 'function') {
     emit_copy_current_build_failed(plugin, {
-      event_source: 'copy_current_command_utils.open_copy_current_modal',
+      event_source: 'open_copy_current_modal',
     });
     return false;
   }
@@ -343,20 +297,33 @@ export async function copy_current_as_link_tree(plugin, params = {}) {
   if (!copy_ctx) return false;
 
   const filter = build_copy_current_filter(params);
-  const filtered_ctx = build_filtered_temp_context(copy_ctx, filter, 'link_tree') || copy_ctx;
+  const filtered_items = ctx?.context_items?.filter?.(filter) || [];
+  if (!filtered_items.length) return null;
+  const context_items_data = filtered_items.reduce((acc, item) => {
+    acc[item.key] = {
+      ...(item?.data && typeof item.data === 'object' ? item.data : {}),
+      key: item.key,
+    };
+    return acc;
+  }, {});
+  const Class = ctx.constructor;
+  const filtered_ctx = new Class(ctx.env, {
+    key: `${ctx.key}#temp_copy_current_tree`,
+    context_items: context_items_data,
+  });
   const md_tree = context_to_md_tree(filtered_ctx).trim();
   if (!md_tree) {
     copy_ctx.emit_event('context:copy_empty', {
       level: 'warning',
       message: 'No context items to copy.',
-      event_source: 'copy_current_command_utils.copy_current_as_link_tree',
+      event_source: 'copy_current_as_link_tree',
     });
     return false;
   }
 
   const copied = await copy_to_clipboard(md_tree, {
     env: copy_ctx.env,
-    event_source: 'copy_current_command_utils.copy_current_as_link_tree',
+    event_source: 'copy_current_as_link_tree',
     success_event_key: 'context:clipboard_raw_copied',
     error_event_key: 'context:clipboard_raw_copy_failed',
     unavailable_event_key: 'context:clipboard_copy_unavailable',
@@ -366,7 +333,7 @@ export async function copy_current_as_link_tree(plugin, params = {}) {
   copy_ctx.emit_event('context:current_tree_copied', {
     level: 'info',
     message: 'Copied current context link tree to clipboard.',
-    event_source: 'copy_current_command_utils.copy_current_as_link_tree',
+    event_source: 'copy_current_as_link_tree',
   });
   return true;
 }

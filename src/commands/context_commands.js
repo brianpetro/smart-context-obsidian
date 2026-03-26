@@ -1,5 +1,4 @@
 import { FolderSelectModal } from '../modals/folder_select_modal.js';
-import { NamedContextSelectModal } from '../modals/named_context_select_modal.js';
 import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';
 import { MarkdownView } from 'obsidian';
 import { default_context_codeblock_type } from '../utils/context_codeblock_constants.js';
@@ -11,22 +10,39 @@ import {
 import {
   copy_current_as_link_tree,
   copy_current_to_clipboard,
-  get_copy_current_dependencies,
+  is_copy_current_supported_source,
   open_copy_current_modal,
   resolve_active_source_path,
 } from '../utils/commands_helpers.js';
 
 const CORE_COPY_CURRENT_FILE_TYPES = ['md', 'canvas', 'excalidraw.md'];
 
-/**
- * Build the shared current-note copy params used by modal and fixed-depth
- * command paths.
- *
- * @param {object} plugin
- * @param {object} params
- * @param {string[]} [params.allowed_file_types] - Optional list of allowed file types to copy (e.g. ['md', 'canvas'])
- * @returns {object|null}
- */
+export function get_copy_current_dependencies(env, params = {}) {
+  if (!env?.smart_sources) return null;
+
+  const source_path = typeof params.source_path === 'string'
+    ? params.source_path
+    : ''
+  ;
+  if (!source_path) return null;
+
+  const source = env.smart_sources.get(source_path);
+  if (!source) return null;
+  if (!is_copy_current_supported_source(source, {
+    allowed_file_types: params.allowed_file_types,
+  })) {
+    return null;
+  }
+
+  const modal_class = env.config?.modals?.copy_context_modal?.class;
+  if (!modal_class) return null;
+
+  return {
+    source_path,
+    source,
+    modal_class,
+  };
+}
 export function get_current_copy_params(plugin, params = {}) {
   const active_view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
   const active_file = plugin.app.workspace.getActiveFile?.();
@@ -65,16 +81,34 @@ export function build_direct_copy_command(plugin, params = {}) {
     id: params.id,
     name: params.name,
     checkCallback: (checking) => {
-      const copy_params = get_current_copy_params(plugin, {
-        allowed_file_types: params.allowed_file_types,
+      const active_view = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+      const active_file = plugin.app.workspace.getActiveFile?.();
+      const source_path = resolve_active_source_path({
+        view: active_view,
+        active_file,
       });
-      if (!copy_params) return false;
+      if (!source_path) return false;
+      const env = plugin.env;
+      if (!env?.smart_sources?.get) return false;
+      const source = env.smart_sources.get(source_path);
+      if (!source) return false;
+      if (!is_copy_current_supported_source(source, { allowed_file_types: params.allowed_file_types || CORE_COPY_CURRENT_FILE_TYPES })) {
+        return false;
+      }
+      const modal_class = env.config?.modals?.copy_context_modal?.class;
+      if (!modal_class) return false;
       if (checking) return true;
 
       void copy_current_to_clipboard(plugin, {
-        ...copy_params,
+        source_path,
+        source,
+        modal_class,
+        allowed_file_types: params.allowed_file_types,
         max_depth: params.max_depth,
         include_inlinks: params.include_inlinks === true,
+        markdown: active_view?.file?.path === source_path
+          ? active_view?.editor?.getValue?.()
+          : undefined,
       });
       return true;
     },
@@ -112,19 +146,6 @@ export function context_commands(plugin) {
         ctx.data.codeblock_type = default_context_codeblock_type;
 
         open_context_selector_for_codeblock(ctx);
-        return true;
-      },
-    },
-    copy_named_context: {
-      id: 'copy-named-context-with-depth',
-      name: 'Copy named context to clipboard (choose depth)',
-      checkCallback: (checking) => {
-        if (!plugin?.env?.smart_contexts) return false;
-        if (checking) return true;
-        const modal = new NamedContextSelectModal(plugin.app, plugin, {
-          max_depth: 3,
-        });
-        modal.open();
         return true;
       },
     },
