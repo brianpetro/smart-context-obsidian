@@ -26,10 +26,8 @@ export function build_depth_suggestions(ctx_items = []) {
   }));
 
   for (const item of ctx_items) {
-    const item_depth = typeof item?.data?.d === 'number' ? item.data.d : null;
-    if (item_depth === null) {
-      continue;
-    }
+    // treat items without a depth as depth 0 (ex. items from named context in codeblock)
+    const item_depth = typeof item?.data?.d === 'number' ? item.data.d : 0;
 
     for (let depth = item_depth; depth <= max_depth; depth += 1) {
       const bucket = suggestions_by_depth[depth];
