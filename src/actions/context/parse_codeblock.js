@@ -21,6 +21,7 @@ export function context_parse_codeblock(params = {}) {
   this?._update_disposer?.();
   this._update_disposer = null;
   this._cb_hash = new_hash;
+  this.data.context_items = {};
   const context_lines = cb_content.split('\n').map((line) => line.trim()).filter((line) => line);
   for (let i = 0; i < context_lines.length; i += 1) {
     const line = context_lines[i];
