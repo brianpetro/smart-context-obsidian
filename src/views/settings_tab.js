@@ -5,11 +5,6 @@ import { SmartPluginSettingsTab } from 'obsidian-smart-env';
  * A simple plugin settings tab that delegates config to the env.smart_view system.
  */
 export class SmartContextSettingTab extends SmartPluginSettingsTab {
-  constructor(app, plugin) {
-    super(app, plugin);
-    this.plugin = plugin;
-  }
-
   async render_plugin_settings(container) {
     if (!container) return;
     container.empty?.();

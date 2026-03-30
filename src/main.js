@@ -64,7 +64,7 @@ export default class SmartContextPlugin extends SmartPlugin {
     ContextsDashboardView.register_item_view(this);
     this.ReleaseNotesView.register_item_view(this);
 
-    this.addSettingTab(new SmartContextSettingTab(this.app, this));
+    this.addSettingTab(new SmartContextSettingTab(this.app, this, 'smart-context-builder'));
 
     // First-run onboarding
     if (this.is_new_user()) {
