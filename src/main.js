@@ -34,16 +34,12 @@ import { register_context_codeblock_processors } from './utils/register_context_
 export default class SmartContextPlugin extends SmartPlugin {
   SmartEnv = SmartEnv;
   ReleaseNotesView = ReleaseNotesView;
+  smart_env_config = smart_env_config;
 
   onload() {
     this.app.workspace.onLayoutReady(this.initialize.bind(this));
-    this.SmartEnv.create(this, smart_env_config);
+    this.SmartEnv.create(this, this.smart_env_config);
     this.addSettingTab(new SmartContextSettingTab(this.app, this, 'smart-context-builder'));
-  }
-
-  onunload() {
-    try { this.unregister_event_bus_handlers(); } catch (error) { /* no-op */ }
-    this.env.unload_main(this);
   }
 
   /**
