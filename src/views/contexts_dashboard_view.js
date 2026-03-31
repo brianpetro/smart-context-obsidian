@@ -8,7 +8,7 @@ export class ContextsDashboardView extends SmartItemView {
   static get icon_name() { return 'smart-named-contexts'; }
 
   async render_view(params = {}) {
-    const dashboard = await this.env.render_component(
+    const dashboard = await this.env.smart_components.render_component(
       'smart_context_list',
       this.env.smart_contexts,
       { ...params },
