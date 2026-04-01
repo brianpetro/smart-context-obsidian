@@ -1,38 +1,24 @@
-> [!NOTE] Patch v2.0.4
-> - Added: "Copied context from the file navigator" milestone
-> - Fixed: left arrow should not change suggestions when input is focused and has text
-> - Improved: context tree removal performance (batched removals + coalesced renders)
-> 
-> All Smart Plugins:
-> - Fixed: verified Pro plugins login should work on mobile
-> - Fixed: settings groups now re-render when a dropdown changes (prevents stale dependent settings)
-> - Improved: notifications modal includes a "Load more" button (beyond the default 100)
+[Also in this release: suite-wide Smart Environment improvements for every Smart Plugin. Read the Substrate Update.](https://smartconnections.app/smart-plugins/substrate-update/)
 
-> [!NOTE]- Previous patches
-> > [!NOTE]- v2.0.3
-> > - Added: template presets for context and item templates
-> > - Added: `{{ITEM_NAME}}` variable for context item templates
-> > - Added: `{{EXT}}` variable for context item templates
-> > - Added: `json_stringify` setting for custom context item templates
-> 
-> > [!NOTE]- v2.0.2
-> > - Added option to open context builder using file/folder selections in file nav
-> > - Added command/modal for selecting named contexts (open copy modal or builder modal)
-> > - Added help button to CopyContextModal for user guidance
-> > - Added functionality to copy multiple selected folders as context using files menu
-> > - Updated named context list styles and add help button
-> 
-> 
-# Smart Context `v2`
+# Smart Context Core `v3.1`
 
-**Feed large language models better inputs, faster.** **Smart Context *collects, cleans, and copies* every note you need** in a single click.
+Smart Context Core v3.1 turns more of the everyday context workflow into first-class Core features. Context codeblocks arrive in Core, named contexts become easier to reuse, and faster entry points make it simpler to build and copy the right context without breaking flow.
 
-> Build your Context Engineering workflow with Obsidian.
+## Highlights
 
-- Copy selected files in file navigator to clipboard
-  - right-click on multi-file selection in file navigator to reveal option
-- Use links to quickly copy current and relevant notes as context
-  - embedded links are treated as depth 0
-- Name context bundles for easy re-use
+### More of the workflow now lives in Core
 
-Learn more: https://smartconnections.app/smart-context/#docs
+- Context codeblocks are now part of Smart Context Core.
+- Named contexts can now be used directly from the context codeblock.
+- Ribbon icons make it faster to open the builder or copy the current note with depth selection.
+
+### Reuse gets easier
+
+- A saved indicator gives clearer feedback when a named context has been stored.
+- Named contexts can now be deleted from the dashboard list with the expected right-click action.
+- Adding a single item from a named context into a context codeblock now behaves as expected.
+
+### Small polish that helps often
+
+- The Getting Started modal size is fixed.
+- Right-click copy for wikilink tree output in the context tree now behaves as expected.
