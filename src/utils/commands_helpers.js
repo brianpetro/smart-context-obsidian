@@ -147,8 +147,8 @@ function emit_copy_current_build_failed(plugin, params = {}) {
 }
 
 /**
- * Build the current-note copy context, merging hydrated codeblock items at
- * depth 0 when present.
+ * Build the current-note copy context, merging hydrated codeblock items and
+ * direct codeblock exclusions when present.
  *
  * @param {object} plugin
  * @param {object} [params={}]
@@ -185,7 +185,10 @@ export async function build_current_copy_context(plugin, params = {}) {
       markdown,
     });
     const codeblock_context_items = codeblock_ctx?.data?.context_items || {};
-    if (!Object.keys(codeblock_context_items).length) return ctx;
+    const codeblock_exclusions = codeblock_ctx?.data?.exclusions || {};
+    const has_codeblock_context_items = Object.keys(codeblock_context_items).length > 0;
+    const has_codeblock_exclusions = Object.keys(codeblock_exclusions).length > 0;
+    if (!has_codeblock_context_items && !has_codeblock_exclusions) return ctx;
 
     const merged_ctx_items_data = {};
     // rebuild to preserve original ctx.data.context_items
@@ -220,10 +223,30 @@ export async function build_current_copy_context(plugin, params = {}) {
       };
     });
 
+    const merged_ctx_exclusions_data = {};
+    Object.entries(ctx.data?.exclusions || {}).forEach(([key, item]) => {
+      if (!key) return;
+      const base_item = item && typeof item === 'object' ? item : {};
+      merged_ctx_exclusions_data[key] = {
+        key,
+        ...base_item,
+      };
+    });
+    Object.entries(codeblock_exclusions).forEach(([key, item]) => {
+      if (!key) return;
+      const codeblock_item = item && typeof item === 'object' ? item : {};
+      merged_ctx_exclusions_data[key] = {
+        key,
+        ...merged_ctx_exclusions_data[key],
+        ...codeblock_item,
+      };
+    });
+
     const Class = ctx.constructor;
     const temp_ctx = new Class(ctx.env, {
       key: `${ctx.key}#temp_copy_current`,
       context_items: merged_ctx_items_data,
+      exclusions: merged_ctx_exclusions_data,
     });
     if (!temp_ctx) {
       emit_copy_current_build_failed(plugin, {
