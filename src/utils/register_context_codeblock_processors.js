@@ -1,8 +1,94 @@
+import { MarkdownView } from 'obsidian';
 import { context_codeblock_types } from './context_codeblock_constants.js';
 import {
   get_context_codeblock_ctx_key,
 } from './context_codeblock_utils.js';
 import { build_codeblock_entries } from './build_codeblock_entries.js';
+
+/**
+ * @param {string} line
+ * @returns {boolean}
+ */
+function is_context_codeblock_fence(line = '') {
+  const normalized_line = String(line || '').trim();
+  return context_codeblock_types.some((codeblock_type) => {
+    return normalized_line === `\`\`\`${codeblock_type}`;
+  });
+}
+
+/**
+ * @param {string} markdown
+ * @returns {{ start: number, end: number } | null}
+ */
+function find_context_codeblock_range(markdown = '') {
+  const lines = String(markdown || '').replace(/\r\n/g, '\n').split('\n');
+  let start = -1;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = String(lines[i] || '').trim();
+
+    if (start === -1) {
+      if (!is_context_codeblock_fence(line)) continue;
+      start = i;
+      continue;
+    }
+
+    if (/^\`\`\`\s*$/.test(line)) {
+      return {
+        start,
+        end: i,
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * @param {object} plugin
+ * @param {string} source_path
+ * @param {string} cb_content
+ * @returns {Promise<boolean>}
+ */
+async function sync_context_codeblock(plugin, source_path, cb_content) {
+  const app = plugin?.app;
+  if (!app || !source_path) return false;
+
+  const active_view = app.workspace?.getActiveViewOfType?.(MarkdownView);
+  if (active_view?.file?.path === source_path && active_view.editor) {
+    const markdown = active_view.editor.getValue();
+    const range = find_context_codeblock_range(markdown);
+    if (!range) return false;
+
+    active_view.editor.replaceRange(
+      cb_content,
+      { line: range.start + 1, ch: 0 },
+      { line: range.end, ch: 0 },
+    );
+    return true;
+  }
+
+  const file = app.vault.getFileByPath?.(source_path)
+    || app.vault.getAbstractFileByPath?.(source_path)
+  ;
+  if (!file) return false;
+
+  const markdown = await app.vault.read(file);
+  const range = find_context_codeblock_range(markdown);
+  if (!range) return false;
+
+  const newline = markdown.includes('\r\n') ? '\r\n' : '\n';
+  const lines = String(markdown || '').replace(/\r\n/g, '\n').split('\n');
+  const next_lines = [
+    ...lines.slice(0, range.start + 1),
+    ...String(cb_content || '').replace(/\r\n/g, '\n').replace(/\n$/, '').split('\n'),
+    ...lines.slice(range.end),
+  ];
+  const next_markdown = next_lines.join('\n').replace(/\n/g, newline);
+
+  await app.vault.modify(file, next_markdown);
+  return true;
+}
 
 /**
  * Register markdown processors for all context codeblock aliases.
@@ -42,7 +128,14 @@ export function register_context_codeblock_processors(plugin) {
           smart_context._update_disposer = smart_context.on_event('context:updated', async () => {
             const updated_cb_content = build_codeblock_entries(smart_context.data);
             try {
-              mpp_ctx.replaceCode(updated_cb_content.join('\n') + '\n');
+              const did_sync = await sync_context_codeblock(
+                plugin,
+                source_path,
+                updated_cb_content.join('\n') + '\n',
+              );
+              if (!did_sync) {
+                throw new Error('Unable to find context codeblock in source note');
+              }
             } catch (error) {
               smart_context.emit_error_event('context_codeblock:update', { message: 'Failed to update codeblock content', error_message: error?.message });
               console.error('Failed to update context codeblock content', { error, mpp_ctx, smart_context });
