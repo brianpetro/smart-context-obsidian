@@ -49,5 +49,3 @@ async function post_process(ctx, container, opts = {}) {
 
   return container;
 }
-
-export const version = '2.2.0';

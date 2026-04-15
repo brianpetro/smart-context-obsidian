@@ -39,6 +39,3 @@ export function parse_codeblock_line(line) {
   }
   return item_data;
 }
-
-
-export const version = '1.0.0';
