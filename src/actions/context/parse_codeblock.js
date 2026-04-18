@@ -29,6 +29,10 @@ export function context_parse_codeblock(params = {}) {
     this.data.context_items[item_data.key] = item_data;
   }
   console.log('context_parse_codeblock', { context_lines });
+  this.emit_event('context:updated', {
+    event_source: 'context_parse_codeblock',
+    parsed_codeblock: true,
+  });
 }
 
 export function parse_codeblock_line(line) {
