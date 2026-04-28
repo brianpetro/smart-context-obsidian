@@ -38,7 +38,7 @@ async function post_process(ctx, container, opts = {}) {
     const actions_right = container.querySelector('.sc-context-actions-right');
     this.empty(actions_right);
     render_btn_quick_copy(ctx, actions_right);
-    render_btn_copy_menu(ctx, actions_right, { supports_media: Boolean(ctx?.env?.is_pro) });
+    render_btn_copy_menu(ctx, actions_right, opts);
     render_btn_clear_context(ctx, actions_right);
     render_btn_help(ctx, actions_right);
   };
