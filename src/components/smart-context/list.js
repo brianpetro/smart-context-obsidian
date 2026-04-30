@@ -154,16 +154,6 @@ export async function post_process(smart_contexts, container, params = {}) {
 
     const { root_items, grouped_items } = partition_context_hierarchy(items);
 
-    for (const item of root_items) {
-      const row_el = await env.smart_components.render_component(
-        'smart_context_list_item',
-        item,
-        params
-      );
-      throw_if_aborted(signal);
-      if (row_el) fragment.appendChild(row_el);
-    }
-
     const grouped_entries = Array.from(grouped_items.entries()).sort((left, right) => {
       const a = String(left?.[0] ?? '').toLocaleLowerCase();
       const b = String(right?.[0] ?? '').toLocaleLowerCase();
@@ -171,12 +161,6 @@ export async function post_process(smart_contexts, container, params = {}) {
       if (a > b) return 1;
       return 0;
     });
-
-    if (root_items.length && grouped_entries.length) {
-      const separator = document.createElement('div');
-      separator.className = 'sc-contexts-dashboard-separator';
-      fragment.appendChild(separator);
-    }
 
     for (const [group_name, grouped_contexts] of grouped_entries) {
       throw_if_aborted(signal);
@@ -230,6 +214,22 @@ export async function post_process(smart_contexts, container, params = {}) {
       }
 
       fragment.appendChild(group_details);
+    }
+    
+    if (root_items.length && grouped_entries.length) {
+      const separator = document.createElement('div');
+      separator.className = 'sc-contexts-dashboard-separator';
+      fragment.appendChild(separator);
+    }
+
+    for (const item of root_items) {
+      const row_el = await env.smart_components.render_component(
+        'smart_context_list_item',
+        item,
+        params
+      );
+      throw_if_aborted(signal);
+      if (row_el) fragment.appendChild(row_el);
     }
 
     return fragment;
