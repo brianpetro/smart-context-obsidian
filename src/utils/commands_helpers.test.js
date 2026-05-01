@@ -1,5 +1,8 @@
 import test from 'ava';
-import { build_current_copy_context } from './commands_helpers.js';
+import {
+  build_copy_current_filter,
+  build_current_copy_context,
+} from './commands_helpers.js';
 
 class TestSmartContext {
   constructor(env, data = {}) {
@@ -14,6 +17,27 @@ class TestSmartContext {
 
   get key() {
     return this.data.key;
+  }
+
+  get context_items() {
+    const ctx = this;
+    return {
+      filter(predicate) {
+        const items = Object.entries(ctx.data.context_items || {})
+          .map(([key, item_data]) => ({
+            key,
+            data: {
+              key,
+              ...(item_data && typeof item_data === 'object' ? item_data : {}),
+            },
+          }))
+        ;
+        return typeof predicate === 'function'
+          ? items.filter(predicate)
+          : items
+        ;
+      },
+    };
   }
 }
 
@@ -187,9 +211,101 @@ test('build_current_copy_context keeps direct exclusions when codeblock also add
   t.deepEqual(copy_ctx.data.context_items.Shared, {
     key: 'Shared',
     named_context: true,
+    d: 0,
+    inlink: false,
     from_codeblock: true,
     base_context: false,
     base_d: Number.POSITIVE_INFINITY,
     base_inlink: false,
   });
+});
+
+test('build_current_copy_context forces explicit codeblock items to depth 0 when base context linked them deeper', async (t) => {
+  const { env, plugin } = build_plugin();
+  const base_ctx = new TestSmartContext(env, {
+    key: '+Outcome/🌐 page/Loop - page.md',
+    context_items: {
+      '+Outcome/🌐 page/Loop - page.md': {
+        key: '+Outcome/🌐 page/Loop - page.md',
+        d: 0,
+      },
+      '+📥 inbox/core-loop-meeting-step.md': {
+        key: '+📥 inbox/core-loop-meeting-step.md',
+        d: 0,
+      },
+      '+📥 inbox/core-loop-pkm-basics-step.md': {
+        key: '+📥 inbox/core-loop-pkm-basics-step.md',
+        d: 0,
+      },
+      '+Outcome/🧩 messaging/Chat - messaging.md': {
+        key: '+Outcome/🧩 messaging/Chat - messaging.md',
+        d: 1,
+      },
+      '+Outcome/🧩 messaging/Connections - messaging.md': {
+        key: '+Outcome/🧩 messaging/Connections - messaging.md',
+        d: 2,
+        inlink: true,
+      },
+    },
+  });
+  const source = {
+    actions: {
+      async source_get_context() {
+        return base_ctx;
+      },
+    },
+  };
+
+  const copy_ctx = await build_current_copy_context(plugin, {
+    source_path: '+Outcome/🌐 page/Loop - page.md',
+    source,
+    markdown: [
+      '```smart-context',
+      '+📥 inbox/core-loop-meeting-step.md',
+      '+📥 inbox/core-loop-pkm-basics-step.md',
+      '+Outcome/🧩 messaging/Chat - messaging.md',
+      '+Outcome/🧩 messaging/Connections - messaging.md',
+      '+Outcome/🧩 messaging/Context - messaging.md',
+      '+Outcome/🧩 messaging/Lookup - messaging.md',
+      '+Outcome/🧩 messaging/Plugins  messaging.md',
+      '+Outcome/🧩 messaging/Plugins - Pro messaging.md',
+      '+Outcome/🧩 messaging/Smart Loop - messaging.md',
+      '```',
+    ].join('\n'),
+  });
+
+  t.truthy(copy_ctx);
+  const chat_item = copy_ctx.data.context_items['+Outcome/🧩 messaging/Chat - messaging.md'];
+  const connections_item = copy_ctx.data.context_items['+Outcome/🧩 messaging/Connections - messaging.md'];
+
+  t.is(chat_item.d, 0);
+  t.false(chat_item.inlink);
+  t.true(chat_item.from_codeblock);
+  t.is(chat_item.base_d, 1);
+
+  t.is(connections_item.d, 0);
+  t.false(connections_item.inlink);
+  t.true(connections_item.from_codeblock);
+  t.is(connections_item.base_d, 2);
+  t.true(connections_item.base_inlink);
+
+  const depth_0_filter = build_copy_current_filter({ max_depth: 0 });
+  const copied_keys = copy_ctx.context_items
+    .filter(depth_0_filter)
+    .map((item) => item.key)
+    .sort()
+  ;
+
+  t.deepEqual(copied_keys, [
+    '+Outcome/🌐 page/Loop - page.md',
+    '+Outcome/🧩 messaging/Chat - messaging.md',
+    '+Outcome/🧩 messaging/Connections - messaging.md',
+    '+Outcome/🧩 messaging/Context - messaging.md',
+    '+Outcome/🧩 messaging/Lookup - messaging.md',
+    '+Outcome/🧩 messaging/Plugins  messaging.md',
+    '+Outcome/🧩 messaging/Plugins - Pro messaging.md',
+    '+Outcome/🧩 messaging/Smart Loop - messaging.md',
+    '+📥 inbox/core-loop-meeting-step.md',
+    '+📥 inbox/core-loop-pkm-basics-step.md',
+  ].sort());
 });

@@ -208,13 +208,20 @@ export async function build_current_copy_context(plugin, params = {}) {
     Object.entries(codeblock_context_items).forEach(([key, cb_item]) => {
       const existing_item = merged_ctx_items_data[key] || {};
       const codeblock_item = cb_item && typeof cb_item === 'object' ? cb_item : {};
+      const has_base_context = existing_item?.base_context === true;
       merged_ctx_items_data[key] = {
         key,
         ...existing_item,
         ...codeblock_item,
+        d: 0,
+        inlink: false,
         from_codeblock: true,
-        ...(existing_item?.base_context === true
-          ? {}
+        ...(has_base_context
+          ? {
+            base_context: true,
+            base_d: existing_item.base_d,
+            base_inlink: existing_item.base_inlink === true,
+          }
           : {
             base_context: false,
             base_d: Number.POSITIVE_INFINITY,
