@@ -25,14 +25,14 @@ export const smart_env_config = {
   },
   components: {
     context_codeblock: { render: context_codeblock_component, version: context_codeblock_component_version },
-    smart_context_actions: { render: smart_context_actions_component, version: "2.4.3" },
-    smart_context_list: { render: smart_context_list_component, version: "2.4.3" },
-    smart_context_list_item: { render: smart_context_list_item_component, version: "2.4.3" },
-    smart_context_settings_tab: { render: smart_context_settings_tab_component, version: "2.4.3" }
+    smart_context_actions: { render: smart_context_actions_component, version: "2.4.4" },
+    smart_context_list: { render: smart_context_list_component, version: "2.4.4" },
+    smart_context_list_item: { render: smart_context_list_item_component, version: "2.4.4" },
+    smart_context_settings_tab: { render: smart_context_settings_tab_component, version: "2.4.4" }
   },
   actions: {
-    context_convert_to_named: { action: context_convert_to_named_action, version: "2.4.3" },
-    context_parse_codeblock: { action: context_parse_codeblock_action, version: "2.4.3" },
-    source_get_context: { action: source_get_context_action, version: "2.4.3" }
+    context_convert_to_named: { action: context_convert_to_named_action, version: "2.4.4" },
+    context_parse_codeblock: { action: context_parse_codeblock_action, version: "2.4.4" },
+    source_get_context: { action: source_get_context_action, version: "2.4.4" }
   }
 };
