@@ -1,4 +1,4 @@
-
+Added: Badges to context tree: shows when an item is included by a named context. Click the badge to view the named context that includes the item.
 
 Improved: Place named context items that are grouped at the top of the contexts list
 
