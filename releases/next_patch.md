@@ -1,0 +1,1 @@
+- Improved: added missing context item handling: missing items are now highlighted in the builder and a notification is emitted with option to remove the missing item
