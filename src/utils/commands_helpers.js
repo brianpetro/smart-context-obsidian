@@ -173,6 +173,8 @@ export async function build_current_copy_context(plugin, params = {}) {
   }
 
   try {
+    await plugin.env?.run_re_import?.();
+
     const ctx = await source.actions.source_get_context();
     if (!ctx) {
       emit_copy_current_build_failed(plugin, {
@@ -391,3 +393,4 @@ export async function copy_current_as_link_tree(plugin, params = {}) {
   });
   return true;
 }
+
