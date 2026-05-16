@@ -173,7 +173,17 @@ export async function build_current_copy_context(plugin, params = {}) {
   }
 
   try {
-    await plugin.env?.run_re_import?.();
+    const re_import_queue = plugin.env?.smart_sources?.sources_re_import_queue || {};
+    const re_import_count = Object.keys(re_import_queue).length;
+    if (re_import_count && typeof plugin.env?.run_re_import === 'function') {
+      plugin.env.events?.emit?.('context:reimport_before_action', {
+        level: 'info',
+        message: 'Updating changed sources before building current-note context.',
+        count: re_import_count,
+        event_source: 'build_current_copy_context',
+      });
+      await plugin.env.run_re_import();
+    }
 
     const ctx = await source.actions.source_get_context();
     if (!ctx) {
