@@ -4,3 +4,5 @@ Improved: Run re-import prior to opening source-based context to prevent missing
 
 
 Improved: Run queued source re-imports prior to building source-based copy contexts and show an info notice only when has queued changes.
+
+Added: current file now indicated in content copied to clipboard (included in link tree and default context item wrapper template).
