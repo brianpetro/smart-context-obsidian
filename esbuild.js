@@ -1,6 +1,5 @@
 import esbuild from 'esbuild';
 import path from 'path';
-import 'dotenv/config';
 import { build_plugin } from 'obsidian-smart-env/build/build_plugin.js';
 import { build_smart_env_config } from 'obsidian-smart-env/build/build_env_config.js';
 
@@ -16,12 +15,17 @@ build_plugin({
   env_config_output_dir: process.cwd(),
   env_config_roots: roots,
   external: [
-    '@codemirror/view',
     '@codemirror/state',
+    '@codemirror/view',
+    '@xenova/transformers',
     '@huggingface/transformers',
+    'http',
+    'url',
   ],
   plugin_id: 'smart-context',
+  styles_path: path.join(process.cwd(), 'styles.css'),
 }).catch((err) => {
   console.error('Error in build process:', err);
   process.exit(1);
 });
+
