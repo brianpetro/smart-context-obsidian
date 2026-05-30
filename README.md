@@ -77,7 +77,7 @@ If the answer is generic, do not immediately copy more notes.
 First improve the starting note:
 
 - add the actual question
-- add what done means
+- add What done looks like
 - add constraints
 - add or fix links to supporting notes
 - remove stale or noisy sources
@@ -267,4 +267,4 @@ Smart Context is one piece of a larger ecosystem of local-first, user-aligned to
 
 ## Thanks to the Community
 
-Your feedback and support keep the project alive, thank you 😊🌴
+Your feedback and support keep the project alive. Thank you!
