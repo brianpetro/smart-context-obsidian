@@ -188,9 +188,11 @@ function format_items_count(count) {
 
 /**
  * @param {object} item
+ * @param {object} [params={}]
+ * @param {boolean} [params.with_media=false]
  * @returns {{ icon: string, text: string, title: string }}
  */
-function get_suggestion_badge(item) {
+function get_suggestion_badge(item, params = {}) {
   if (item?.without_codeblock) {
     return {
       icon: 'minus-circle',
@@ -204,6 +206,22 @@ function get_suggestion_badge(item) {
       icon: 'arrow-left-right',
       text: 'Include backlinks',
       title: 'Include inlinks (backlinks) in addition to outlinks.',
+    };
+  }
+
+  if (params.with_media) {
+    if (item?.d === 0) {
+      return {
+        icon: 'image-file',
+        text: 'Current media',
+        title: 'Only include media from the root note.',
+      };
+    }
+
+    return {
+      icon: 'image-file',
+      text: 'Linked media',
+      title: 'Only include media from outgoing links within the selected depth.',
     };
   }
 
@@ -224,12 +242,19 @@ function get_suggestion_badge(item) {
 
 /**
  * @param {object} item
+ * @param {object} [params={}]
+ * @param {boolean} [params.with_media=false]
  * @returns {string}
  */
-function build_suggestion_stats_text(item) {
+function build_suggestion_stats_text(item, params = {}) {
+  const item_text = `${format_items_count(item?.count || 0)} ${params.with_media ? 'media item(s)' : 'items'}`;
+  if (params.with_media) {
+    const size_text = `${format_context_estimate(item?.size || 0)} bytes`;
+    return `${size_text} | ${item_text}`;
+  }
+
   const char_text = `${format_context_estimate(item?.size || 0)} chars`;
   const token_text = `${format_context_estimate(estimate_tokens(item?.size || 0))} tokens`;
-  const item_text = `${format_items_count(item?.count || 0)} items`;
   return `${char_text} | ${token_text} | ${item_text}`;
 }
 
@@ -248,18 +273,25 @@ export class CopyContextModal extends SuggestModal {
 
     this.modalEl.classList.add('sc-copy-context-modal');
 
-    const instructions = [
-      {
-        command: 'Enter',
-        purpose: 'Copy the context using the selected depth (0 = only the current note, 1 = include linked notes, 2 = links of links).',
-      },
-    ];
+    const instructions = params.with_media
+      ? [
+        {
+          command: 'Enter',
+          purpose: 'Copy only the media bundle using the selected depth. Use text-only copy when you need copied text.',
+        },
+      ]
+      : [
+        {
+          command: 'Enter',
+          purpose: 'Copy the context using the selected depth (0 = only the current note, 1 = include linked notes, 2 = links of links).',
+        },
+      ]
+    ;
     this.setInstructions(instructions);
 
     // add heading to this.titleEl
     this.modalEl.prepend(this.titleEl);
-    // this.setTitle('Smart Context - Copy to clipboard (choose link depth)');
-    this.setTitle('Copy current note as context');
+    this.setTitle(params.with_media ? 'Copy current media' : 'Copy current note as context');
 
     const button = this.titleEl.createEl('button');
     button.classList.add('clickable-icon');
@@ -287,7 +319,8 @@ export class CopyContextModal extends SuggestModal {
     // const ctx_items = Object.values(this.ctx.context_items.items);
     const ctx_items = this.ctx.context_items.filter((item) => {
       if (item.data.exclude) return false;
-      if (item.is_media && !this.params.with_media) return false;
+      if (this.params.with_media) return item.is_media;
+      if (item.is_media) return false;
       return true;
     });
     const raw_context_items = Object.values(this.ctx?.data?.context_items || {});
@@ -330,7 +363,9 @@ export class CopyContextModal extends SuggestModal {
     const left = row.createDiv({ cls: 'sc-copy-modal__left' });
     left.createSpan({ text: `Depth ${item.d}`, cls: 'sc-copy-modal__depth' });
 
-    const badge_meta = get_suggestion_badge(item);
+    const badge_meta = get_suggestion_badge(item, {
+      with_media: this.params.with_media === true,
+    });
     const badge = left.createSpan({ cls: 'sc-copy-modal__badge' });
     const badge_icon = badge.createSpan({ cls: 'sc-copy-modal__badge-icon' });
     setIcon(badge_icon, badge_meta.icon);
@@ -340,7 +375,9 @@ export class CopyContextModal extends SuggestModal {
 
     row.createDiv({
       cls: 'sc-copy-modal__right',
-      text: build_suggestion_stats_text(item),
+      text: build_suggestion_stats_text(item, {
+        with_media: this.params.with_media === true,
+      }),
     });
   }
 
@@ -373,6 +410,7 @@ export class CopyContextModal extends SuggestModal {
       filter: (ctx_item) => {
         if (ctx_item.data.d > item.d) return false;
         if (!item.include_inlinks && ctx_item.data.inlink) return false;
+        if (this.params.with_media && !ctx_item.is_media) return false;
         return true;
       },
       max_depth: item.d, // for stats notification
@@ -380,3 +418,4 @@ export class CopyContextModal extends SuggestModal {
     });
   }
 }
+
