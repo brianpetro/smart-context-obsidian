@@ -270,21 +270,32 @@ export class CopyContextModal extends SuggestModal {
     this.ctx = ctx;
     this.params = params;
     this.suggestions = [];
+    this.use_shift_select = false;
+
+    this.scope.register(['Shift'], 'Enter', (evt) => {
+      this.use_shift_select = true;
+      this.selectActiveSuggestion(evt);
+      return false;
+    });
 
     this.modalEl.classList.add('sc-copy-context-modal');
 
     const instructions = params.with_media
       ? [
         {
-          command: 'Enter',
+          command: 'Select',
           purpose: 'Copy media using the selected depth. Use Copy text when you need text context.',
         },
       ]
       : [
         {
-          command: 'Enter',
+          command: 'Select',
           purpose: 'Copy text using the selected depth (0 = only the current note, 1 = include linked notes, 2 = links of links).',
         },
+        {
+          command: 'Shift + Select',
+          purpose: 'Copy media using the selected depth (PRO)',
+        }
       ]
     ;
     this.setInstructions(instructions);
@@ -381,10 +392,25 @@ export class CopyContextModal extends SuggestModal {
     });
   }
 
-  async onChooseSuggestion(item) {
+  async onChooseSuggestion(item, evt) {
+    const copy_media = this.params.with_media === true
+      || this.use_shift_select === true
+      || evt?.shiftKey === true
+    ;
+    this.use_shift_select = false;
+    if (copy_media && !this.env.is_pro) {
+      this?.env?.events?.emit?.('context:pro_required', {
+        level: 'warning',
+        message: 'Media copying is a PRO feature. Please upgrade to PRO to use this feature.',
+        event_source: 'copy_context_modal.onChooseSuggestion',
+        link: 'https://smartconnections.app/pro-plugins/?utm_source=context-select-copy-media',
+        hide_mute_button: true,
+      });
+      return;
+    }
     this?.env?.events?.emit?.('context:copy_started', {
       // level: 'info',
-      message: this.params.with_media ? 'Copying media...' : 'Copying text...',
+      message: copy_media ? 'Copying media...' : 'Copying text...',
       event_source: 'copy_context_modal.onChooseSuggestion',
     });
 
@@ -400,21 +426,24 @@ export class CopyContextModal extends SuggestModal {
       }
 
       await without_codeblock_ctx.actions.context_copy_to_clipboard({
-        max_depth: 0,
         ...this.params,
+        with_media: copy_media,
+        max_depth: 0,
       });
       return;
     }
 
     await this.ctx.actions.context_copy_to_clipboard({
+      ...this.params,
+      with_media: copy_media,
       filter: (ctx_item) => {
         if (ctx_item.data.d > item.d) return false;
         if (!item.include_inlinks && ctx_item.data.inlink) return false;
-        if (this.params.with_media && !ctx_item.is_media) return false;
+        if (copy_media && !ctx_item.is_media) return false;
+        if (!copy_media && ctx_item.is_media) return false;
         return true;
       },
       max_depth: item.d, // for stats notification
-      ...this.params,
     });
   }
 }

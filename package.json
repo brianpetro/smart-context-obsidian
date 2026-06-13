@@ -5,6 +5,7 @@
   "description": "Copy folder contents (Markdown & Canvas files) to the clipboard with a Smart Context approach.",
   "scripts": {
     "build": "node esbuild.js",
+    "build-dev": "node --env-file=.env esbuild.js",
     "release": "node release.js"
   },
   "repository": {
