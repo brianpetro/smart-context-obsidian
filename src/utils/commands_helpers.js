@@ -54,53 +54,17 @@ export function is_copy_current_supported_source(source, params = {}) {
 }
 
 /**
- * Resolve the Pro "Copy with media" preference for current-note copy commands.
+ * Resolve the copy mode from explicit command/modal params.
  *
- * Explicit params win over settings. Core always returns false.
+ * There is intentionally no persistent default copy mode here. Text copy and
+ * media copy are separate commands and separate clipboard actions.
  *
- * @param {any} env
  * @param {object} [params={}]
  * @param {boolean} [params.with_media]
  * @returns {boolean}
  */
-export function resolve_copy_current_with_media(env, params = {}) {
-  if (typeof params.with_media === 'boolean') {
-    return params.with_media;
-  }
-
-  if (!env?.is_pro) return false;
-  return Boolean(
-    env?.smart_contexts?.settings?.actions?.context_copy_to_clipboard?.copy_with_media,
-  );
-}
-
-/**
- * Persist the Pro "Copy with media" preference.
- *
- * @param {any} env
- * @param {boolean} enabled
- * @returns {boolean}
- */
-export function set_copy_current_with_media_setting(env, enabled) {
-  if (!env?.smart_contexts?.settings) return false;
-
-  const settings = env.smart_contexts.settings;
-  settings.actions = settings.actions || {};
-  settings.actions.context_copy_to_clipboard = settings.actions.context_copy_to_clipboard || {};
-  settings.actions.context_copy_to_clipboard.copy_with_media = Boolean(enabled);
-  env.smart_contexts.queue_save?.();
-  return settings.actions.context_copy_to_clipboard.copy_with_media;
-}
-
-/**
- * Toggle the Pro "Copy with media" preference.
- *
- * @param {any} env
- * @returns {boolean}
- */
-export function toggle_copy_current_with_media_setting(env) {
-  const next_value = !resolve_copy_current_with_media(env);
-  return set_copy_current_with_media_setting(env, next_value);
+function should_copy_media(params = {}) {
+  return params.with_media === true;
 }
 
 /**
@@ -317,8 +281,7 @@ export async function open_copy_current_modal(plugin, params = {}) {
   const copy_ctx = await build_current_copy_context(plugin, params);
   if (!copy_ctx) return false;
 
-  const with_media = resolve_copy_current_with_media(copy_ctx.env, params);
-  const modal_params = with_media ? { with_media: true } : {};
+  const modal_params = should_copy_media(params) ? { with_media: true } : {};
   const modal = new modal_class(copy_ctx, modal_params);
   modal.open();
   return true;
@@ -341,7 +304,7 @@ export async function copy_current_to_clipboard(plugin, params = {}) {
   const copy_ctx = await build_current_copy_context(plugin, params);
   if (!copy_ctx) return false;
 
-  const with_media = resolve_copy_current_with_media(copy_ctx.env, params);
+  const with_media = should_copy_media(params);
   const filter = build_copy_current_filter(params);
 
   return await copy_ctx.actions.context_copy_to_clipboard({
@@ -403,4 +366,3 @@ export async function copy_current_as_link_tree(plugin, params = {}) {
   });
   return true;
 }
-

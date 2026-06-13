@@ -161,29 +161,32 @@ export function context_commands(plugin) {
     },
     copy_current: {
       id: 'copy-current-note-with-depth',
-      name: 'Copy current to clipboard (choose link depth)',
+      name: 'Copy current text to clipboard (choose link depth)',
       checkCallback: (checking) => {
         const copy_params = get_current_copy_params(plugin);
         if (!copy_params) return false;
         if (checking) return true;
 
-        void open_copy_current_modal(plugin, copy_params);
+        void open_copy_current_modal(plugin, {
+          ...copy_params,
+          with_media: false,
+        });
         return true;
       },
     },
     copy_current_depth_0: build_direct_copy_command(plugin, {
       id: 'copy-current-note-depth-0',
-      name: 'Copy current to clipboard (depth 0)',
+      name: 'Copy current text to clipboard (depth 0)',
       max_depth: 0,
     }),
     copy_current_depth_1: build_direct_copy_command(plugin, {
       id: 'copy-current-note-depth-1',
-      name: 'Copy current to clipboard (depth 1)',
+      name: 'Copy current text to clipboard (depth 1)',
       max_depth: 1,
     }),
     copy_current_depth_1_with_backlinks: build_direct_copy_command(plugin, {
       id: 'copy-current-note-depth-1-with-backlinks',
-      name: 'Copy current to clipboard (depth 1, include backlinks)',
+      name: 'Copy current text to clipboard (depth 1, include backlinks)',
       max_depth: 1,
       include_inlinks: true,
     }),
@@ -211,3 +214,4 @@ export function context_commands(plugin) {
     },
   };
 }
+

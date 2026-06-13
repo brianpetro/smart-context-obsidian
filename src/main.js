@@ -259,7 +259,7 @@ export default class SmartContextPlugin extends SmartPlugin {
       },
       copy_context: {
         icon_name: 'smart-copy-note',
-        description: 'Smart Context: Copy to Clipboard (select depth)',
+        description: 'Smart Context: Copy current (select depth)',
         callback: async () => {
           this.app.commands.executeCommandById('smart-context:copy-current-note-with-depth');
         },

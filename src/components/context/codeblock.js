@@ -11,7 +11,7 @@ function build_html() {
         <div class="cb-actions-left">
           <button class="clickable-icon sc-codeblock-menu" type="button" aria-label="Context actions"></button>
           <button class="clickable-icon context-cb-open-builder" type="button" aria-label="Add/edit context"></button>
-          <button class="clickable-icon sc-copy-clipboard" type="button" aria-label="Copy context"></button>
+          <button class="clickable-icon sc-copy-clipboard" type="button" aria-label="Copy text"></button>
           <button class="clickable-icon sc-codeblock-help" type="button" aria-label="Help"></button>
         </div>
         <div class="cb-actions-right">
@@ -94,7 +94,7 @@ export async function post_process(ctx, container, params = {}) {
     copy_btn.disabled = !has_active_items;
     set_button_label(
       copy_btn,
-      has_active_items ? 'Copy to clipboard' : 'No context items to copy',
+      has_active_items ? 'Copy text' : 'No context items to copy',
     );
   };
 
@@ -127,11 +127,11 @@ export async function post_process(ctx, container, params = {}) {
     });
     menu.addItem((item) => {
       item
-        .setTitle('Copy context to clipboard')
+        .setTitle('Copy text')
         .setIcon('smart-copy-note')
         .setDisabled(!ctx?.item_count)
         .onClick(async () => {
-          await ctx.actions.context_copy_to_clipboard();
+          await ctx.actions.context_copy_to_clipboard({ with_media: false });
         })
       ;
     });
@@ -170,7 +170,7 @@ export async function post_process(ctx, container, params = {}) {
 
   copy_btn.addEventListener('click', async () => {
     if (copy_btn.disabled) return;
-    await ctx.actions.context_copy_to_clipboard();
+    await ctx.actions.context_copy_to_clipboard({ with_media: false });
   });
 
   setIcon(open_builder_btn, 'smart-context-builder');
@@ -194,3 +194,4 @@ export async function post_process(ctx, container, params = {}) {
 }
 
 export const version = '2.1.1';
+

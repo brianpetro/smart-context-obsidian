@@ -161,10 +161,10 @@ async function post_process(ctx, container, opts = {}) {
 
     const menu = new Menu(app);
     menu.addItem(mi =>
-      mi.setTitle('Copy context to clipboard')
+      mi.setTitle('Copy context')
         .setIcon('copy')
         .onClick(async (ev, ...other) => {
-          ctx.actions.context_copy_to_clipboard();
+          ctx.actions.context_copy_to_clipboard({ with_media: false });
         })
     );
     if (can_delete_context(ctx)) {
@@ -214,3 +214,4 @@ function can_delete_context(ctx) {
   const context_name = String(ctx?.data?.name ?? '').trim();
   return context_name.length > 0;
 }
+

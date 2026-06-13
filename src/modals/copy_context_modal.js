@@ -277,13 +277,13 @@ export class CopyContextModal extends SuggestModal {
       ? [
         {
           command: 'Enter',
-          purpose: 'Copy only the media bundle using the selected depth. Use text-only copy when you need copied text.',
+          purpose: 'Copy media using the selected depth. Use Copy text when you need text context.',
         },
       ]
       : [
         {
           command: 'Enter',
-          purpose: 'Copy the context using the selected depth (0 = only the current note, 1 = include linked notes, 2 = links of links).',
+          purpose: 'Copy text using the selected depth (0 = only the current note, 1 = include linked notes, 2 = links of links).',
         },
       ]
     ;
@@ -291,7 +291,7 @@ export class CopyContextModal extends SuggestModal {
 
     // add heading to this.titleEl
     this.modalEl.prepend(this.titleEl);
-    this.setTitle(params.with_media ? 'Copy current media' : 'Copy current note as context');
+    this.setTitle(params.with_media ? 'Copy media' : 'Copy context');
 
     const button = this.titleEl.createEl('button');
     button.classList.add('clickable-icon');
@@ -384,7 +384,7 @@ export class CopyContextModal extends SuggestModal {
   async onChooseSuggestion(item) {
     this?.env?.events?.emit?.('context:copy_started', {
       // level: 'info',
-      message: 'Copying context...',
+      message: this.params.with_media ? 'Copying media...' : 'Copying text...',
       event_source: 'copy_context_modal.onChooseSuggestion',
     });
 
