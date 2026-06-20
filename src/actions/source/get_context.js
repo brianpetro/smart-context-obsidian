@@ -60,6 +60,10 @@ export async function source_get_context(params = {}) {
   const smart_contexts = this.env.smart_contexts;
   const context_key = this.key;
 
+  if (context_items[this.key]) {
+    context_items[this.key].current = true;
+  }
+
   const smart_context = await smart_contexts.create_or_update({
     key: context_key,
     context_items,

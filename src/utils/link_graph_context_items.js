@@ -61,7 +61,7 @@ export function get_embedded_outlink_keys(root_source) {
  * @param {any|null} [params.root_source=null]
  * @param {boolean} [params.exclude_root=false]
  * @param {boolean} [params.sort=true]
- * @returns {Array<{ depth:number, item:any }>}
+ * @returns {Array<{ depth:number, item:any, embedded?:boolean }>}
  */
 export function normalize_graph_link_entries(graph = [], params = {}) {
   if (!Array.isArray(graph) || !graph.length) return [];
@@ -73,7 +73,7 @@ export function normalize_graph_link_entries(graph = [], params = {}) {
   const root_key = typeof root_source?.key === 'string' ? root_source.key : '';
   const embedded_outlink_keys = get_embedded_outlink_keys(root_source);
 
-  /** @type {Map<string, { depth:number, item:any }>} */
+  /** @type {Map<string, { depth:number, item:any, embedded?:boolean }>} */
   const by_key = new Map();
 
   for (let i = 0; i < graph.length; i += 1) {
@@ -90,7 +90,12 @@ export function normalize_graph_link_entries(graph = [], params = {}) {
 
     const existing = by_key.get(key);
     if (!existing || depth < existing.depth) {
-      by_key.set(key, { depth, item });
+      by_key.set(key, {
+        depth,
+        item,
+        ...(embedded_outlink_keys.has(key) ? { embedded: true } : {}),
+        ...(entry.section ? { section: entry.section } : {}),
+      });
     }
   }
 
@@ -111,12 +116,11 @@ export function normalize_graph_link_entries(graph = [], params = {}) {
 /**
  * Build a context_items payload from one traversal graph.
  *
- * @param {Array<{ depth:number, item:any }>} graph
+ * @param {Array<{ depth:number, item:any, embedded?:boolean }>} graph
  * @param {object} [params={}]
  * @param {any|null} [params.root_source=null]
  * @param {boolean} [params.include_root=true]
- * @param {boolean} [params.mark_link=true]
- * @returns {Record<string, { d:number, mtime?:number, size?:number, link?:boolean }>}
+ * @returns {Record<string, { d:number, mtime?:number, size?:number, link?:boolean, embedded?:boolean }>}
  */
 export function build_context_items_from_graph(graph = [], params = {}) {
   const normalized = normalize_graph_link_entries(graph, {
@@ -125,7 +129,7 @@ export function build_context_items_from_graph(graph = [], params = {}) {
     sort: true,
   });
 
-  /** @type {Record<string, { d:number, mtime?:number, size?:number, link?:boolean }>} */
+  /** @type {Record<string, { d:number, mtime?:number, size?:number, link?:boolean, embedded?:boolean }>} */
   const context_items = {};
 
   for (let i = 0; i < normalized.length; i += 1) {
@@ -140,11 +144,10 @@ export function build_context_items_from_graph(graph = [], params = {}) {
       d: Number.isFinite(existing?.d) ? Math.min(existing.d, entry.depth) : entry.depth,
       mtime: item?.mtime,
       size: item?.size,
+      link: true,
+      embedded: entry.embedded === true,
+      section: entry.section,
     };
-
-    if (params.mark_link !== false) {
-      next_item.link = true;
-    }
 
     context_items[key] = next_item;
   }
