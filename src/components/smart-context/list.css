@@ -254,6 +254,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: var(--font-smaller);
 }
 
 .sc-contexts-dashboard-count {
@@ -266,7 +267,7 @@
   border: 1px solid var(--sc-contexts-pill-border);
   background: var(--sc-contexts-pill-bg);
   color: var(--text-muted);
-  font-size: var(--font-ui-small);
+  font-size: var(--font-smallest);
   white-space: nowrap;
   cursor: pointer;
 }
