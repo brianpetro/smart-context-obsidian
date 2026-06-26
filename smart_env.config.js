@@ -11,6 +11,7 @@ import { render as smart_context_settings_tab_component } from './src/components
 import { context_convert_to_named as context_convert_to_named_action, menus as context_convert_to_named_action_menus } from './src/actions/context/convert_to_named.js';
 import { context_delete_context as context_delete_context_action, menus as context_delete_context_action_menus } from './src/actions/context/delete_context.js';
 import { context_make_copy as context_make_copy_action, menus as context_make_copy_action_menus } from './src/actions/context/make_copy.js';
+import { context_open_builder as context_open_builder_action, menus as context_open_builder_action_menus } from './src/actions/context/open_builder.js';
 import { context_open_codeblock_builder as context_open_codeblock_builder_action, menus as context_open_codeblock_builder_action_menus } from './src/actions/context/open_codeblock_builder.js';
 import { context_open_codeblock_help as context_open_codeblock_help_action, menus as context_open_codeblock_help_action_menus } from './src/actions/context/open_codeblock_help.js';
 import { context_parse_codeblock as context_parse_codeblock_action } from './src/actions/context/parse_codeblock.js';
@@ -40,6 +41,7 @@ export const smart_env_config = {
     context_convert_to_named: { action: context_convert_to_named_action, menus: context_convert_to_named_action_menus, version: "2.4.6" },
     context_delete_context: { action: context_delete_context_action, menus: context_delete_context_action_menus, version: "2.4.6" },
     context_make_copy: { action: context_make_copy_action, menus: context_make_copy_action_menus, version: "2.4.6" },
+    context_open_builder: { action: context_open_builder_action, menus: context_open_builder_action_menus, version: "2.4.6" },
     context_open_codeblock_builder: { action: context_open_codeblock_builder_action, menus: context_open_codeblock_builder_action_menus, version: "2.4.6" },
     context_open_codeblock_help: { action: context_open_codeblock_help_action, menus: context_open_codeblock_help_action_menus, version: "2.4.6" },
     context_parse_codeblock: { action: context_parse_codeblock_action, version: "2.4.6" },

@@ -12,7 +12,6 @@ export function build_html(ctx, opts = {}) {
   return `<div>
     <div class="${DASHBOARD_ITEM_CLASS}" data-context-key="${ctx?.data?.key || ''}">
       <div class="sc-contexts-dashboard-item-header" tabindex="0" aria-label="${opts.display_name || ctx.name}">
-        <button class="sc-contexts-dashboard-show" aria-expanded="false" aria-label="Show ${opts.display_name || ctx.name}">Show</button>
         <button class="clickable-icon sc-contexts-dashboard-menu" type="button" aria-label="Actions for ${opts.display_name || ctx.name}"></button>
         <span class="sc-contexts-dashboard-name">${opts.display_name || ctx.name}</span>
         <span class="sc-contexts-dashboard-count">${ctx.item_count} items</span>
@@ -74,7 +73,6 @@ function show_menu(menu, event, anchor_el) {
  */
 async function post_process(ctx, container, opts = {}) {
   const header_el = container.querySelector('.sc-contexts-dashboard-item-header');
-  const show_btn = container.querySelector('.sc-contexts-dashboard-show');
   const menu_btn = container.querySelector('.sc-contexts-dashboard-menu');
   const count_span = container.querySelector('.sc-contexts-dashboard-count');
   const delete_confirm_el = container.querySelector('.sc-contexts-dashboard-delete-confirm');
@@ -125,7 +123,6 @@ async function post_process(ctx, container, opts = {}) {
 
       container.classList.add(delete_confirm_state_class);
       if (delete_confirm_el) delete_confirm_el.hidden = false;
-      if (show_btn) show_btn.hidden = true;
       if (menu_btn) menu_btn.hidden = true;
       if (count_span) count_span.hidden = true;
 
@@ -156,7 +153,6 @@ async function post_process(ctx, container, opts = {}) {
 
     container.classList.remove(delete_confirm_state_class);
     if (delete_confirm_el) delete_confirm_el.hidden = true;
-    if (show_btn) show_btn.hidden = false;
     if (menu_btn) menu_btn.hidden = false;
     if (count_span) count_span.hidden = false;
 
@@ -195,7 +191,7 @@ async function post_process(ctx, container, opts = {}) {
     show_menu(menu, ev, menu_btn || header_el || container);
   };
 
-  show_btn.addEventListener('click', async () => {
+  count_span?.addEventListener('click', async () => {
     ctx.emit_event('context_selector:open');
   });
 
