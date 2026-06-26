@@ -8,3 +8,6 @@ Improved: building context from current source adds embedded and section data to
 
 
 Refactored: codeblock menu should use context menu actions pattern
+
+
+Added: copy context menu action
