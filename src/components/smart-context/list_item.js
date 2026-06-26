@@ -1,7 +1,6 @@
-import { Menu } from 'obsidian';
+import { Menu, setIcon } from 'obsidian';
 
 const DASHBOARD_ITEM_CLASS = 'sc-contexts-dashboard-item';
-const delete_context_label = 'Delete named context';
 const delete_confirm_state_class = 'is-delete-confirm';
 
 /**
@@ -14,6 +13,7 @@ export function build_html(ctx, opts = {}) {
     <div class="${DASHBOARD_ITEM_CLASS}" data-context-key="${ctx?.data?.key || ''}">
       <div class="sc-contexts-dashboard-item-header" tabindex="0" aria-label="${opts.display_name || ctx.name}">
         <button class="sc-contexts-dashboard-show" aria-expanded="false" aria-label="Show ${opts.display_name || ctx.name}">Show</button>
+        <button class="clickable-icon sc-contexts-dashboard-menu" type="button" aria-label="Actions for ${opts.display_name || ctx.name}"></button>
         <span class="sc-contexts-dashboard-name">${opts.display_name || ctx.name}</span>
         <span class="sc-contexts-dashboard-count">${ctx.item_count} items</span>
         <div class="sc-contexts-dashboard-delete-confirm" hidden>
@@ -41,6 +41,32 @@ export async function render(ctx, opts = {}) {
 }
 
 /**
+ * @param {Menu} menu
+ * @param {MouseEvent|KeyboardEvent} event
+ * @param {HTMLElement} anchor_el
+ * @returns {void}
+ */
+function show_menu(menu, event, anchor_el) {
+  if (typeof MouseEvent !== 'undefined' && event instanceof MouseEvent) {
+    menu.showAtMouseEvent(event);
+    return;
+  }
+
+  const rect = anchor_el.getBoundingClientRect();
+  if (typeof menu.showAtPosition === 'function') {
+    menu.showAtPosition({ x: rect.left, y: rect.bottom });
+    return;
+  }
+
+  menu.showAtMouseEvent(new MouseEvent('contextmenu', {
+    bubbles: true,
+    cancelable: true,
+    clientX: rect.left,
+    clientY: rect.bottom,
+  }));
+}
+
+/**
  * @param {import('smart-contexts').SmartContext} ctx
  * @param {HTMLElement} container
  * @param {object} [opts]
@@ -49,6 +75,7 @@ export async function render(ctx, opts = {}) {
 async function post_process(ctx, container, opts = {}) {
   const header_el = container.querySelector('.sc-contexts-dashboard-item-header');
   const show_btn = container.querySelector('.sc-contexts-dashboard-show');
+  const menu_btn = container.querySelector('.sc-contexts-dashboard-menu');
   const count_span = container.querySelector('.sc-contexts-dashboard-count');
   const delete_confirm_el = container.querySelector('.sc-contexts-dashboard-delete-confirm');
   const delete_label_el = delete_confirm_el?.querySelector('.sc-contexts-dashboard-delete-label');
@@ -58,12 +85,28 @@ async function post_process(ctx, container, opts = {}) {
   let is_confirming_delete = false;
   let remove_confirm_dismiss_listeners = null;
 
+  setIcon(menu_btn, 'menu');
+
   const resolve_context_name = () => {
     const raw = String(ctx?.data?.name ?? '').trim();
     if (raw) return raw;
     const fallback = String(opts?.display_name ?? '').trim();
     if (fallback) return fallback;
     return '';
+  };
+
+  const delete_context = (params = {}) => {
+    if (typeof ctx?.actions?.context_delete_context === 'function') {
+      return ctx.actions.context_delete_context(params);
+    }
+
+    const context_name = resolve_context_name();
+    ctx.delete();
+    ctx.emit_event('context:deleted', {
+      name: context_name,
+      event_source: params.event_source || 'smart_context_dashboard.delete_confirm',
+    });
+    return true;
   };
 
   const set_confirming_delete = (next_state) => {
@@ -83,6 +126,7 @@ async function post_process(ctx, container, opts = {}) {
       container.classList.add(delete_confirm_state_class);
       if (delete_confirm_el) delete_confirm_el.hidden = false;
       if (show_btn) show_btn.hidden = true;
+      if (menu_btn) menu_btn.hidden = true;
       if (count_span) count_span.hidden = true;
 
       const dismiss_on_click_outside = (ev) => {
@@ -113,6 +157,7 @@ async function post_process(ctx, container, opts = {}) {
     container.classList.remove(delete_confirm_state_class);
     if (delete_confirm_el) delete_confirm_el.hidden = true;
     if (show_btn) show_btn.hidden = false;
+    if (menu_btn) menu_btn.hidden = false;
     if (count_span) count_span.hidden = false;
 
     if (remove_confirm_dismiss_listeners) {
@@ -121,33 +166,7 @@ async function post_process(ctx, container, opts = {}) {
     }
   };
 
-  show_btn.addEventListener('click', async () => {
-    ctx.emit_event('context_selector:open');
-  });
-
-  delete_cancel_btn?.addEventListener('click', (ev) => {
-    ev.preventDefault();
-    ev.stopPropagation();
-    set_confirming_delete(false);
-  });
-
-  delete_confirm_btn?.addEventListener('click', (ev) => {
-    ev.preventDefault();
-    ev.stopPropagation();
-    const context_name = resolve_context_name();
-    set_confirming_delete(false);
-    ctx.delete();
-    ctx.emit_event('context:deleted', { name: context_name });
-  });
-
-  header_el?.addEventListener('click', (ev) => {
-    if (!is_confirming_delete) return;
-    if (delete_confirm_el?.contains(ev.target)) return;
-    set_confirming_delete(false);
-  });
-
-  /* right-click actions menu */
-  container.addEventListener('contextmenu', (ev) => {
+  const open_context_actions_menu = (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
     set_confirming_delete(false);
@@ -160,25 +179,56 @@ async function post_process(ctx, container, opts = {}) {
     if (!app) return;
 
     const menu = new Menu(app);
-    menu.addItem(mi =>
-      mi.setTitle('Copy context')
-        .setIcon('copy')
-        .onClick(async (ev, ...other) => {
-          ctx.actions.context_copy_to_clipboard({ with_media: false });
-        })
-    );
-    if (can_delete_context(ctx)) {
-      menu.addItem(mi =>
-        mi.setTitle(delete_context_label)
-          .setIcon('trash')
-          .onClick(() => {
-            set_confirming_delete(true);
-          })
-      );
-    }
+    const menu_params = {
+      ...opts,
+      app,
+      confirm_delete: () => set_confirming_delete(true),
+    };
 
-    menu.showAtMouseEvent(ev);
+    const before_copy_count = menu.items?.length || 0;
+    ctx.env?.build_menu?.('smart_context:copy_menu', menu, ctx, menu_params);
+    const after_copy_count = menu.items?.length || 0;
+    if (after_copy_count > before_copy_count) menu.addSeparator();
+    ctx.env?.build_menu?.('smart_context:action_menu', menu, ctx, menu_params);
+
+    if (!(menu.items?.length > 0)) return;
+    show_menu(menu, ev, menu_btn || header_el || container);
+  };
+
+  show_btn.addEventListener('click', async () => {
+    ctx.emit_event('context_selector:open');
   });
+
+  menu_btn?.addEventListener('click', open_context_actions_menu);
+  menu_btn?.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    open_context_actions_menu(ev);
+  });
+
+  delete_cancel_btn?.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    set_confirming_delete(false);
+  });
+
+  delete_confirm_btn?.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    set_confirming_delete(false);
+    delete_context({
+      confirmed: true,
+      event_source: 'smart_context_dashboard.delete_confirm',
+    });
+  });
+
+  header_el?.addEventListener('click', (ev) => {
+    if (!is_confirming_delete) return;
+    if (delete_confirm_el?.contains(ev.target)) return;
+    set_confirming_delete(false);
+  });
+
+  /* right-click actions menu */
+  container.addEventListener('contextmenu', open_context_actions_menu);
 
   const disposers = [];
   const update_count = () => {
@@ -205,13 +255,3 @@ async function post_process(ctx, container, opts = {}) {
 
   return container;
 }
-
-/**
- * @param {import('smart-contexts').SmartContext} ctx
- * @returns {boolean}
- */
-function can_delete_context(ctx) {
-  const context_name = String(ctx?.data?.name ?? '').trim();
-  return context_name.length > 0;
-}
-

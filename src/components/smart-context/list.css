@@ -297,6 +297,42 @@
   box-shadow: 0 0 0 3px var(--sc-contexts-focus);
 }
 
+.sc-contexts-dashboard-menu {
+  order: 4;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--sc-contexts-border);
+  background: var(--sc-contexts-surface);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+.sc-contexts-dashboard-menu:hover {
+  background: var(--sc-contexts-surface-hover);
+  border-color: var(--sc-contexts-border-strong);
+  color: var(--text-normal);
+}
+
+.sc-contexts-dashboard-menu:active {
+  transform: translateY(1px);
+}
+
+.sc-contexts-dashboard-menu:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--sc-contexts-focus);
+}
+
+.sc-contexts-dashboard-menu svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* Make items inside a group look like native "sublist" rows */
 .sc-contexts-dashboard-group-items .sc-contexts-dashboard-item {
   border: none;
