@@ -86,5 +86,5 @@ const action_menu = {
 };
 
 export const menus = {
-  'smart_context:actions_menu': action_menu,
+  'smart_context:action_menu': action_menu,
 };
