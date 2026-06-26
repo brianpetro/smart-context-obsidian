@@ -106,54 +106,16 @@ export async function post_process(ctx, container, params = {}) {
     if (!app) return;
 
     const menu = new Menu(app);
-    menu.addItem((item) => {
-      item
-        .setTitle('Create named context')
-        .setIcon('smart-named-contexts')
-        .onClick(() => {
-          ctx.actions.context_convert_to_named();
-        })
-      ;
-    });
+    const menu_params = {
+      ...params,
+      app,
+    };
+
+    ctx.env?.build_menu?.('smart_context:codeblock_menu', menu, ctx, menu_params);
     menu.addSeparator();
-    menu.addItem((item) => {
-      item
-        .setTitle('Open context builder')
-        .setIcon('smart-context-builder')
-        .onClick(() => {
-          open_context_selector_for_codeblock(ctx);
-        })
-      ;
-    });
-    menu.addItem((item) => {
-      item
-        .setTitle('Copy text')
-        .setIcon('smart-copy-note')
-        .setDisabled(!ctx?.item_count)
-        .onClick(async () => {
-          await ctx.actions.context_copy_to_clipboard({ with_media: false });
-        })
-      ;
-    });
-    menu.addItem((item) => {
-      item
-        .setTitle('Open named contexts dashboard')
-        .setIcon('smart-named-contexts')
-        .onClick(() => {
-          app.commands.executeCommandById('smart-context:smart-contexts-dashboard');
-        })
-      ;
-    });
+    ctx.env?.build_menu?.('smart_context:copy_menu', menu, ctx, menu_params);
     menu.addSeparator();
-    menu.addItem((item) => {
-      item
-        .setTitle('Help')
-        .setIcon('help-circle')
-        .onClick(() => {
-          window.open('https://smartconnections.app/smart-context/codeblock/?utm_source=codeblock-menu', '_external');
-        })
-      ;
-    });
+    ctx.env?.build_menu?.('smart_contexts:menu', menu, ctx, menu_params);
 
     show_menu(menu, event, menu_btn);
   };
@@ -193,5 +155,5 @@ export async function post_process(ctx, container, params = {}) {
   return container;
 }
 
-export const version = '2.1.1';
+export const version = '2.1.2';
 

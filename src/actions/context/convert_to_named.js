@@ -101,3 +101,11 @@ function build_default_named_context_name(source_path, smart_contexts, params = 
   const base_name = `${get_basename(source_path)} ${format_ymd(now)}`;
   return build_unique_context_name(base_name, get_existing_context_names(smart_contexts));
 }
+
+export const menus = {
+  'smart_context:codeblock_menu': {
+    title: 'Create named context',
+    icon: 'smart-named-contexts',
+    order: 10,
+  },
+};
