@@ -5,3 +5,6 @@ enhance CopyContextModal to support media copying with Shift + Select
 
 
 Improved: building context from current source adds embedded and section data to context item
+
+
+Refactored: codeblock menu should use context menu actions pattern
