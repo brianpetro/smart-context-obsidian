@@ -11,3 +11,6 @@ Refactored: codeblock menu should use context menu actions pattern
 
 
 Added: copy context menu action
+
+
+Improved: file-nav menu options should use menu action pattern
