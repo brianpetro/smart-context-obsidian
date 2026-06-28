@@ -10,12 +10,8 @@ import { SmartContextSettingTab } from './views/settings_tab.js';
 import { copy_to_clipboard } from 'obsidian-smart-env/src/utils/copy_to_clipboard.js';
 import { show_stats_notice } from './utils/show_stats_notice.js';
 
-import { get_selected_note_keys } from './utils/get_selected_note_keys.js';
-import { get_selected_context_item_keys } from './utils/get_selected_context_item_keys.js';
 import {
   expand_folders_to_item_keys,
-  get_selected_folder_paths,
-  normalize_folder_prefix,
 } from './utils/folder_selection.js';
 
 import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';
@@ -171,68 +167,23 @@ export default class SmartContextPlugin extends SmartPlugin {
   register_folder_menu() {
     this.registerEvent(this.app.workspace.on('file-menu', (menu, file) => {
       if (!(file instanceof TFolder)) return;
-      menu.addItem((item) => {
-        item
-          .setTitle('Copy folder contents to clipboard')
-          .setIcon('documents')
-          .onClick(async () => { await this.copy_folder_to_clipboard(file); });
-      });
-      menu.addItem((item) => {
-        item
-          .setTitle('Open folder in Context Builder')
-          .setIcon('layout-list')
-          .onClick(async () => {
-            const folder_prefix = normalize_folder_prefix(file.path);
-            const folder_item_keys = this.env.smart_sources
-              .filter({ key_starts_with: folder_prefix })
-              .map((src) => src.key)
-            ;
-            this.open_new_context_modal({ add_items: folder_item_keys });
-          });
+
+      this.env?.build_menu?.('env:folder_menu', menu, this.env, {
+        plugin: this,
+        file,
+        folder: file,
+        files: [file],
       });
     }));
   }
 
   register_files_menu() {
     this.registerEvent(this.app.workspace.on('files-menu', (menu, files) => {
-      const folder_paths = get_selected_folder_paths(files);
-      const has_folders = folder_paths.length > 0;
-
-      const selected_item_keys = get_selected_context_item_keys(files, this.env.smart_sources);
-
-      if (selected_item_keys.length > 0 || has_folders) {
-        menu.addItem((item) => {
-          item
-            .setTitle('Open selection in Context Builder')
-            .setIcon('layout-list')
-            .onClick(async () => {
-              this.open_new_context_modal({ add_items: selected_item_keys });
-            });
-        });
-      }
-
-      const selected_keys = get_selected_note_keys(files, this.env.smart_sources);
-      if (selected_keys.length > 1) {
-        menu.addItem((item) => {
-          item
-            .setTitle('Copy selected notes as context')
-            .setIcon('documents')
-            .onClick(async () => {
-              await this.copy_selected_files_to_clipboard(files);
-            });
-        });
-      }
-
-      if (folder_paths.length > 1) {
-        menu.addItem((item) => {
-          item
-            .setTitle('Copy selected folders as context')
-            .setIcon('documents')
-            .onClick(async () => {
-              await this.copy_selected_folders_to_clipboard(files);
-            });
-        });
-      }
+      const selection = Array.isArray(files) ? files : [];
+      this.env?.build_menu?.('env:files_menu', menu, this.env, {
+        plugin: this,
+        files: selection,
+      });
     }));
   }
 
@@ -303,55 +254,6 @@ export default class SmartContextPlugin extends SmartPlugin {
 
   async copy_folder_to_clipboard(folder) {
     const add_items = expand_folders_to_item_keys([folder?.path], this.env.smart_sources);
-
-    const ctx = this.env.smart_contexts.new_context({}, { add_items });
-    this.emit_file_nav_copy_event(ctx);
-    ctx.actions.context_copy_to_clipboard();
-  }
-
-  async copy_selected_files_to_clipboard(files) {
-    const add_items = get_selected_note_keys(files, this.env.smart_sources);
-    if (!add_items.length) {
-      this.env?.events?.emit('context:copy_selection_empty', {
-        level: 'warning',
-        message: 'No Smart Context notes found in selection.',
-        event_source: 'copy_selected_files_to_clipboard',
-      });
-      return;
-    }
-
-    const ctx = this.env.smart_contexts.new_context({}, { add_items });
-    this.emit_file_nav_copy_event(ctx);
-    ctx.actions.context_copy_to_clipboard();
-  }
-
-  /**
-   * Copy all notes within the selected folders to clipboard as a single context.
-   *
-   * @param {Array<{path?: string, children?: unknown}>} files
-   * @returns {Promise<void>}
-   */
-  async copy_selected_folders_to_clipboard(files) {
-    const folder_paths = get_selected_folder_paths(files);
-    if (!folder_paths.length) {
-      this.env?.events?.emit('context:copy_selection_empty', {
-        level: 'warning',
-        message: 'No folders found in selection.',
-        event_source: 'copy_selected_folders_to_clipboard',
-      });
-      return;
-    }
-
-    const add_items = expand_folders_to_item_keys(folder_paths, this.env.smart_sources);
-
-    if (!add_items.length) {
-      this.env?.events?.emit('context:copy_selection_empty', {
-        level: 'warning',
-        message: 'No Smart Context notes found in selected folders.',
-        event_source: 'copy_selected_folders_to_clipboard',
-      });
-      return;
-    }
 
     const ctx = this.env.smart_contexts.new_context({}, { add_items });
     this.emit_file_nav_copy_event(ctx);
