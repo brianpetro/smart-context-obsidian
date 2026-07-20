@@ -38,8 +38,8 @@ export function smart_contexts_insert_codeblock(params = {}) {
 }
 
 export const commands = {
-  'external-file-codeblock': {
-    name: 'Insert codeblock (add notes & named contexts)',
+  'context-codeblock': {
+    name: 'Insert codeblock',
     context: 'editor',
 
     register_when({ plugin }) {
