@@ -15,13 +15,16 @@ import { context_open_builder as context_open_builder_action, menus as context_o
 import { context_open_codeblock_builder as context_open_codeblock_builder_action, menus as context_open_codeblock_builder_action_menus } from './src/actions/context/open_codeblock_builder.js';
 import { context_open_codeblock_help as context_open_codeblock_help_action, menus as context_open_codeblock_help_action_menus } from './src/actions/context/open_codeblock_help.js';
 import { context_parse_codeblock as context_parse_codeblock_action } from './src/actions/context/parse_codeblock.js';
-import { env_copy_folder_to_clipboard as env_copy_folder_to_clipboard_action, menus as env_copy_folder_to_clipboard_action_menus } from './src/actions/env/copy_folder_to_clipboard.js';
+import { env_copy_folder_to_clipboard as env_copy_folder_to_clipboard_action, commands as env_copy_folder_to_clipboard_action_commands, menus as env_copy_folder_to_clipboard_action_menus } from './src/actions/env/copy_folder_to_clipboard.js';
 import { env_copy_selected_folders_to_clipboard as env_copy_selected_folders_to_clipboard_action, menus as env_copy_selected_folders_to_clipboard_action_menus } from './src/actions/env/copy_selected_folders_to_clipboard.js';
 import { env_copy_selected_notes_to_clipboard as env_copy_selected_notes_to_clipboard_action, menus as env_copy_selected_notes_to_clipboard_action_menus } from './src/actions/env/copy_selected_notes_to_clipboard.js';
 import { env_open_file_selection_in_context_builder as env_open_file_selection_in_context_builder_action, menus as env_open_file_selection_in_context_builder_action_menus } from './src/actions/env/open_file_selection_in_context_builder.js';
 import { env_open_folder_in_context_builder as env_open_folder_in_context_builder_action, menus as env_open_folder_in_context_builder_action_menus } from './src/actions/env/open_folder_in_context_builder.js';
-import { smart_contexts_open_dashboard as smart_contexts_open_dashboard_action, menus as smart_contexts_open_dashboard_action_menus } from './src/actions/smart-contexts/open_dashboard.js';
-import { smart_contexts_open_onboarding as smart_contexts_open_onboarding_action, menus as smart_contexts_open_onboarding_action_menus } from './src/actions/smart-contexts/open_onboarding.js';
+import { smart_contexts_insert_codeblock as smart_contexts_insert_codeblock_action, commands as smart_contexts_insert_codeblock_action_commands } from './src/actions/smart-contexts/insert_codeblock.js';
+import { smart_contexts_open_dashboard as smart_contexts_open_dashboard_action, ribbon_icons as smart_contexts_open_dashboard_action_ribbon_icons, menus as smart_contexts_open_dashboard_action_menus } from './src/actions/smart-contexts/open_dashboard.js';
+import { smart_contexts_open_new as smart_contexts_open_new_action, commands as smart_contexts_open_new_action_commands, ribbon_icons as smart_contexts_open_new_action_ribbon_icons } from './src/actions/smart-contexts/open_new.js';
+import { smart_contexts_open_onboarding as smart_contexts_open_onboarding_action, commands as smart_contexts_open_onboarding_action_commands, menus as smart_contexts_open_onboarding_action_menus } from './src/actions/smart-contexts/open_onboarding.js';
+import { source_copy_current as source_copy_current_action, commands as source_copy_current_action_commands, ribbon_icons as source_copy_current_action_ribbon_icons } from './src/actions/source/copy_current.js';
 import { source_get_context as source_get_context_action } from './src/actions/source/get_context.js';
 
 
@@ -50,13 +53,16 @@ export const smart_env_config = {
     context_open_codeblock_builder: { action: context_open_codeblock_builder_action, menus: context_open_codeblock_builder_action_menus, version: "2.4.6" },
     context_open_codeblock_help: { action: context_open_codeblock_help_action, menus: context_open_codeblock_help_action_menus, version: "2.4.6" },
     context_parse_codeblock: { action: context_parse_codeblock_action, version: "2.4.6" },
-    env_copy_folder_to_clipboard: { action: env_copy_folder_to_clipboard_action, menus: env_copy_folder_to_clipboard_action_menus, version: "2.4.6" },
+    env_copy_folder_to_clipboard: { action: env_copy_folder_to_clipboard_action, commands: env_copy_folder_to_clipboard_action_commands, menus: env_copy_folder_to_clipboard_action_menus, version: "2.4.6" },
     env_copy_selected_folders_to_clipboard: { action: env_copy_selected_folders_to_clipboard_action, menus: env_copy_selected_folders_to_clipboard_action_menus, version: "2.4.6" },
     env_copy_selected_notes_to_clipboard: { action: env_copy_selected_notes_to_clipboard_action, menus: env_copy_selected_notes_to_clipboard_action_menus, version: "2.4.6" },
     env_open_file_selection_in_context_builder: { action: env_open_file_selection_in_context_builder_action, menus: env_open_file_selection_in_context_builder_action_menus, version: "2.4.6" },
     env_open_folder_in_context_builder: { action: env_open_folder_in_context_builder_action, menus: env_open_folder_in_context_builder_action_menus, version: "2.4.6" },
-    smart_contexts_open_dashboard: { action: smart_contexts_open_dashboard_action, menus: smart_contexts_open_dashboard_action_menus, version: "2.4.6" },
-    smart_contexts_open_onboarding: { action: smart_contexts_open_onboarding_action, menus: smart_contexts_open_onboarding_action_menus, version: "2.4.6" },
+    smart_contexts_insert_codeblock: { action: smart_contexts_insert_codeblock_action, commands: smart_contexts_insert_codeblock_action_commands, version: "2.4.6" },
+    smart_contexts_open_dashboard: { action: smart_contexts_open_dashboard_action, ribbon_icons: smart_contexts_open_dashboard_action_ribbon_icons, menus: smart_contexts_open_dashboard_action_menus, version: "2.4.6" },
+    smart_contexts_open_new: { action: smart_contexts_open_new_action, commands: smart_contexts_open_new_action_commands, ribbon_icons: smart_contexts_open_new_action_ribbon_icons, version: "2.4.6" },
+    smart_contexts_open_onboarding: { action: smart_contexts_open_onboarding_action, commands: smart_contexts_open_onboarding_action_commands, menus: smart_contexts_open_onboarding_action_menus, version: "2.4.6" },
+    source_copy_current: { action: source_copy_current_action, commands: source_copy_current_action_commands, ribbon_icons: source_copy_current_action_ribbon_icons, version: "2.4.6" },
     source_get_context: { action: source_get_context_action, version: "2.4.6" }
   }
 };

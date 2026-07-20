@@ -24,3 +24,22 @@ export const menus = {
     order: 30,
   },
 };
+
+export const ribbon_icons = {
+  list_contexts: {
+    icon_name: 'smart-named-contexts',
+    description: 'Smart Context: List Named Contexts',
+
+    register_when({ plugin }) {
+      return plugin.manifest.id === 'smart-context';
+    },
+
+    params({ app }) {
+      return { app };
+    },
+
+    get_scope({ env }) {
+      return env.smart_contexts;
+    },
+  },
+};

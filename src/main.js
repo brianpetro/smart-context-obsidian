@@ -19,7 +19,6 @@ import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';
 import { ContextsDashboardView } from './views/contexts_dashboard_view.js';
 import { ReleaseNotesView } from './views/release_notes_view.js';
 import { smart_env_config } from './default.config.js';
-import { context_commands } from './commands/context_commands.js';
 import { register_context_codeblock_processors } from './utils/register_context_codeblock_processors.js';
 
 /**
@@ -48,15 +47,14 @@ export default class SmartContextPlugin extends SmartPlugin {
     await this.load_new_user_state();
     await this.SmartEnv.wait_for({ loaded: true });
 
-    this.register_commands();
+    this.register_command_actions();
     this.register_codeblock_processors();
-    this.register_ribbon_icons();
+    this.register_ribbon_actions();
     this.register_folder_menu();
     this.register_files_menu();
 
     ContextsDashboardView.register_item_view(this);
     this.ReleaseNotesView.register_item_view(this);
-
 
     // First-run onboarding
     if (this.is_new_user()) {
@@ -195,51 +193,12 @@ export default class SmartContextPlugin extends SmartPlugin {
     return rel;
   }
 
-  get commands() {
-    return {
-      ...context_commands(this),
-    };
-  }
-
-  get ribbon_icons() {
-    return {
-      new_context: {
-        icon_name: 'smart-context-builder',
-        description: 'Smart Context: Open Builder',
-        callback: () => { this.open_new_context_modal(); },
-      },
-      copy_context: {
-        icon_name: 'smart-copy-note',
-        description: 'Smart Context: Copy current (select depth)',
-        callback: async () => {
-          this.app.commands.executeCommandById('smart-context:copy-current-note-with-depth');
-        },
-      },
-      list_contexts: {
-        icon_name: 'smart-named-contexts',
-        description: 'Smart Context: List Named Contexts',
-        callback: () => {
-          ContextsDashboardView.open(this.app.workspace);
-        },
-      },
-    };
-  }
-
   /**
    * Create a fresh SmartContext item and open the ContextModal on it.
    * @param {object} [params]
    */
   open_new_context_modal(params = {}) {
-    const add_items = Array.isArray(params.add_items) ? params.add_items : [];
-
-    const ctx = this.env.smart_contexts.new_context({}, { add_items });
-
-    // Do not forward add_items to the selector modal event payload.
-    // The SmartContext is already hydrated with those items.
-    const { add_items: _ignored, ...selector_params } = params || {};
-
-    // Open the modal bound to this new SmartContext
-    ctx.emit_event('context_selector:open', selector_params);
+    return this.env.smart_contexts.actions.smart_contexts_open_new(params);
   }
 
   /**
