@@ -14,3 +14,6 @@ Added: copy context menu action
 
 
 Improved: file-nav menu options should use menu action pattern
+
+
+Migrated: commands and ribbon icons to command actions architecture
