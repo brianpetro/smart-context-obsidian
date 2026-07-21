@@ -53,8 +53,8 @@ export default class SmartContextPlugin extends SmartPlugin {
     this.register_folder_menu();
     this.register_files_menu();
 
-    ContextsDashboardView.register_item_view(this);
-    this.ReleaseNotesView.register_item_view(this);
+    ContextsDashboardView.register_item_view(this, { skip_command_registration: true });
+    this.ReleaseNotesView.register_item_view(this, { skip_command_registration: true });
 
     // First-run onboarding
     if (this.is_new_user()) {

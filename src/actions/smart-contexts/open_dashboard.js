@@ -3,19 +3,34 @@
  *
  * @this {import('smart-contexts').SmartContexts} Collection scope
  * @param {object} [params={}]
+ * @param {object} [params.plugin]
  * @returns {boolean}
  */
 export function smart_contexts_open_dashboard(params = {}) {
-  const app = params.app
-    || this?.env?.plugin?.app
-    || this?.env?.obsidian_app
-    || globalThis.app
-  ;
-  if (typeof app?.commands?.executeCommandById !== 'function') return false;
+  const plugin = params.plugin || this?.env?.smart_context_plugin;
+  if (typeof plugin?.open_contexts_dashboard !== 'function') return false;
 
-  app.commands.executeCommandById('smart-context:smart-contexts-dashboard');
+  plugin.open_contexts_dashboard();
   return true;
 }
+
+export const commands = {
+  'smart-contexts-dashboard': {
+    name: 'Open: Management dashboard (show named contexts) view',
+
+    register_when({ plugin }) {
+      return plugin.manifest.id === 'smart-context';
+    },
+
+    params({ plugin }) {
+      return { plugin };
+    },
+
+    get_scope({ env }) {
+      return env.smart_contexts;
+    },
+  },
+};
 
 export const menus = {
   'smart_contexts:menu': {
@@ -34,8 +49,8 @@ export const ribbon_icons = {
       return plugin.manifest.id === 'smart-context';
     },
 
-    params({ app }) {
-      return { app };
+    params({ plugin }) {
+      return { plugin };
     },
 
     get_scope({ env }) {

@@ -115,7 +115,7 @@ export async function post_process(ctx, container, params = {}) {
     menu.addSeparator();
     ctx.env?.build_menu?.('smart_context:copy_menu', menu, ctx, menu_params);
     menu.addSeparator();
-    ctx.env?.build_menu?.('smart_contexts:menu', menu, ctx, menu_params);
+    ctx.env?.build_menu?.('smart_contexts:menu', menu, ctx.collection, menu_params);
 
     show_menu(menu, event, menu_btn);
   };
