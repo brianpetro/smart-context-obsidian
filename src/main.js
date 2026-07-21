@@ -45,11 +45,11 @@ export default class SmartContextPlugin extends SmartPlugin {
    */
   async initialize() {
     await this.load_new_user_state();
+    this.register_ribbon_actions();
     await this.SmartEnv.wait_for({ loaded: true });
 
     this.register_command_actions();
     this.register_codeblock_processors();
-    this.register_ribbon_actions();
     this.register_folder_menu();
     this.register_files_menu();
 
