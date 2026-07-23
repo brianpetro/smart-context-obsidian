@@ -34,6 +34,8 @@ export default class SmartContextPlugin extends SmartPlugin {
   onload() {
     this.app.workspace.onLayoutReady(this.initialize.bind(this));
     this.SmartEnv.create(this, this.smart_env_config);
+    ContextsDashboardView.register_item_view(this, { skip_command_registration: true });
+    this.ReleaseNotesView.register_item_view(this, { skip_command_registration: true });
     this.addSettingTab(new SmartContextSettingTab(this.app, this, 'smart-context-builder'));
   }
 
@@ -52,9 +54,6 @@ export default class SmartContextPlugin extends SmartPlugin {
     this.register_codeblock_processors();
     this.register_folder_menu();
     this.register_files_menu();
-
-    ContextsDashboardView.register_item_view(this, { skip_command_registration: true });
-    this.ReleaseNotesView.register_item_view(this, { skip_command_registration: true });
 
     // First-run onboarding
     if (this.is_new_user()) {
