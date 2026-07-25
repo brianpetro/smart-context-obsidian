@@ -17,3 +17,6 @@ Improved: file-nav menu options should use menu action pattern
 
 
 Migrated: commands and ribbon icons to command actions architecture
+
+
+Add: implement lookup_list_send_to_smart_context action and associated menu
