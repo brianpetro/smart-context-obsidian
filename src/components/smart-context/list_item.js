@@ -1,4 +1,6 @@
-import { Menu, setIcon } from 'obsidian';
+import { Menu, Notice, setIcon } from 'obsidian';
+import { write_smart_drag_data } from 'obsidian-smart-env';
+import { resolve_dropped_context_item_keys } from '../../utils/resolve_dropped_context_item_keys.js';
 
 const DASHBOARD_ITEM_CLASS = 'sc-contexts-dashboard-item';
 const delete_confirm_state_class = 'is-delete-confirm';
@@ -66,6 +68,15 @@ function show_menu(menu, event, anchor_el) {
 }
 
 /**
+ * Build the native note/editor fallback for a named context drag.
+ * @param {string} context_name
+ * @returns {string}
+ */
+function build_named_context_codeblock(context_name) {
+  return `\`\`\`ctx\nctx:: ${context_name}\n\`\`\``;
+}
+
+/**
  * @param {import('smart-contexts').SmartContext} ctx
  * @param {HTMLElement} container
  * @param {object} [opts]
@@ -79,6 +90,7 @@ async function post_process(ctx, container, opts = {}) {
   const delete_label_el = delete_confirm_el?.querySelector('.sc-contexts-dashboard-delete-label');
   const delete_cancel_btn = delete_confirm_el?.querySelector('.sc-contexts-dashboard-delete-cancel');
   const delete_confirm_btn = delete_confirm_el?.querySelector('.sc-contexts-dashboard-delete-confirm-btn');
+  const disposers = [];
 
   let is_confirming_delete = false;
   let remove_confirm_dismiss_listeners = null;
@@ -226,7 +238,83 @@ async function post_process(ctx, container, opts = {}) {
   /* right-click actions menu */
   container.addEventListener('contextmenu', open_context_actions_menu);
 
-  const disposers = [];
+  const on_dragstart = (event) => {
+    if (is_confirming_delete || event.target?.closest?.('button')) {
+      event.preventDefault();
+      return;
+    }
+
+    const context_name = resolve_context_name();
+    const data_transfer = event.dataTransfer;
+    if (!context_name || typeof data_transfer?.setData !== 'function') {
+      event.preventDefault();
+      return;
+    }
+
+    write_smart_drag_data(data_transfer, ctx);
+    data_transfer.setData('text/plain', build_named_context_codeblock(context_name));
+    data_transfer.effectAllowed = 'copy';
+  };
+
+  header_el?.setAttribute('draggable', 'true');
+  header_el?.addEventListener('dragstart', on_dragstart);
+  disposers.push(() => {
+    header_el?.removeEventListener('dragstart', on_dragstart);
+    header_el?.removeAttribute('draggable');
+  });
+
+  const set_drag_over = (active) => {
+    container.classList.toggle('is-drag-over', Boolean(active));
+  };
+  const on_dragenter = (event) => {
+    if (is_confirming_delete) return;
+    event.preventDefault();
+    set_drag_over(true);
+  };
+  const on_dragover = (event) => {
+    if (is_confirming_delete) return;
+    event.preventDefault();
+    set_drag_over(true);
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+  };
+  const on_dragleave = (event) => {
+    if (event.relatedTarget && container.contains(event.relatedTarget)) return;
+    set_drag_over(false);
+  };
+  const on_drop = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    set_drag_over(false);
+    if (is_confirming_delete) return;
+
+    const item_keys = resolve_dropped_context_item_keys(ctx.env, event.dataTransfer);
+    if (!item_keys.length) {
+      new Notice('Drop notes, folders, Connections, or Lookup results onto a named context.');
+      return;
+    }
+
+    const action = ctx.actions?.context_add_items;
+    if (typeof action !== 'function') return;
+    await action({ items: item_keys });
+
+    const context_name = resolve_context_name() || 'Named context';
+    const item_label = item_keys.length === 1 ? 'item' : 'items';
+    new Notice(`Updated "${context_name}" with ${item_keys.length} ${item_label}.`);
+  };
+
+  container.addEventListener('dragenter', on_dragenter);
+  container.addEventListener('dragover', on_dragover);
+  container.addEventListener('dragleave', on_dragleave);
+  container.addEventListener('drop', on_drop);
+
+  disposers.push(() => {
+    container.removeEventListener('dragenter', on_dragenter);
+    container.removeEventListener('dragover', on_dragover);
+    container.removeEventListener('dragleave', on_dragleave);
+    container.removeEventListener('drop', on_drop);
+    set_drag_over(false);
+  });
+
   const update_count = () => {
     const count_span = container.querySelector('.sc-contexts-dashboard-count');
     if (count_span) {

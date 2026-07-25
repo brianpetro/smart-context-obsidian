@@ -240,11 +240,25 @@
   border-color: color-mix(in srgb, var(--interactive-accent) 55%, var(--sc-contexts-border-strong));
 }
 
+.sc-contexts-dashboard-item.is-drag-over {
+  background: color-mix(in srgb, var(--interactive-accent) 10%, var(--sc-contexts-surface));
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--sc-contexts-focus), var(--sc-contexts-shadow);
+}
+
 .sc-contexts-dashboard-item-header {
   display: flex;
   align-items: center;
   gap: var(--size-4-2);
   padding: var(--size-4-3) var(--size-4-4);
+}
+
+.sc-contexts-dashboard-item-header[draggable="true"] {
+  cursor: grab;
+}
+
+.sc-contexts-dashboard-item-header[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .sc-contexts-dashboard-name {
@@ -324,6 +338,11 @@
 
 .sc-contexts-dashboard-group-items .sc-contexts-dashboard-item:hover {
   background: color-mix(in srgb, var(--interactive-accent) 8%, var(--sc-contexts-surface-subtle));
+}
+
+.sc-contexts-dashboard-group-items .sc-contexts-dashboard-item.is-drag-over {
+  background: color-mix(in srgb, var(--interactive-accent) 14%, var(--sc-contexts-surface-subtle));
+  box-shadow: inset 0 0 0 2px var(--interactive-accent);
 }
 
 .sc-contexts-dashboard-group-items .sc-contexts-dashboard-item-header {
