@@ -191,18 +191,3 @@ export const commands = {
     when,
   },
 };
-
-export const ribbon_icons = {
-  copy_context: {
-    icon_name: 'smart-copy-note',
-    description: 'Smart Context: Copy current (select depth)',
-    register_when,
-
-    params(ribbon_ctx) {
-      return get_copy_current_placement_params(ribbon_ctx);
-    },
-
-    get_scope,
-    when,
-  },
-};
