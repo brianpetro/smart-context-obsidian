@@ -23,3 +23,6 @@ Add: implement lookup_list_send_to_smart_context action and associated menu
 
 
 Add: implement drag-and-drop functionality for context items and resolve dropped item keys
+
+
+Added: copy ribbon icon now opens menu
