@@ -119,7 +119,9 @@ export function create_copy_context_depth_menus(max_supported_depth) {
       order: 0.2,
 
       when() {
-        return is_copy_context_depth_available(this.scope, 0);
+        return this.params?.include_copy_depth_submenu !== false
+          && is_copy_context_depth_available(this.scope, 0)
+        ;
       },
 
       build() {

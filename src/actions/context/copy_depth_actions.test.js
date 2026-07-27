@@ -318,6 +318,13 @@ test('copy-at-depth placement composes its configured variants into a submenu', 
   };
   const spec = copy_at_depth_menus['smart_context:copy_menu'];
 
+  t.false(spec.when.call({
+    ...menu_ctx,
+    params: {
+      ...params,
+      include_copy_depth_submenu: false,
+    },
+  }));
   t.true(spec.when.call(menu_ctx));
   spec.build.call(menu_ctx);
 

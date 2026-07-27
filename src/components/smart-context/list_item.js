@@ -190,6 +190,7 @@ async function post_process(ctx, container, opts = {}) {
     const menu_params = {
       ...opts,
       app,
+      include_copy_depth_submenu: false,
       confirm_delete: () => set_confirming_delete(true),
     };
 
