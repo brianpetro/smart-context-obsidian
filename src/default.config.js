@@ -7,6 +7,7 @@ const default_config = {
   modals: {
     context_selector: {
       class: ContextBuilderModal,
+      version: '3.0.0',
     },
     copy_context_modal: {
       class: CopyContextModal,
