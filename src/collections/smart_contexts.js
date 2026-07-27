@@ -2,6 +2,22 @@ import base, { SmartContexts as BaseClass } from 'obsidian-smart-env/src/collect
 import { is_codeblock_context_key } from '../utils/pure_utils.js';
 
 export class SmartContexts extends BaseClass {
+  /**
+   * Open the canonical Builder for a Smart Context.
+   *
+   * The established context_selector event remains the compatibility transport
+   * for commands and integrations.
+   *
+   * @param {import('smart-contexts').SmartContext} ctx
+   * @param {object} [params={}]
+   * @returns {boolean}
+   */
+  open_builder(ctx, params = {}) {
+    if (typeof ctx?.emit_event !== 'function') return false;
+    ctx.emit_event('context_selector:open', params);
+    return true;
+  }
+
   async process_load_queue() {
     await super.process_load_queue?.();
 

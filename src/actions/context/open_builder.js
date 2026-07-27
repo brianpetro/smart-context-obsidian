@@ -1,25 +1,24 @@
 /**
- * Open the context selector for the current Smart Context.
+ * Open the canonical Builder for the current Smart Context.
  *
  * @this {import('smart-contexts').SmartContext}
  * @param {object} [params={}]
  * @returns {boolean}
  */
 export function context_open_builder(params = {}) {
-  if (typeof this?.emit_event !== 'function') return false;
+  if (typeof this?.collection?.open_builder !== 'function') return false;
 
   const {
     menu_ctx: _menu_ctx,
     click_event: _click_event,
     click_args: _click_args,
-    ...selector_params
+    ...builder_params
   } = params;
+  builder_params.event_source = builder_params.event_source
+    || 'context_open_builder'
+  ;
 
-  this.emit_event('context_selector:open', {
-    ...selector_params,
-    event_source: selector_params.event_source || 'context_open_builder',
-  });
-  return true;
+  return this.collection.open_builder(this, builder_params);
 }
 
 export const menus = {
@@ -27,5 +26,8 @@ export const menus = {
     title: 'Open in context builder',
     icon: 'smart-context-builder',
     order: 0,
+    when() {
+      return this.params?.surface !== 'context_builder';
+    },
   },
 };

@@ -2,11 +2,11 @@ import { default_context_codeblock_type } from '../../utils/context_codeblock_co
 import {
   ensure_context_codeblock_in_editor,
   get_context_codeblock_ctx_key,
-  open_context_selector_for_codeblock,
+  open_context_builder_for_codeblock,
 } from '../../utils/context_codeblock_utils.js';
 
 /**
- * Insert a Smart Context codeblock and open its context selector.
+ * Insert a Smart Context codeblock and open its Context Builder.
  *
  * @this {import('smart-contexts').SmartContexts}
  * @param {object} [params={}]
@@ -31,7 +31,7 @@ export function smart_contexts_insert_codeblock(params = {}) {
   const ctx = this.get(ctx_key) || this.new_context({ key: ctx_key });
   ctx.data.codeblock_type = default_context_codeblock_type;
 
-  open_context_selector_for_codeblock(ctx, {
+  open_context_builder_for_codeblock(ctx, {
     event_source,
   });
   return true;

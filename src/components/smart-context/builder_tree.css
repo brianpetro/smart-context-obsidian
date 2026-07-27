@@ -1,0 +1,246 @@
+.sc-context-builder-tree {
+  min-width: 0;
+}
+
+.sc-context-builder-tree-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sc-context-builder-tree-list .sc-context-builder-tree-list {
+  margin-left: 19px;
+  padding-left: 14px;
+  border-left: 1px solid color-mix(in srgb, var(--background-modifier-border) 58%, transparent);
+}
+
+.sc-context-builder-tree-item {
+  min-width: 0;
+}
+
+.sc-context-builder-tree-row {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-1);
+  min-height: 26px;
+  min-width: 0;
+  padding: 2px var(--size-4-1);
+  border-radius: var(--radius-s);
+}
+
+.sc-context-builder-tree-row:hover {
+  background: var(--background-modifier-hover);
+}
+
+.sc-context-builder-tree-toggle,
+.sc-context-builder-tree-remove,
+.sc-context-builder-tree-name,
+.sc-context-builder-tree-origin,
+.sc-context-builder-tree-show-more {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sc-context-builder-tree-toggle,
+.sc-context-builder-tree-toggle-spacer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+}
+
+.sc-context-builder-tree-toggle {
+  padding: 0;
+  color: var(--text-muted);
+}
+
+.sc-context-builder-tree-toggle:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.sc-context-builder-tree-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sc-context-builder-tree-remove {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.sc-context-builder-tree-remove:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.sc-context-builder-tree-remove:disabled,
+.sc-context-builder-tree-remove.is-disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sc-context-builder-tree-remove.is-disabled:hover {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.sc-context-builder-tree-type-icon,
+.sc-context-builder-tree-warning,
+.sc-context-builder-tree-origin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.sc-context-builder-tree-type-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.sc-context-builder-tree-type-icon svg,
+.sc-context-builder-tree-warning svg,
+.sc-context-builder-tree-origin svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sc-context-builder-tree-name {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  line-height: 1.45;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.sc-context-builder-tree-name {
+  appearance: none;
+  width: auto;
+  min-height: 0;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+button.sc-context-builder-tree-name:hover,
+button.sc-context-builder-tree-name:focus-visible {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+button.sc-context-builder-tree-name:hover {
+  color: var(--text-accent);
+}
+
+button.sc-context-builder-tree-name:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+.sc-context-builder-tree-item.is-folder > .sc-context-builder-tree-row > .sc-context-builder-tree-name {
+  font-weight: var(--font-medium);
+}
+
+.sc-context-builder-tree-size,
+.sc-context-builder-tree-count,
+.sc-context-builder-tree-truncated {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 22px;
+  padding: 0 var(--size-4-2);
+  border-radius: var(--radius-s);
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sc-context-builder-tree-count {
+  background: transparent;
+  color: var(--text-faint);
+}
+
+.sc-context-builder-tree-truncated {
+  color: var(--text-warning, var(--color-yellow));
+  border: 1px solid color-mix(in srgb, var(--text-warning, var(--color-yellow)) 45%, transparent);
+  background: color-mix(in srgb, var(--text-warning, var(--color-yellow)) 10%, var(--background-primary));
+}
+
+.sc-context-builder-tree-origin {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+}
+
+.sc-context-builder-tree-origin:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.sc-context-builder-tree-more-item {
+  list-style: none;
+}
+
+.sc-context-builder-tree-show-more {
+  min-height: 26px;
+  margin-left: 40px;
+  padding: 2px var(--size-4-2);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sc-context-builder-tree-show-more:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.sc-context-builder-tree-warning,
+.sc-context-builder-tree-name.is-missing {
+  color: var(--text-warning, var(--color-yellow));
+}
+
+.sc-context-builder-tree-warning {
+  width: 20px;
+  height: 20px;
+}
+
+.sc-context-builder-tree .is-flash {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .sc-context-builder-tree-size,
+  .sc-context-builder-tree-count {
+    display: none;
+  }
+}

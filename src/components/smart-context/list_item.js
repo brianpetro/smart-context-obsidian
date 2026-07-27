@@ -190,7 +190,6 @@ async function post_process(ctx, container, opts = {}) {
     const menu_params = {
       ...opts,
       app,
-      include_copy_depth_submenu: false,
       confirm_delete: () => set_confirming_delete(true),
     };
 
@@ -205,6 +204,12 @@ async function post_process(ctx, container, opts = {}) {
   };
 
   count_span?.addEventListener('click', async () => {
+    if (typeof ctx.collection?.open_builder === 'function') {
+      ctx.collection.open_builder(ctx, {
+        event_source: 'smart_context_dashboard.item_count',
+      });
+      return;
+    }
     ctx.emit_event('context_selector:open');
   });
 

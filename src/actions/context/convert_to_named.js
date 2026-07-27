@@ -14,7 +14,9 @@ export function context_convert_to_named(params = {}) {
     context_name: named_ctx.name,
   });
   if (params.open_selector !== false) {
-    named_ctx?.emit_event?.('context_selector:open');
+    named_ctx.collection.open_builder(named_ctx, {
+      event_source: params.event_source || 'context_convert_to_named',
+    });
   }
   return named_ctx;
 }

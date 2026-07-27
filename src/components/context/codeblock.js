@@ -1,7 +1,7 @@
 import styles from './codeblock.css';
 import { Menu, setIcon } from 'obsidian';
 import {
-  open_context_selector_for_codeblock,
+  open_context_builder_for_codeblock,
 } from '../../utils/context_codeblock_utils.js';
 
 function build_html() {
@@ -99,7 +99,7 @@ export async function post_process(ctx, container, params = {}) {
   };
 
   open_builder_btn.addEventListener('click', () => {
-    open_context_selector_for_codeblock(ctx);
+    open_context_builder_for_codeblock(ctx);
   });
 
   const open_actions_menu = (event) => {

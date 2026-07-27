@@ -33,13 +33,24 @@ function get_folder_item_keys(env, folder) {
  * @returns {boolean}
  */
 export function env_open_folder_in_context_builder(params = {}) {
+  const open_new = this.smart_contexts?.actions?.smart_contexts_open_new;
+  if (typeof open_new !== 'function') return false;
+
   const folder = get_folder(params);
   if (!folder?.path) return false;
 
   const add_items = get_folder_item_keys(this, folder);
-  const ctx = this.smart_contexts.new_context({}, { add_items });
-  ctx.emit_event('context_selector:open');
-  return true;
+  return Boolean(open_new({
+    add_items,
+    origin: {
+      kind: 'folder',
+      source_path: folder.path,
+      selection_count: 1,
+      seeded_keys: add_items,
+    },
+    event_source: params.event_source
+      || 'env_open_folder_in_context_builder',
+  }));
 }
 
 export const menus = {

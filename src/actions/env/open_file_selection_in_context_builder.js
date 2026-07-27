@@ -27,11 +27,24 @@ function get_selection_item_keys(env, files = []) {
  * @returns {boolean}
  */
 export function env_open_file_selection_in_context_builder(params = {}) {
+  const open_new = this.smart_contexts?.actions?.smart_contexts_open_new;
+  if (typeof open_new !== 'function') return false;
+
   const files = get_selection(params);
   const add_items = get_selection_item_keys(this, files);
-  const ctx = this.smart_contexts.new_context({}, { add_items });
-  ctx.emit_event('context_selector:open');
-  return true;
+  const selection_count = files.filter((file) => file?.path).length;
+  if (!selection_count) return false;
+
+  return Boolean(open_new({
+    add_items,
+    origin: {
+      kind: 'file_selection',
+      selection_count,
+      seeded_keys: add_items,
+    },
+    event_source: params.event_source
+      || 'env_open_file_selection_in_context_builder',
+  }));
 }
 
 export const menus = {

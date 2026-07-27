@@ -151,56 +151,18 @@ export function ensure_context_codeblock_in_editor(editor, params = {}) {
 }
 
 /**
+ * Open the canonical Builder for a codeblock-backed Smart Context.
+ *
  * @param {import('smart-contexts').SmartContext} ctx
- * @returns {string[]}
+ * @param {object} [params={}]
+ * @returns {boolean}
  */
-function get_context_codeblock_suggest_action_keys(ctx) {
-  const env = ctx?.env;
-  const config_actions = env?.config?.actions || {};
-  const default_action_keys = Array.isArray(env?.config?.modals?.context_selector?.default_suggest_action_keys)
-    ? env.config.modals.context_selector.default_suggest_action_keys
-    : []
-  ;
-
-  const all_action_keys = Object.keys(config_actions)
-    .filter((action_key) => {
-      if (!action_key.startsWith('context_suggest_')) return false;
-      return typeof ctx?.actions?.[action_key] === 'function';
-    })
-  ;
-
-  const prioritized_action_keys = default_action_keys
-    .filter((action_key) => all_action_keys.includes(action_key))
-  ;
-
-  if (
-    all_action_keys.includes('context_suggest_contexts')
-    && !prioritized_action_keys.includes('context_suggest_contexts')
-  ) {
-    prioritized_action_keys.push('context_suggest_contexts');
-  }
-
-  const remaining_action_keys = all_action_keys
-    .filter((action_key) => !prioritized_action_keys.includes(action_key))
-  ;
-
-  return [...new Set([...prioritized_action_keys, ...remaining_action_keys])];
+export function open_context_builder_for_codeblock(ctx, params = {}) {
+  if (typeof ctx?.collection?.open_builder !== 'function') return false;
+  return ctx.collection.open_builder(ctx, params);
 }
 
 /**
- * @param {import('smart-contexts').SmartContext} ctx
- * @param {object} [params={}]
- * @returns {void}
+ * Compatibility alias for callers using the previous helper name.
  */
-export function open_context_selector_for_codeblock(ctx, params = {}) {
-  const default_suggest_action_keys = Array.isArray(params.default_suggest_action_keys)
-    ? params.default_suggest_action_keys
-    : get_context_codeblock_suggest_action_keys(ctx)
-  ;
-
-  ctx?.emit_event?.('context_selector:open', {
-    ...params,
-    default_suggest_action_keys,
-  });
-}
-
+export const open_context_selector_for_codeblock = open_context_builder_for_codeblock;

@@ -1,3 +1,5 @@
+// V1 compatibility override. Retained for:
+// - ../../../../obsidian-smart-env/src/components/smart-context/item.js
 import {
   render_btn_clear_context,
   render_btn_help,

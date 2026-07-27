@@ -65,7 +65,7 @@ export function context_make_copy(params = {}) {
   });
 
   if (params.open_selector !== false) {
-    copied_context.emit_event?.('context_selector:open', {
+    copied_context.collection.open_builder(copied_context, {
       event_source: params.event_source || 'context_make_copy',
     });
   }
