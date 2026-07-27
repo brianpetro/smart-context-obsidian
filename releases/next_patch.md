@@ -26,3 +26,6 @@ Add: implement drag-and-drop functionality for context items and resolve dropped
 
 
 Added: copy ribbon icon now opens menu
+
+
+Improved: New v2 context builder UI
