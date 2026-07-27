@@ -2,11 +2,49 @@ import test from 'ava';
 import {
   action_scope,
   build_copy_menu,
+  build_no_current_source_menu,
   get_copy_menu_position,
   get_open_copy_menu_placement_params,
   ribbon_icons,
   show_copy_menu,
 } from './open_copy_current_menu.js';
+
+function create_menu() {
+  return {
+    items: [],
+    addItem(callback) {
+      const item = {
+        title: '',
+        icon: '',
+        disabled: false,
+        on_click: null,
+        setTitle(title) {
+          this.title = title;
+          return this;
+        },
+        setIcon(icon) {
+          this.icon = icon;
+          return this;
+        },
+        setDisabled(disabled) {
+          this.disabled = Boolean(disabled);
+          return this;
+        },
+        onClick(on_click) {
+          this.on_click = on_click;
+          return this;
+        },
+      };
+      callback(item);
+      this.items.push(item);
+      return this;
+    },
+    addSeparator() {
+      this.items.push({ separator: true });
+      return this;
+    },
+  };
+}
 
 test('copy-current ribbon resolves only launcher params', (t) => {
   const click_event = {
@@ -52,9 +90,8 @@ test('copy-current ribbon resolves only launcher params', (t) => {
 
 test('copy-current ribbon belongs to the menu launcher action', (t) => {
   t.deepEqual(action_scope, {
-    type: 'item',
+    type: 'collection',
     collection_key: 'smart_sources',
-    item_arg: 'source_path',
   });
 
   const spec = ribbon_icons.copy_context;
@@ -65,6 +102,57 @@ test('copy-current ribbon belongs to the menu launcher action', (t) => {
   t.is(typeof spec.params, 'function');
   t.is(typeof spec.when, 'function');
   t.is(spec.get_scope, undefined);
+});
+
+test('copy-current ribbon remains available without a current source', (t) => {
+  const app = {};
+  const env = {
+    obsidian_app: app,
+    smart_contexts: {},
+    build_menu() {},
+  };
+  const scope = {
+    env,
+    get(source_path) {
+      return source_path === 'Current.md'
+        ? { file_type: 'md' }
+        : source_path === 'Unsupported.pdf'
+          ? { file_type: 'pdf' }
+          : null
+      ;
+    },
+  };
+  const spec = ribbon_icons.copy_context;
+  const base_ctx = {
+    env,
+    scope,
+    params: {
+      plugin: { app },
+      allowed_file_types: ['md'],
+    },
+  };
+
+  t.true(spec.when({
+    ...base_ctx,
+    params: {
+      ...base_ctx.params,
+      source_path: '',
+    },
+  }));
+  t.true(spec.when({
+    ...base_ctx,
+    params: {
+      ...base_ctx.params,
+      source_path: 'Current.md',
+    },
+  }));
+  t.false(spec.when({
+    ...base_ctx,
+    params: {
+      ...base_ctx.params,
+      source_path: 'Unsupported.pdf',
+    },
+  }));
 });
 
 test('build_copy_menu uses the temporary Smart Context as exact depth-menu scope', (t) => {
@@ -93,6 +181,61 @@ test('build_copy_menu uses the temporary Smart Context as exact depth-menu scope
       provided_menu: menu,
       scope: ctx,
       params: {},
+    },
+  ]);
+});
+
+test('no-current-source menu explains the disabled copy state and opens Builder', (t) => {
+  const calls = [];
+  const opened_context = {
+    key: 'new-context',
+  };
+  const env = {
+    smart_contexts: {
+      actions: {
+        smart_contexts_open_new(params) {
+          calls.push(params);
+          return opened_context;
+        },
+      },
+    },
+  };
+  const menu = create_menu();
+
+  t.is(build_no_current_source_menu(env, menu, {
+    event_source: 'ribbon:smart-context:copy_context',
+  }), menu);
+  t.deepEqual(menu.items.map((item) => ({
+    title: item.title,
+    icon: item.icon,
+    disabled: item.disabled,
+    separator: item.separator === true,
+  })), [
+    {
+      title: 'No source is currently open',
+      icon: 'smart-copy-note',
+      disabled: true,
+      separator: false,
+    },
+    {
+      title: undefined,
+      icon: undefined,
+      disabled: undefined,
+      separator: true,
+    },
+    {
+      title: 'Open Context Builder',
+      icon: 'smart-context-builder',
+      disabled: false,
+      separator: false,
+    },
+  ]);
+
+  t.is(menu.items[2].on_click(), opened_context);
+  t.deepEqual(calls, [
+    {
+      event_source:
+        'ribbon:smart-context:copy_context:open_builder',
     },
   ]);
 });

@@ -12,9 +12,8 @@ const COPY_DEPTH_MENU_KEY = 'smart_context:copy_depth_menu';
 export const display_name = 'Open current copy menu';
 
 export const action_scope = {
-  type: 'item',
+  type: 'collection',
   collection_key: 'smart_sources',
-  item_arg: 'source_path',
 };
 
 /**
@@ -96,6 +95,51 @@ export function build_copy_menu(ctx, menu) {
 }
 
 /**
+ * Build the copy ribbon's empty state when no source is currently open.
+ *
+ * @param {object} env
+ * @param {Menu|object} menu
+ * @param {object} [params={}]
+ * @param {string} [params.event_source]
+ * @returns {Menu|object}
+ */
+export function build_no_current_source_menu(
+  env,
+  menu,
+  params = {},
+) {
+  if (!menu) return menu;
+
+  menu.addItem?.((item) => {
+    item.setTitle?.('No source is currently open');
+    item.setIcon?.('smart-copy-note');
+    item.setDisabled?.(true);
+  });
+
+  menu.addSeparator?.();
+
+  const open_builder =
+    env?.smart_contexts?.actions?.smart_contexts_open_new;
+
+  menu.addItem?.((item) => {
+    item.setTitle?.('Open Context Builder');
+    item.setIcon?.('smart-context-builder');
+    item.setDisabled?.(typeof open_builder !== 'function');
+    item.onClick?.(() => {
+      if (typeof open_builder !== 'function') return false;
+
+      return open_builder({
+        event_source: params.event_source
+          ? `${params.event_source}:open_builder`
+          : 'source_open_copy_current_menu:open_builder',
+      });
+    });
+  });
+
+  return menu;
+}
+
+/**
  * Show a built copy menu at the pointer or captured ribbon position.
  *
  * @param {Menu|object} menu
@@ -147,9 +191,9 @@ export function show_copy_menu(
 }
 
 /**
- * Build the current source's Smart Context and open its copy-depth menu.
+ * Open the current source's copy-depth menu or its no-source fallback.
  *
- * @this {import('smart-sources').SmartSource}
+ * @this {import('smart-sources').SmartSources}
  * @param {object} [params={}]
  * @param {object} [params.plugin]
  * @param {string} [params.source_path]
@@ -159,21 +203,35 @@ export function show_copy_menu(
  */
 export async function source_open_copy_current_menu(params = {}) {
   const plugin = params.plugin || this?.env?.plugin;
-  const source_path = params.source_path || this?.key;
-  if (!plugin || !source_path) return false;
+  const source_path = params.source_path;
+  if (!plugin) return false;
 
   const menu_position = get_copy_menu_position(params.click_event);
+  const app = plugin.app || this?.env?.obsidian_app;
+  if (!app) return false;
+
+  const menu = new Menu(app);
+  if (!source_path) {
+    build_no_current_source_menu(this?.env, menu, params);
+    if (!(menu.items?.length > 0)) return false;
+
+    return show_copy_menu(
+      menu,
+      params.click_event,
+      menu_position,
+    );
+  }
+
+  const source = this?.get?.(source_path);
+  if (!source) return false;
+
   const copy_ctx = await build_current_copy_context(plugin, {
-    source: this,
+    source,
     source_path,
     markdown: params.markdown,
   });
   if (!copy_ctx) return false;
 
-  const app = plugin.app || this?.env?.obsidian_app;
-  if (!app) return false;
-
-  const menu = new Menu(app);
   build_copy_menu(copy_ctx, menu);
   if (!(menu.items?.length > 0)) return false;
 
@@ -189,18 +247,20 @@ function register_when({ plugin }) {
 }
 
 function when({ env, params, scope }) {
-  if (!scope) return false;
-  if (!is_copy_current_supported_source(scope, {
-    allowed_file_types: params.allowed_file_types,
-  })) {
+  if (
+    !scope
+    || !(params.plugin?.app || env.obsidian_app)
+    || !env.smart_contexts
+  ) {
     return false;
   }
+  if (!params.source_path) return true;
+  if (typeof env.build_menu !== 'function') return false;
 
-  return Boolean(
-    (params.plugin?.app || env.obsidian_app)
-    && env.smart_contexts
-    && typeof env.build_menu === 'function'
-  );
+  const source = scope.get?.(params.source_path);
+  return is_copy_current_supported_source(source, {
+    allowed_file_types: params.allowed_file_types,
+  });
 }
 
 export const ribbon_icons = {
