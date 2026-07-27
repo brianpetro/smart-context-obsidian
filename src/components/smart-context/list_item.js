@@ -2,6 +2,8 @@ import { Menu, Notice, setIcon } from 'obsidian';
 import { write_smart_drag_data } from 'obsidian-smart-env';
 import { resolve_dropped_context_item_keys } from '../../utils/resolve_dropped_context_item_keys.js';
 
+export const version = '3.1.4';
+
 const DASHBOARD_ITEM_CLASS = 'sc-contexts-dashboard-item';
 const delete_confirm_state_class = 'is-delete-confirm';
 
@@ -191,6 +193,7 @@ async function post_process(ctx, container, opts = {}) {
       ...opts,
       app,
       confirm_delete: () => set_confirming_delete(true),
+      include_copy_depth_submenu: false,
     };
 
     const before_copy_count = menu.items?.length || 0;

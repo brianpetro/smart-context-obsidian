@@ -3,7 +3,7 @@ import { build_context_actions_menu } from 'obsidian-smart-env/src/utils/smart-c
 import { render_name_input } from '../../utils/named_context_utils.js';
 import styles from './builder.css';
 
-export const version = '3.1.3';
+export const version = '3.1.4';
 
 export function build_html() {
   return `
@@ -152,6 +152,7 @@ export async function post_process(ctx, container, params = {}) {
   let resolved_context_items = null;
   let refresh_summary = null;
   let refresh_primary = null;
+  let reveal_missing_items = null;
   let missing_flash_timeout = null;
 
   const update_empty_state = () => {
@@ -168,6 +169,7 @@ export async function post_process(ctx, container, params = {}) {
   };
 
   const focus_first_missing_item = () => {
+    reveal_missing_items?.();
     const missing_el = tree_container.querySelector(
       '.sc-context-builder-tree-name.is-missing, .sc-context-builder-tree-warning',
     );
@@ -210,6 +212,9 @@ export async function post_process(ctx, container, params = {}) {
       on_resolved_items(items) {
         resolved_context_items = items;
         refresh_summary?.();
+      },
+      on_ready(callback) {
+        reveal_missing_items = callback;
       },
     },
   );
@@ -272,6 +277,7 @@ export async function post_process(ctx, container, params = {}) {
         ...params,
         modal,
         origin: modal.origin,
+        include_copy_depth_submenu: false,
       }),
       on_add_sources: () => modal.focus_search(),
       on_ready(callback) {
@@ -355,6 +361,7 @@ export async function post_process(ctx, container, params = {}) {
         ...params,
         modal,
         origin: modal.origin,
+        include_copy_depth_submenu: false,
       });
     } catch (error) {
       console.error('Smart Context Builder: Failed to build context actions menu', error);
@@ -390,6 +397,7 @@ export async function post_process(ctx, container, params = {}) {
       missing_flash_timeout = null;
       refresh_summary = null;
       refresh_primary = null;
+      reveal_missing_items = null;
     },
   ]);
   return container;

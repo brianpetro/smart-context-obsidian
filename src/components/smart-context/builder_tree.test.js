@@ -6,6 +6,7 @@ import {
   get_default_expanded_paths,
   get_named_contexts_to_watch,
   resolve_tree_item_remove_state,
+  reveal_missing_tree_items,
 } from './builder_tree.js';
 
 test('Builder tree size labels show contribution and readable bytes', (t) => {
@@ -57,6 +58,99 @@ test('Builder tree expands small contexts and collapses large contexts by defaul
     Array.from(get_default_expanded_paths(tree, 51)),
     [],
   );
+});
+
+test('Builder tree reveals every branch and lazy batch containing missing items', (t) => {
+  const files = Object.fromEntries(
+    Array.from({ length: 125 }, (_, index) => {
+      const name = `${String(index).padStart(3, '0')}.md`;
+      return [name, {
+        name,
+        path: `reference/GTD/${name}`,
+        is_file: true,
+        exists: index === 124 ? false : true,
+        children: [],
+      }];
+    }),
+  );
+  const tree = {
+    children: {
+      reference: {
+        name: 'reference',
+        path: 'reference',
+        is_file: false,
+        children: {
+          GTD: {
+            name: 'GTD',
+            path: 'reference/GTD',
+            is_file: false,
+            children: files,
+          },
+          PKM: {
+            name: 'PKM',
+            path: 'reference/PKM',
+            is_file: false,
+            children: {
+              'Missing.md': {
+                name: 'Missing.md',
+                path: 'reference/PKM/Missing.md',
+                is_file: true,
+                exists: false,
+                children: [],
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+  const expanded_paths = new Set();
+  const visible_child_limits = new Map();
+
+  const found_missing = reveal_missing_tree_items(
+    tree,
+    new Map(),
+    expanded_paths,
+    visible_child_limits,
+  );
+
+  t.true(found_missing);
+  t.true(expanded_paths.has('reference'));
+  t.true(expanded_paths.has('reference/GTD'));
+  t.true(expanded_paths.has('reference/PKM'));
+  t.is(visible_child_limits.get('reference/GTD'), 200);
+});
+
+test('Builder tree missing reveal leaves expansion unchanged without missing items', (t) => {
+  const tree = {
+    children: {
+      Folder: {
+        name: 'Folder',
+        path: 'Folder',
+        is_file: false,
+        children: {
+          'Note.md': {
+            name: 'Note.md',
+            path: 'Folder/Note.md',
+            is_file: true,
+            exists: true,
+            children: [],
+          },
+        },
+      },
+    },
+  };
+  const expanded_paths = new Set();
+  const visible_child_limits = new Map();
+
+  t.false(reveal_missing_tree_items(
+    tree,
+    new Map(),
+    expanded_paths,
+    visible_child_limits,
+  ));
+  t.is(expanded_paths.size, 0);
+  t.is(visible_child_limits.size, 0);
 });
 
 test('Builder tree labels keep source and block identity readable', (t) => {

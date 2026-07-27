@@ -9,7 +9,7 @@ import { register_item_hover_popover } from 'obsidian-smart-env/src/utils/regist
 import { get_truncated_context_selections } from '../../utils/context_output_guard.js';
 import styles from './builder_tree.css';
 
-export const version = '3.1.3';
+export const version = '3.1.4';
 
 export const BUILDER_TREE_COLLAPSE_THRESHOLD = 50;
 export const BUILDER_TREE_CHILD_BATCH_SIZE = 100;
@@ -162,6 +162,17 @@ export function post_process(ctx, container, params = {}) {
     }
   };
 
+  const reveal_missing_items = () => {
+    const found_missing = reveal_missing_tree_items(
+      tree_root,
+      context_item_by_key,
+      expanded_paths,
+      visible_child_limits,
+    );
+    if (found_missing) render_tree_dom_safely();
+    return found_missing;
+  };
+
   const on_related_context_updated = (payload = {}) => {
     const context_key = String(payload.item_key || '').trim();
     if (!context_key || !included_context_keys.has(context_key)) return;
@@ -309,6 +320,7 @@ export function post_process(ctx, container, params = {}) {
   };
 
   render_tree();
+  params.on_ready?.(reveal_missing_items);
   container.addEventListener('click', on_click);
   container.addEventListener('contextmenu', on_context_menu);
 
@@ -322,6 +334,7 @@ export function post_process(ctx, container, params = {}) {
     () => {
       disposed = true;
       schedule_render.cancel();
+      params.on_ready?.(null);
     },
     () => container.removeEventListener('click', on_click),
     () => container.removeEventListener('contextmenu', on_context_menu),
@@ -823,6 +836,55 @@ export function get_named_contexts_to_watch(ctx) {
 
   collect(ctx);
   return named_contexts;
+}
+
+/**
+ * Expand every branch needed to show missing context items. Lazy child lists
+ * are widened only far enough to include the last missing item in each branch.
+ *
+ * @param {object} tree_root
+ * @param {Map<string, any>} context_item_by_key
+ * @param {Set<string>} expanded_paths
+ * @param {Map<string, number>} visible_child_limits
+ * @returns {boolean}
+ */
+export function reveal_missing_tree_items(
+  tree_root,
+  context_item_by_key,
+  expanded_paths,
+  visible_child_limits,
+) {
+  const reveal_node = (node, list_path) => {
+    const children = get_child_nodes(node).sort(sort_tree_items);
+    let found_missing = false;
+
+    for (let index = 0; index < children.length; index += 1) {
+      const child = children[index];
+      const path = get_item_key(child);
+      const context_item = context_item_by_key.get(path);
+      const child_is_missing = child.exists === false
+        || context_item?.exists === false
+      ;
+      const child_has_missing = reveal_node(child, path);
+      if (!child_is_missing && !child_has_missing) continue;
+
+      found_missing = true;
+      const current_limit = visible_child_limits.get(list_path)
+        || BUILDER_TREE_CHILD_BATCH_SIZE
+      ;
+      if (index >= current_limit) {
+        const required_limit = Math.ceil(
+          (index + 1) / BUILDER_TREE_CHILD_BATCH_SIZE,
+        ) * BUILDER_TREE_CHILD_BATCH_SIZE;
+        visible_child_limits.set(list_path, required_limit);
+      }
+      if (get_child_nodes(child).length) expanded_paths.add(path);
+    }
+
+    return found_missing;
+  };
+
+  return reveal_node(tree_root, ROOT_LIST_PATH);
 }
 
 /**
