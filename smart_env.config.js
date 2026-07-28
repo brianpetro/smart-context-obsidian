@@ -10,6 +10,7 @@ import { render as smart_context_builder_summary_component, version as smart_con
 import { render as smart_context_builder_tree_component, version as smart_context_builder_tree_component_version } from './src/components/smart-context/builder_tree.js';
 import { render as smart_context_list_component } from './src/components/smart-context/list.js';
 import { render as smart_context_list_item_component, version as smart_context_list_item_component_version } from './src/components/smart-context/list_item.js';
+import { render as smart_context_rules_list_component, version as smart_context_rules_list_component_version } from './src/components/smart-context/rules_list.js';
 import { render as smart_context_settings_tab_component } from './src/components/smart-context/settings_tab.js';
 
 import { context_convert_to_named as context_convert_to_named_action, menus as context_convert_to_named_action_menus } from './src/actions/context/convert_to_named.js';
@@ -55,6 +56,7 @@ export const smart_env_config = {
     smart_context_builder_tree: { render: smart_context_builder_tree_component, version: smart_context_builder_tree_component_version },
     smart_context_list: { render: smart_context_list_component, version: "2.4.6" },
     smart_context_list_item: { render: smart_context_list_item_component, version: smart_context_list_item_component_version },
+    smart_context_rules_list: { render: smart_context_rules_list_component, version: smart_context_rules_list_component_version },
     smart_context_settings_tab: { render: smart_context_settings_tab_component, version: "2.4.6" }
   },
   actions: {

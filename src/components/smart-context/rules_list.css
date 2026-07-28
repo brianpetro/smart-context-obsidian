@@ -1,0 +1,117 @@
+.sc-context-rules-list[hidden] {
+  display: none !important;
+}
+
+.sc-context-rules-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-3);
+  padding-top: var(--size-4-3);
+}
+
+.sc-context-rules-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-4-1);
+}
+
+.sc-context-rules-button-icon,
+.sc-context-rules-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sc-context-rules-button-icon svg,
+.sc-context-rules-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sc-context-rules-title {
+  margin: 0;
+  font-size: var(--font-ui-medium);
+}
+
+.sc-context-rules-description,
+.sc-context-rules-meta,
+.sc-context-rules-empty {
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  line-height: 1.4;
+}
+
+.sc-context-rules-details {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+}
+
+.sc-context-rules-summary {
+  padding: var(--size-4-2) var(--size-4-3);
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+}
+
+.sc-context-rules-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sc-context-rules-details .sc-context-rules-items {
+  padding: 0 var(--size-4-3) var(--size-4-3);
+}
+
+.sc-context-rules-item {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  min-width: 0;
+  padding: var(--size-4-3);
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 35%, var(--background-modifier-border));
+  border-left: 3px solid var(--interactive-accent);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+}
+
+.sc-context-rules-icon {
+  flex: 0 0 auto;
+  color: var(--text-accent);
+}
+
+.sc-context-rules-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.sc-context-rules-label {
+  overflow: hidden;
+  font-weight: var(--font-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-context-rules-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--size-4-2);
+}
+
+@media (max-width: 640px) {
+  .sc-context-rules-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .sc-context-rules-actions {
+    width: 100%;
+    padding-left: calc(16px + var(--size-4-2));
+  }
+}
