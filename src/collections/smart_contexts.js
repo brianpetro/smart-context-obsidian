@@ -2,6 +2,9 @@ import base, { SmartContexts as BaseClass } from 'obsidian-smart-env/src/collect
 import { is_codeblock_context_key } from '../utils/pure_utils.js';
 
 export class SmartContexts extends BaseClass {
+  // Must outrank the environment base collection so Builder entry points use
+  // this subclass.
+  static version = '2.2.0';
   /**
    * Open the canonical Builder for a Smart Context.
    *
@@ -34,6 +37,6 @@ export class SmartContexts extends BaseClass {
 }
 
 base.class = SmartContexts;
-base.version = BaseClass.version;
+base.version = SmartContexts.version;
 
 export default base;
