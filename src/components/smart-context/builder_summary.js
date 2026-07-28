@@ -1,6 +1,6 @@
 import { get_truncated_context_selections } from '../../utils/context_output_guard.js';
 
-export const version = '3.1.3';
+export const version = '3.1.5';
 
 const media_extension_re = /\.(?:png|jpe?g|gif|bmp|webp|ico|svg|avif|pdf)$/i;
 
@@ -35,6 +35,7 @@ export function post_process(ctx, container, params = {}) {
     const summary = get_context_summary(ctx, {
       observed_missing_keys,
       context_items: params.get_context_items?.(),
+      exclusion_count: params.get_exclusion_count?.(),
     });
 
     container.replaceChildren();
@@ -53,12 +54,20 @@ export function post_process(ctx, container, params = {}) {
       );
     }
     if (summary.exclusion_count > 0) {
-      append_segment(
+      const exclusion_button = append_segment(
         container,
-        `${summary.exclusion_count} exclusion${summary.exclusion_count === 1 ? '' : 's'}`,
-        'sc-context-builder-ui-chip sc-context-builder-ui-chip-neutral',
+        `${summary.exclusion_count} rule${summary.exclusion_count === 1 ? '' : 's'}`,
+        'sc-context-builder-ui-chip sc-context-builder-ui-chip-neutral sc-context-builder-exclusions-trigger',
         params.on_exclusions_click,
       );
+      if (params.on_exclusions_click) {
+        exclusion_button.setAttribute(
+          'aria-expanded',
+          String(params.is_exclusions_open?.() === true),
+        );
+        const controls_id = params.get_exclusions_controls_id?.();
+        if (controls_id) exclusion_button.setAttribute('aria-controls', controls_id);
+      }
     }
     if (summary.truncated_selection_count > 0) {
       append_segment(
@@ -177,7 +186,7 @@ export function get_context_summary(ctx, params = {}) {
     estimated_tokens: estimate_tokens(estimated_text_chars),
     media_count,
     media_bytes,
-    exclusion_count: get_exclusion_count(ctx),
+    exclusion_count: get_exclusion_count(ctx, params.exclusion_count),
     truncated_selection_count: get_truncated_context_selections(ctx).length,
     missing_count: missing_keys.size,
     pending_update_count: get_pending_update_count(ctx, source_keys),
@@ -234,7 +243,7 @@ function build_hydrated_summary(ctx, context_items, selection_entries, params) {
     estimated_tokens: estimate_tokens(estimated_text_chars),
     media_count,
     media_bytes,
-    exclusion_count: get_exclusion_count(ctx),
+    exclusion_count: get_exclusion_count(ctx, params.exclusion_count),
     truncated_selection_count: get_truncated_context_selections(ctx).length,
     missing_count: missing_keys.size,
     pending_update_count: get_pending_update_count(ctx, source_keys),
@@ -350,9 +359,13 @@ function is_missing_item(item) {
 
 /**
  * @param {import('smart-contexts').SmartContext} ctx
+ * @param {unknown} [override]
  * @returns {number}
  */
-function get_exclusion_count(ctx) {
+function get_exclusion_count(ctx, override) {
+  const override_count = Number(override);
+  if (Number.isFinite(override_count)) return Math.max(0, override_count);
+
   const exclusion_count = Number(ctx?.excluded_item_count);
   return Number.isFinite(exclusion_count)
     ? Math.max(0, exclusion_count)

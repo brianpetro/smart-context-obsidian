@@ -3,7 +3,9 @@ import { build_context_actions_menu } from 'obsidian-smart-env/src/utils/smart-c
 import { render_name_input } from '../../utils/named_context_utils.js';
 import styles from './builder.css';
 
-export const version = '3.1.4';
+export const version = '3.1.6';
+
+let builder_instance_id = 0;
 
 export function build_html() {
   return `
@@ -28,7 +30,7 @@ export function build_html() {
           </div>
         </div>
         <div class="sc-context-builder-tree"></div>
-        <div class="sc-context-builder-exclusions"></div>
+        <div class="sc-context-builder-exclusions" hidden></div>
       </div>
 
       <div class="sc-context-builder-source-nav">
@@ -141,11 +143,22 @@ export async function post_process(ctx, container, params = {}) {
   const origin_el = container.querySelector('.sc-context-builder-origin');
   const undo_btn = container.querySelector('.sc-context-builder-origin-undo');
   const name_container = container.querySelector('.sc-context-builder-name');
-  const summary_container = container.querySelector('.sc-context-builder-summary');
+  const summary_container = /** @type {HTMLElement} */ (
+    container.querySelector('.sc-context-builder-summary')
+  );
   const primary_container = container.querySelector('.sc-context-builder-primary');
-  const tree_container = container.querySelector('.sc-context-builder-tree');
-  const exclusions_container = container.querySelector('.sc-context-builder-exclusions');
-  const empty_container = container.querySelector('.sc-context-builder-empty');
+  const review_container = /** @type {HTMLElement} */ (
+    container.querySelector('.sc-context-builder-review')
+  );
+  const tree_container = /** @type {HTMLElement} */ (
+    container.querySelector('.sc-context-builder-tree')
+  );
+  const exclusions_container = /** @type {HTMLElement} */ (
+    container.querySelector('.sc-context-builder-exclusions')
+  );
+  const empty_container = /** @type {HTMLElement} */ (
+    container.querySelector('.sc-context-builder-empty')
+  );
   const source_modes_container = container.querySelector('.sc-context-builder-source-modes');
   const source_description = container.querySelector('.sc-context-builder-source-description');
   let source_count = Number(ctx.item_count || 0);
@@ -153,12 +166,27 @@ export async function post_process(ctx, container, params = {}) {
   let refresh_summary = null;
   let refresh_primary = null;
   let reveal_missing_items = null;
+  let focus_exclusions = null;
   let missing_flash_timeout = null;
+  let review_mode = 'included';
+  let included_review_scroll_top = 0;
+  let exclusion_count = Number(ctx.excluded_item_count || 0);
+  let has_exclusions_component = false;
 
-  const update_empty_state = () => {
+  builder_instance_id += 1;
+  exclusions_container.id = `sc-context-builder-exclusions-${builder_instance_id}`;
+
+  const update_review_state = () => {
     const has_context_items = source_count > 0;
-    empty_container.hidden = has_context_items;
-    tree_container.hidden = !has_context_items;
+    const show_exclusions = review_mode === 'excluded' && has_exclusions_component;
+
+    review_container.dataset.reviewMode = show_exclusions
+      ? 'excluded'
+      : 'included'
+    ;
+    exclusions_container.hidden = !show_exclusions;
+    empty_container.hidden = show_exclusions || has_context_items;
+    tree_container.hidden = show_exclusions || !has_context_items;
   };
 
   render_name_input(ctx, name_container);
@@ -184,10 +212,32 @@ export async function post_process(ctx, container, params = {}) {
   };
 
   const open_exclusions = () => {
-    const details = exclusions_container.querySelector('details');
-    if (!details) return;
-    details.open = true;
-    details.scrollIntoView({ block: 'nearest' });
+    if (!has_exclusions_component) return;
+    included_review_scroll_top = review_container.scrollTop;
+    review_mode = 'excluded';
+    update_review_state();
+    refresh_summary?.();
+    review_container.scrollTop = 0;
+    setTimeout(() => {
+      if (!is_disposed() && review_mode === 'excluded') focus_exclusions?.();
+    }, 0);
+  };
+
+  const close_exclusions = () => {
+    review_mode = 'included';
+    update_review_state();
+    refresh_summary?.();
+    setTimeout(() => {
+      if (is_disposed() || review_mode !== 'included') return;
+      review_container.scrollTop = included_review_scroll_top;
+      const trigger = /** @type {HTMLButtonElement|null} */ (
+        summary_container.querySelector(
+          '.sc-context-builder-exclusions-trigger',
+        )
+      );
+      if (trigger) trigger.focus();
+      else tree_container.querySelector('button')?.focus?.();
+    }, 0);
   };
 
   const focus_first_truncated_selection = () => {
@@ -224,28 +274,46 @@ export async function post_process(ctx, container, params = {}) {
   }
   if (tree) tree_container.appendChild(tree);
 
-  const exclusions = ctx.env.config.components.smart_context_exclusions_list
+  const rules = ctx.env.config.components.smart_context_rules_list
     ? await ctx.env.smart_components.render_component(
-      'smart_context_exclusions_list',
+      'smart_context_rules_list',
       ctx,
-      params,
+      {
+        ...params,
+        review_mode: true,
+        on_close: close_exclusions,
+        on_exclusion_count_change(next_exclusion_count = 0) {
+          exclusion_count = next_exclusion_count;
+          refresh_summary?.();
+        },
+        on_ready(callback) {
+          focus_exclusions = callback;
+        },
+      },
     )
     : null
   ;
   if (is_disposed()) {
-    dispose_unmounted_builder(exclusions);
+    dispose_unmounted_builder(rules);
     return container;
   }
-  if (exclusions) exclusions_container.appendChild(exclusions);
+  if (rules) {
+    has_exclusions_component = true;
+    exclusions_container.appendChild(rules);
+    update_review_state();
+  }
 
   const summary = await ctx.env.smart_components.render_component(
     'smart_context_builder_summary',
     ctx,
     {
       ...params,
-      on_exclusions_click: open_exclusions,
+      on_exclusions_click: has_exclusions_component ? open_exclusions : null,
       on_truncated_click: focus_first_truncated_selection,
       on_missing_click: focus_first_missing_item,
+      get_exclusion_count: () => exclusion_count,
+      get_exclusions_controls_id: () => exclusions_container.id,
+      is_exclusions_open: () => review_mode === 'excluded',
       get_context_items: () => resolved_context_items,
       on_ready(callback) {
         refresh_summary = callback;
@@ -255,7 +323,7 @@ export async function post_process(ctx, container, params = {}) {
           ? Number(ctx.item_count || 0)
           : next_summary.source_count
         ;
-        update_empty_state();
+        update_review_state();
         refresh_primary?.();
       },
     },
@@ -331,11 +399,11 @@ export async function post_process(ctx, container, params = {}) {
   const refresh_builder_chrome = () => {
     render_origin();
     render_source_modes();
-    update_empty_state();
+    update_review_state();
   };
   const refresh_context_state = () => {
     render_origin();
-    update_empty_state();
+    update_review_state();
   };
   refresh_builder_chrome();
   modal.set_builder_chrome_refresh(refresh_builder_chrome);
@@ -398,6 +466,7 @@ export async function post_process(ctx, container, params = {}) {
       refresh_summary = null;
       refresh_primary = null;
       reveal_missing_items = null;
+      focus_exclusions = null;
     },
   ]);
   return container;
