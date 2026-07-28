@@ -29,3 +29,6 @@ Added: copy ribbon icon now opens menu
 
 
 Improved: New v2 context builder UI
+
+
+Add: implement rules list component with associated styles and tests
