@@ -4,6 +4,7 @@ import {
 } from '../components/smart-context/builder.js';
 
 const suggest_menu_key = 'smart_context:suggest';
+const alpha_keys = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
 /**
  * Canonical Smart Context Builder.
@@ -36,6 +37,13 @@ export class ContextBuilderModal extends SmartFuzzySuggestModal {
     this._builder_container = null;
     this._builder_chrome_refresh = null;
 
+    // Modal key scopes run before bubbling DOM listeners in Obsidian.
+    const handle_alpha_keydown = (event) => this.handle_alpha_keydown(event);
+    for (const key of alpha_keys) {
+      this.scope.register([], key, handle_alpha_keydown);
+      this.scope.register(['Shift'], key, handle_alpha_keydown);
+    }
+
     this.origin = resolve_context_builder_origin(smart_context, params.origin);
     this.source_modes = this.resolve_source_modes();
     this.active_source_mode = this.resolve_default_source_mode(
@@ -57,6 +65,39 @@ export class ContextBuilderModal extends SmartFuzzySuggestModal {
     this.params = { ...this.params, ...params };
     super.open();
     void this.render(this.params);
+  }
+
+  /**
+   * Route plain letter input back to fuzzy search after another Builder control
+   * receives focus. The context name input keeps its normal text-entry behavior.
+   *
+   * @param {KeyboardEvent} event
+   * @returns {false|void}
+   */
+  handle_alpha_keydown(event) {
+    if (
+      event.target === this.inputEl
+      || event.target?.classList?.contains('sc-context-name-input')
+      || event.ctrlKey
+      || event.metaKey
+      || event.altKey
+      || !/^[a-z]$/i.test(event.key)
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    this.focus_search();
+    const selection_start = this.inputEl.selectionStart ?? this.inputEl.value.length;
+    const selection_end = this.inputEl.selectionEnd ?? selection_start;
+    this.inputEl.setRangeText(
+      event.key,
+      selection_start,
+      selection_end,
+      'end',
+    );
+    this.inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+    return false;
   }
 
   /**

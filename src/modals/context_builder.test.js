@@ -363,3 +363,98 @@ test('a late Builder render cannot replace the current modal content', async (t)
   t.false(second_builder.removed);
   t.is(modal._builder_container, second_builder);
 });
+
+test('Builder routes plain a-z input to fuzzy search at the current selection', (t) => {
+  const dispatched_events = [];
+  const input = {
+    value: 'ab',
+    selectionStart: 1,
+    selectionEnd: 2,
+    focus_called: false,
+    focus() {
+      this.focus_called = true;
+    },
+    setRangeText(text, start, end, selection_mode) {
+      this.value = `${this.value.slice(0, start)}${text}${this.value.slice(end)}`;
+      this.selectionStart = start + text.length;
+      this.selectionEnd = this.selectionStart;
+      t.is(selection_mode, 'end');
+    },
+    dispatchEvent(event) {
+      dispatched_events.push(event);
+    },
+  };
+  const modal = {
+    inputEl: input,
+    focus_search: ContextBuilderModal.prototype.focus_search,
+  };
+  let prevented = false;
+
+  const result = ContextBuilderModal.prototype.handle_alpha_keydown.call(modal, {
+    key: 'Z',
+    target: {},
+    preventDefault() {
+      prevented = true;
+    },
+  });
+
+  t.false(result);
+  t.true(prevented);
+  t.true(input.focus_called);
+  t.is(input.value, 'aZ');
+  t.is(input.selectionStart, 2);
+  t.is(input.selectionEnd, 2);
+  t.is(dispatched_events.length, 1);
+  t.is(dispatched_events[0].type, 'input');
+  t.true(dispatched_events[0].bubbles);
+});
+
+test('Builder leaves name input, fuzzy input, shortcuts, and non-letters unchanged', (t) => {
+  const input = {
+    value: 'query',
+    selectionStart: 5,
+    selectionEnd: 5,
+    focus() {
+      t.fail('ignored keys must not refocus fuzzy search');
+    },
+    setRangeText() {
+      t.fail('ignored keys must not change fuzzy search');
+    },
+    dispatchEvent() {
+      t.fail('ignored keys must not refresh fuzzy suggestions');
+    },
+  };
+  const modal = {
+    inputEl: input,
+    focus_search: ContextBuilderModal.prototype.focus_search,
+  };
+  let prevented_count = 0;
+  const name_input = {
+    classList: {
+      contains(class_name) {
+        return class_name === 'sc-context-name-input';
+      },
+    },
+  };
+  const ignored_events = [
+    { key: 'a', target: name_input },
+    { key: 'a', target: input },
+    { key: 'a', target: {}, ctrlKey: true },
+    { key: 'a', target: {}, metaKey: true },
+    { key: 'a', target: {}, altKey: true },
+    { key: '1', target: {} },
+  ];
+
+  ignored_events.forEach((event) => {
+    const result = ContextBuilderModal.prototype.handle_alpha_keydown.call(modal, {
+      ...event,
+      preventDefault() {
+        prevented_count += 1;
+      },
+    });
+    t.is(result, undefined);
+  });
+
+  t.is(prevented_count, 0);
+  t.is(input.value, 'query');
+});
