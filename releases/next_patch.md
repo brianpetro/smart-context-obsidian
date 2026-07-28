@@ -35,3 +35,6 @@ Add: implement rules list component with associated styles and tests
 
 
 Add: implement context management actions (add, get, read, remove, create, list) and tool actions
+
+
+Improved: context builder should assume search intent for keypresses outside of the name input
