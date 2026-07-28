@@ -32,3 +32,6 @@ Improved: New v2 context builder UI
 
 
 Add: implement rules list component with associated styles and tests
+
+
+Add: implement context management actions (add, get, read, remove, create, list) and tool actions
