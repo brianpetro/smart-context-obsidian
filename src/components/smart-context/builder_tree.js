@@ -9,7 +9,7 @@ import { register_item_hover_popover } from 'obsidian-smart-env/src/utils/regist
 import { get_truncated_context_selections } from '../../utils/context_output_guard.js';
 import styles from './builder_tree.css';
 
-export const version = '3.1.4';
+export const version = '3.1.5';
 
 export const BUILDER_TREE_COLLAPSE_THRESHOLD = 50;
 export const BUILDER_TREE_CHILD_BATCH_SIZE = 100;
@@ -58,11 +58,15 @@ export function post_process(ctx, container, params = {}) {
   let tree_root = null;
   let tree_render_params = null;
   let expanded_paths = new Set();
+  let folder_paths = new Set();
   const visible_child_limits = new Map();
   let did_initialize_expansion = false;
   let previous_item_count = null;
 
   const render_tree_dom = () => {
+    const all_expanded = folder_paths.size > 0
+      && Array.from(folder_paths).every((path) => expanded_paths.has(path))
+    ;
     const list = tree_root && tree_render_params
       ? render_tree_list(tree_root, {
         ...tree_render_params,
@@ -73,6 +77,13 @@ export function post_process(ctx, container, params = {}) {
     ;
 
     container.replaceChildren();
+    if (folder_paths.size > 0) {
+      const toggle_all_button = document.createElement('button');
+      toggle_all_button.type = 'button';
+      toggle_all_button.className = 'sc-context-builder-tree-toggle-all';
+      toggle_all_button.textContent = all_expanded ? 'Collapse all' : 'Expand all';
+      container.appendChild(toggle_all_button);
+    }
     if (list) container.appendChild(list);
   };
 
@@ -101,7 +112,7 @@ export function post_process(ctx, container, params = {}) {
       truncated_selections: get_truncated_selection_map(ctx),
     };
 
-    const folder_paths = get_tree_folder_paths(tree_root);
+    folder_paths = get_tree_folder_paths(tree_root);
     const crossed_collapse_threshold = Number.isFinite(previous_item_count)
       && previous_item_count <= BUILDER_TREE_COLLAPSE_THRESHOLD
       && context_items.length > BUILDER_TREE_COLLAPSE_THRESHOLD
@@ -184,6 +195,21 @@ export function post_process(ctx, container, params = {}) {
   };
 
   const on_click = (event) => {
+    const toggle_all_button = event.target?.closest?.(
+      '.sc-context-builder-tree-toggle-all',
+    );
+    if (toggle_all_button && container.contains(toggle_all_button)) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const all_expanded = Array.from(folder_paths).every(
+        (path) => expanded_paths.has(path),
+      );
+      expanded_paths = all_expanded ? new Set() : new Set(folder_paths);
+      render_tree_dom_safely();
+      return;
+    }
+
     const toggle_button = event.target?.closest?.('.sc-context-builder-tree-toggle');
     if (toggle_button && container.contains(toggle_button)) {
       event.preventDefault();

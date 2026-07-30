@@ -36,6 +36,7 @@
 }
 
 .sc-context-builder-tree-toggle,
+.sc-context-builder-tree-toggle-all,
 .sc-context-builder-tree-remove,
 .sc-context-builder-tree-name,
 .sc-context-builder-tree-origin,
@@ -43,6 +44,22 @@
   border: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.sc-context-builder-tree-toggle-all {
+  display: block;
+  width: fit-content;
+  min-height: 26px;
+  margin: 0 0 var(--size-4-1) auto;
+  padding: 2px var(--size-4-2);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+}
+
+.sc-context-builder-tree-toggle-all:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
 }
 
 .sc-context-builder-tree-toggle,
