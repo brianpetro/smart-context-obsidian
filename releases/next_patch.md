@@ -41,3 +41,6 @@ Improved: context builder should assume search intent for keypresses outside of 
 
 
 Improved: copy ribbon icon menu actions with sub-menus for copy types
+
+
+Added: "Expand all" and "Collapse all" in context tree view
