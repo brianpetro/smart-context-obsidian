@@ -6,7 +6,7 @@ import {
 
 const max_supported_depth = 2;
 
-export const display_name = 'Copy text at link depth';
+export const display_name = 'Copy at link depth';
 export const action_scope = smart_context_action_scope;
 
 export const context_copy_at_depth =

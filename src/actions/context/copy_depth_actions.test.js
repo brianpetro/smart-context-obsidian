@@ -41,13 +41,15 @@ function build_context(items = []) {
 }
 
 function build_depth_menu_items(spec, ctx) {
-  const items = [];
   const runs = [];
-  const menu = {
+  const create_menu = () => ({
+    items: [],
     addItem(callback) {
       const item = {
         title: '',
         icon: '',
+        disabled: false,
+        submenu: null,
         on_click: null,
         setTitle(title) {
           this.title = title;
@@ -57,15 +59,24 @@ function build_depth_menu_items(spec, ctx) {
           this.icon = icon;
           return this;
         },
+        setDisabled(disabled) {
+          this.disabled = Boolean(disabled);
+          return this;
+        },
+        setSubmenu() {
+          this.submenu = create_menu();
+          return this.submenu;
+        },
         onClick(on_click) {
           this.on_click = on_click;
           return this;
         },
       };
       callback(item);
-      items.push(item);
+      this.items.push(item);
     },
-  };
+  });
+  const menu = create_menu();
   const menu_ctx = {
     menu,
     scope: ctx,
@@ -77,17 +88,17 @@ function build_depth_menu_items(spec, ctx) {
 
   spec.build.call(menu_ctx);
   return {
-    items,
+    items: menu.items,
     runs,
   };
 }
 
-test('copy-depth availability uses the active text maximum depth', (t) => {
+test('copy-depth availability uses the active context maximum depth', (t) => {
   const ctx = build_context([
     { key: 'root', data: { d: 0 } },
     { key: 'out-1', data: { d: 1 } },
     { key: 'in-3', data: { d: 3, inlink: true } },
-    { key: 'excluded-5', data: { d: 5, exclude: true } },
+    { key: 'excluded-6', data: { d: 6, exclude: true } },
     { key: 'media-5', data: { d: 5 }, is_media: true },
   ]);
 
@@ -95,18 +106,30 @@ test('copy-depth availability uses the active text maximum depth', (t) => {
   t.true(is_copy_context_depth_available(ctx, 1));
   t.true(is_copy_context_depth_available(ctx, 2));
   t.true(is_copy_context_depth_available(ctx, 3));
-  t.false(is_copy_context_depth_available(ctx, 4));
+  t.true(is_copy_context_depth_available(ctx, 4));
+  t.true(is_copy_context_depth_available(ctx, 5));
+  t.false(is_copy_context_depth_available(ctx, 6));
   t.false(is_copy_context_depth_available(ctx, -1));
   t.false(is_copy_context_depth_available(build_context(), 0));
 });
 
-test('Core copy-at-depth action reuses the supplied context and supports depths 0-2', async (t) => {
-  const calls = [];
+test('Core copy-at-depth action routes text, ZIP, and tree output through the supplied context', async (t) => {
+  const text_calls = [];
+  const zip_calls = [];
+  const tree_calls = [];
   const ctx = build_context([
     { key: 'root', data: { d: 0 } },
   ]);
   ctx.actions.context_copy_to_clipboard = async (params) => {
-    calls.push(params);
+    text_calls.push(params);
+    return true;
+  };
+  ctx.actions.context_export_zip = async (params) => {
+    zip_calls.push(params);
+    return true;
+  };
+  ctx.actions.context_copy_link_tree = async (params) => {
+    tree_calls.push(params);
     return true;
   };
 
@@ -132,19 +155,19 @@ test('Core copy-at-depth action reuses the supplied context and supports depths 
   });
 
   t.true(copied);
-  t.is(calls.length, 1);
-  t.is(calls[0].event_source, event_source);
-  t.is(calls[0].exclusions, exclusions);
-  t.is(calls[0].max_depth, 2);
-  t.false(calls[0].include_inlinks);
-  t.false(calls[0].with_media);
-  t.false(Object.prototype.hasOwnProperty.call(calls[0], 'action_key'));
-  t.false(Object.prototype.hasOwnProperty.call(calls[0], 'click_args'));
-  t.false(Object.prototype.hasOwnProperty.call(calls[0], 'click_event'));
-  t.false(Object.prototype.hasOwnProperty.call(calls[0], 'menu_ctx'));
-  t.false(Object.prototype.hasOwnProperty.call(calls[0], 'menu_key'));
+  t.is(text_calls.length, 1);
+  t.is(text_calls[0].event_source, event_source);
+  t.is(text_calls[0].exclusions, exclusions);
+  t.is(text_calls[0].max_depth, 2);
+  t.false(text_calls[0].include_inlinks);
+  t.false(text_calls[0].with_media);
+  t.false(Object.prototype.hasOwnProperty.call(text_calls[0], 'action_key'));
+  t.false(Object.prototype.hasOwnProperty.call(text_calls[0], 'click_args'));
+  t.false(Object.prototype.hasOwnProperty.call(text_calls[0], 'click_event'));
+  t.false(Object.prototype.hasOwnProperty.call(text_calls[0], 'menu_ctx'));
+  t.false(Object.prototype.hasOwnProperty.call(text_calls[0], 'menu_key'));
 
-  const filter = calls[0].filter;
+  const filter = text_calls[0].filter;
   t.true(filter({ key: 'root', data: { d: 0 } }));
   t.true(filter({ key: 'out-2', data: { d: 2 } }));
   t.false(filter({ key: 'out-3', data: { d: 3 } }));
@@ -153,29 +176,61 @@ test('Core copy-at-depth action reuses the supplied context and supports depths 
   t.false(filter({ key: 'media', data: { d: 0 }, is_media: true }));
   t.false(filter({ key: 'user-filtered', data: { d: 0 } }));
 
-  await context_copy_at_depth.call(ctx, {
+  t.true(await context_copy_at_depth.call(ctx, {
     max_depth: 2,
     include_inlinks: true,
-  });
-  t.true(calls[1].include_inlinks);
-  t.true(calls[1].filter({
+    copy_type: 'zip',
+  }));
+  t.is(zip_calls.length, 1);
+  t.true(zip_calls[0].include_inlinks);
+  t.false(Object.prototype.hasOwnProperty.call(zip_calls[0], 'with_media'));
+  t.true(zip_calls[0].filter({
+    key: 'in-1',
+    data: { d: 1, inlink: true },
+  }));
+  t.true(zip_calls[0].filter({
+    key: 'media',
+    data: { d: 2 },
+    is_media: true,
+  }));
+
+  t.true(await context_copy_at_depth.call(ctx, {
+    max_depth: 1,
+    copy_type: 'tree',
+  }));
+  t.is(tree_calls.length, 1);
+  t.false(tree_calls[0].include_inlinks);
+  t.true(tree_calls[0].filter({
+    key: 'media',
+    data: { d: 1 },
+    is_media: true,
+  }));
+  t.false(tree_calls[0].filter({
     key: 'in-1',
     data: { d: 1, inlink: true },
   }));
 
   t.false(await context_copy_at_depth.call(ctx, {
+    max_depth: 1,
+    copy_type: 'unsupported',
+  }));
+
+  t.false(await context_copy_at_depth.call(ctx, {
     max_depth: 3,
   }));
-  t.is(calls.length, 2);
+  t.is(text_calls.length, 1);
+  t.is(zip_calls.length, 1);
+  t.is(tree_calls.length, 1);
 });
 
-test('Core copy-at-depth placement exposes both policies at every depth through 2', async (t) => {
+test('Core copy-at-depth placement exposes output submenus for both policies through depth 2', async (t) => {
   const ctx = build_context([
     { key: 'root', data: { d: 0 } },
     { key: 'out-1', data: { d: 1 } },
     { key: 'out-2', data: { d: 2 } },
     { key: 'in-3', data: { d: 3, inlink: true } },
   ]);
+  ctx.actions.context_export_zip = () => true;
   const spec = copy_at_depth_menus[copy_depth_menu_key];
   const {
     items,
@@ -199,18 +254,42 @@ test('Core copy-at-depth placement exposes both policies at every depth through 
     ],
   );
   t.false(items.some((item) => item.title.startsWith('Depth 3')));
+  t.true(items.every((item) => item.submenu));
+  t.true(items.every((item) => !item.disabled));
+  t.true(items.every((item) => {
+    return item.submenu.items.map((copy_item) => copy_item.title).join('|')
+      === 'Copy text|Copy ZIP|Copy link tree'
+    ;
+  }));
 
   const depth_2_backlinks = items.find((item) => {
     return item.title === 'Depth 2 - include backlinks';
   });
   t.truthy(depth_2_backlinks);
-  t.true(await depth_2_backlinks.on_click());
+  const copy_zip = depth_2_backlinks.submenu.items.find((item) => {
+    return item.title === 'Copy ZIP';
+  });
+  t.truthy(copy_zip);
+  t.true(await copy_zip.on_click());
   t.deepEqual(runs, [
     {
       max_depth: 2,
       include_inlinks: true,
+      copy_type: 'zip',
     },
   ]);
+
+  const core_only_ctx = build_context([
+    { key: 'root', data: { d: 0 } },
+  ]);
+  const core_only_menu = build_depth_menu_items(spec, core_only_ctx);
+  t.deepEqual(
+    core_only_menu.items[0].submenu.items.map((item) => item.title),
+    [
+      'Copy text',
+      'Copy link tree',
+    ],
+  );
 });
 
 test('copy-depth filter validates depth and combines a caller filter', (t) => {
@@ -230,6 +309,16 @@ test('copy-depth filter validates depth and combines a caller filter', (t) => {
   t.true(filter({ key: 'in', data: { d: 1, inlink: true } }));
   t.false(filter({ key: 'deep', data: { d: 2 } }));
   t.false(filter({ key: 'skip', data: { d: 0 } }));
+
+  const media_filter = build_copy_context_depth_filter({
+    max_depth: 1,
+    include_media: true,
+  });
+  t.true(media_filter({
+    key: 'media',
+    data: { d: 1 },
+    is_media: true,
+  }));
 });
 
 test('choose-link-depth depth-menu action opens the configured selector on the exact context', (t) => {
@@ -328,7 +417,7 @@ test('copy-at-depth placement composes its configured variants into a submenu', 
   t.true(spec.when.call(menu_ctx));
   spec.build.call(menu_ctx);
 
-  t.is(item.title, 'Copy text by depth');
+  t.is(item.title, 'Copy by depth');
   t.is(item.icon, 'git-branch');
   t.false(item.disabled);
   t.deepEqual(calls, [

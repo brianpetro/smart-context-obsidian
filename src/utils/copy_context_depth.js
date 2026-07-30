@@ -7,7 +7,7 @@ export const smart_context_action_scope = {
 };
 
 /**
- * Return whether the current text context reaches a requested link depth.
+ * Return whether the current context reaches a requested link depth.
  *
  * Availability is depth-based, not variant-based. Outlink-only and backlink
  * variants remain explicit policy choices at every available depth, matching
@@ -26,11 +26,12 @@ export function is_copy_context_depth_available(
 }
 
 /**
- * Build a text-copy filter for one link depth.
+ * Build a copy filter for one link depth.
  *
  * @param {object} [params={}]
  * @param {number} params.max_depth
  * @param {boolean} [params.include_inlinks=false]
+ * @param {boolean} [params.include_media=false]
  * @param {(item: import('smart-contexts').ContextItem) => boolean} [params.filter]
  * @returns {(item: import('smart-contexts').ContextItem) => boolean}
  */
@@ -41,6 +42,7 @@ export function build_copy_context_depth_filter(params = {}) {
   }
 
   const include_inlinks = params.include_inlinks === true;
+  const include_media = params.include_media === true;
   const user_filter = typeof params.filter === 'function'
     ? params.filter
     : null
@@ -49,7 +51,7 @@ export function build_copy_context_depth_filter(params = {}) {
   return (item) => {
     if (user_filter && !user_filter(item)) return false;
     if (item?.data?.exclude === true) return false;
-    if (item?.is_media === true) return false;
+    if (!include_media && item?.is_media === true) return false;
     if (get_item_depth(item) > max_depth) return false;
     if (!include_inlinks && item?.data?.inlink === true) return false;
     return true;
@@ -58,6 +60,7 @@ export function build_copy_context_depth_filter(params = {}) {
 
 /**
  * Create the configured action implementation for supported link depths.
+ * `copy_type` selects text, ZIP, or link-tree output and defaults to text.
  *
  * @param {number} max_supported_depth
  * @returns {function(object=): Promise<boolean>}
@@ -74,9 +77,20 @@ export function create_copy_context_depth_action(max_supported_depth) {
       return false;
     }
 
-    if (typeof this?.actions?.context_copy_to_clipboard !== 'function') {
+    const copy_type = params.copy_type ?? 'text';
+    let copy_action;
+
+    if (copy_type === 'text') {
+      copy_action = this?.actions?.context_copy_to_clipboard;
+    } else if (copy_type === 'zip') {
+      copy_action = this?.actions?.context_export_zip;
+    } else if (copy_type === 'tree') {
+      copy_action = this?.actions?.context_copy_link_tree;
+    } else {
       return false;
     }
+
+    if (typeof copy_action !== 'function') return false;
 
     const include_inlinks =
       max_depth > 0
@@ -85,14 +99,18 @@ export function create_copy_context_depth_action(max_supported_depth) {
     const filter = build_copy_context_depth_filter({
       max_depth,
       include_inlinks,
+      include_media: copy_type !== 'text',
       filter: params.filter,
     });
     const copy_params = {
       filter,
-      with_media: false,
       max_depth,
       include_inlinks,
     };
+
+    if (copy_type === 'text') {
+      copy_params.with_media = false;
+    }
 
     if (typeof params.event_source !== 'undefined') {
       copy_params.event_source = params.event_source;
@@ -101,7 +119,7 @@ export function create_copy_context_depth_action(max_supported_depth) {
       copy_params.exclusions = params.exclusions;
     }
 
-    return await this.actions.context_copy_to_clipboard(copy_params);
+    return await copy_action(copy_params);
   };
 }
 
@@ -173,7 +191,7 @@ export function create_copy_context_depth_menus(max_supported_depth) {
  */
 function add_copy_context_depth_submenu(menu_ctx) {
   menu_ctx.menu?.addItem?.((item) => {
-    item.setTitle?.('Copy text by depth');
+    item.setTitle?.('Copy by depth');
     item.setIcon?.('git-branch');
 
     const submenu = item.setSubmenu?.();
@@ -212,12 +230,54 @@ function add_copy_context_depth_menu_item(
       max_depth,
       include_inlinks,
     ));
-    item.onClick?.(() => {
-      return menu_ctx.run({
-        max_depth,
-        include_inlinks,
+
+    const submenu = item.setSubmenu?.();
+    if (!submenu) {
+      item.setDisabled?.(true);
+      return;
+    }
+
+    submenu.addItem?.((copy_item) => {
+      copy_item.setTitle?.('Copy text');
+      copy_item.setIcon?.('copy');
+      copy_item.onClick?.(() => {
+        return menu_ctx.run({
+          max_depth,
+          include_inlinks,
+          copy_type: 'text',
+        });
       });
     });
+
+    if (
+      typeof menu_ctx.scope?.actions?.context_export_zip === 'function'
+    ) {
+      submenu.addItem?.((copy_item) => {
+        copy_item.setTitle?.('Copy ZIP');
+        copy_item.setIcon?.('archive');
+        copy_item.onClick?.(() => {
+          return menu_ctx.run({
+            max_depth,
+            include_inlinks,
+            copy_type: 'zip',
+          });
+        });
+      });
+    }
+
+    submenu.addItem?.((copy_item) => {
+      copy_item.setTitle?.('Copy link tree');
+      copy_item.setIcon?.('list-tree');
+      copy_item.onClick?.(() => {
+        return menu_ctx.run({
+          max_depth,
+          include_inlinks,
+          copy_type: 'tree',
+        });
+      });
+    });
+
+    item.setDisabled?.(!(submenu.items?.length > 0));
   });
 }
 
@@ -226,7 +286,7 @@ function add_copy_context_depth_menu_item(
  * @returns {number}
  */
 function get_copy_context_max_depth(ctx) {
-  const context_items = get_active_text_context_items(ctx);
+  const context_items = get_active_context_items(ctx);
   if (!context_items.length) return -1;
 
   return context_items.reduce((current_max, item) => {
@@ -238,14 +298,12 @@ function get_copy_context_max_depth(ctx) {
  * @param {import('smart-contexts').SmartContext} ctx
  * @returns {Array<import('smart-contexts').ContextItem>}
  */
-function get_active_text_context_items(ctx) {
+function get_active_context_items(ctx) {
   const context_items = ctx?.context_items;
   if (typeof context_items?.filter !== 'function') return [];
 
   return context_items.filter((item) => {
-    return item?.data?.exclude !== true
-      && item?.is_media !== true
-    ;
+    return item?.data?.exclude !== true;
   });
 }
 
