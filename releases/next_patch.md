@@ -38,3 +38,6 @@ Add: implement context management actions (add, get, read, remove, create, list)
 
 
 Improved: context builder should assume search intent for keypresses outside of the name input
+
+
+Improved: copy ribbon icon menu actions with sub-menus for copy types
