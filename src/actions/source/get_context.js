@@ -26,6 +26,7 @@ export { build_context_items_from_graphs } from '../../utils/link_graph_context_
  * @param {object} [params={}]
  * @param {'out'|'in'|'both'} [params.direction='both'] - Link direction(s).
  * @param {boolean} [params.include_self=true] - Include the root source.
+ * @param {Record<string, Array<object>>} [params.outlinks_by_source] - Transient outlinks keyed by source key.
  * @returns {Promise<import('smart-contexts').SmartContext|null>}
  */
 export async function source_get_context(params = {}) {
@@ -39,6 +40,7 @@ export async function source_get_context(params = {}) {
     ? await get_links_to_depth(this, LINK_DEPTH, {
       direction: LINK_DIRECTIONS.OUT,
       include_self,
+      outlinks_by_source: params.outlinks_by_source,
     })
     : []
   ;
