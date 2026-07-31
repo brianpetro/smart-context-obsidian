@@ -44,3 +44,6 @@ Improved: copy ribbon icon menu actions with sub-menus for copy types
 
 
 Added: "Expand all" and "Collapse all" in context tree view
+
+
+Added: include deta.settings in context copy functionality and update tests
