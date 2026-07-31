@@ -13,6 +13,7 @@ import { render as smart_context_list_item_component, version as smart_context_l
 import { render as smart_context_rules_list_component, version as smart_context_rules_list_component_version } from './src/components/smart-context/rules_list.js';
 import { render as smart_context_settings_tab_component } from './src/components/smart-context/settings_tab.js';
 
+import { connections_list_send_to_context as connections_list_send_to_context_action, menus as connections_list_send_to_context_action_menus, version as connections_list_send_to_context_action_version } from './src/actions/connections-list/send_to_context.js';
 import { context_add as context_add_action, display_name as context_add_action_display_name, display_description as context_add_action_display_description, action_scope as context_add_action_action_scope, tool as context_add_action_tool, input_schema as context_add_action_input_schema, output_schema as context_add_action_output_schema } from './src/actions/context/add.js';
 import { context_convert_to_named as context_convert_to_named_action, menus as context_convert_to_named_action_menus } from './src/actions/context/convert_to_named.js';
 import { context_copy_at_depth as context_copy_at_depth_action, display_name as context_copy_at_depth_action_display_name, action_scope as context_copy_at_depth_action_action_scope, menus as context_copy_at_depth_action_menus } from './src/actions/context/copy_at_depth.js';
@@ -66,6 +67,7 @@ export const smart_env_config = {
     smart_context_settings_tab: { render: smart_context_settings_tab_component, version: "2.4.6" }
   },
   actions: {
+    connections_list_send_to_context: { action: connections_list_send_to_context_action, menus: connections_list_send_to_context_action_menus, version: connections_list_send_to_context_action_version },
     context_add: { action: context_add_action, display_name: context_add_action_display_name, display_description: context_add_action_display_description, action_scope: context_add_action_action_scope, tool: context_add_action_tool, input_schema: context_add_action_input_schema, output_schema: context_add_action_output_schema, version: "2.4.6" },
     context_convert_to_named: { action: context_convert_to_named_action, menus: context_convert_to_named_action_menus, version: "2.4.6" },
     context_copy_at_depth: { action: context_copy_at_depth_action, display_name: context_copy_at_depth_action_display_name, action_scope: context_copy_at_depth_action_action_scope, menus: context_copy_at_depth_action_menus, version: "2.4.6" },
