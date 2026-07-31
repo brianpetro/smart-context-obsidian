@@ -24,6 +24,13 @@ test('make copy opens the configured Builder', (t) => {
       context_items: {
         'Evidence.md': { key: 'Evidence.md' },
       },
+      settings: {
+        context_items: {
+          headings: {
+            Draft: { include: false },
+          },
+        },
+      },
     },
     emit_event() {},
   };
@@ -38,4 +45,10 @@ test('make copy opens the configured Builder', (t) => {
     event_source: 'test.copy',
   });
   t.is(copied_ctx.data.name, 'Shared copy');
+  t.deepEqual(copied_ctx.data.settings, ctx.data.settings);
+  t.not(copied_ctx.data.settings, ctx.data.settings);
+  t.not(
+    copied_ctx.data.settings.context_items.headings,
+    ctx.data.settings.context_items.headings,
+  );
 });

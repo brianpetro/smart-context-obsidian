@@ -52,6 +52,10 @@ export function context_make_copy(params = {}) {
     copy_data.context_opts = clone_context_data(this.data.context_opts);
   }
 
+  if (this?.data?.settings) {
+    copy_data.settings = clone_context_data(this.data.settings);
+  }
+
   const context_name = get_copy_context_name(this, params);
   if (context_name) copy_data.name = context_name;
 
