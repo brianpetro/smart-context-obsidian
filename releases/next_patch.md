@@ -47,3 +47,6 @@ Added: "Expand all" and "Collapse all" in context tree view
 
 
 Added: include deta.settings in context copy functionality and update tests
+
+
+Rename command for opening context builder to clarify functionality
