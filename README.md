@@ -47,6 +47,8 @@ Use this when one note already owns the work.
 4. Paste into your AI tool.
 5. Ask the model to use only the provided context.
 
+![context-current-note-depth-menu-documentation-1280x720-desktop-2026-07-30](images/context-current-note-depth-menu-documentation-1280x720-desktop-2026-07-30.png)
+
 Prompt starter:
 
 ```prompt
@@ -107,6 +109,8 @@ Select multiple notes, then right-click and choose **Copy selected notes as cont
 
 ![](https://smartconnections.app/assets/context-file-nav-copy-multi-select-2025-12-16.png)
 
+![context-copy-confirmation-copy-confirmation-file-navigator-copy-selection-confirmed-1280x720-publication-srgb-e9e2af734277-2026-07-29](images/context-copy-confirmation-copy-confirmation-file-navigator-copy-selection-confirmed-1280x720-publication-srgb-e9e2af734277-2026-07-29.png)
+
 ### Copy a folder
 
 Use this when the project already lives in one folder.
@@ -129,6 +133,8 @@ Learn more about [file nav actions](https://smartconnections.app/smart-context/f
 ## Use Builder when the set needs cleanup
 
 Builder is for reviewing, trimming, and saving context before copying.
+
+![context-builder-source-to-context-editorial-hero-reviewed-1280x720-2026-07-29](images/context-builder-source-to-context-editorial-hero-reviewed-1280x720-2026-07-29.png)
 
 Use Builder when:
 
@@ -163,6 +169,8 @@ Smart Connections can help you find related notes. Smart Context packages the us
 
 ![](https://smartconnections.app/assets/connections-send-to-context-2025-12-16.png)
 
+![connections-results-transferred-context-builder-documentation-1280x720-desktop-2026-07-30](images/connections-results-transferred-context-builder-documentation-1280x720-desktop-2026-07-30.png)
+
 Workflow:
 
 1. Open the Connections view while working in a note.
@@ -186,6 +194,8 @@ Good named context examples:
 - bug triage set
 - client handoff pack
 
+![context-builder-named-context-creation-campaign-pkm-sources-annotated-publication-srgb-6a3d884157b3-2026-07-29](images/context-builder-named-context-creation-campaign-pkm-sources-annotated-publication-srgb-6a3d884157b3-2026-07-29.png)
+
 Learn more in [Named contexts](https://smartconnections.app/smart-context/builder/named/).
 
 ## Keep context attached to one note with codeblocks
@@ -196,6 +206,8 @@ Use a Smart Context codeblock when the note should carry a visible context list.
 |---|---|
 | Reuse the same set across many notes. | Named context |
 | Keep context attached to one note. | Codeblock |
+
+![context-codeblock-actions-menu-pro-contextual-hero-1280x720-desktop-2026-07-27](images/context-codeblock-actions-menu-pro-contextual-hero-1280x720-desktop-2026-07-27.png)
 
 Learn more in [Smart Context codeblocks](https://smartconnections.app/smart-context/codeblock/).
 
@@ -222,6 +234,8 @@ Open **Settings -> Community plugins -> Smart Context**.
 
 ![](https://smartconnections.app/assets/context-settings-page-item-templates-2025-12-15.png)
 
+![context-settings-context-output-controls-output-settings-highlighted-publication-srgb-e11d676ab2bf-2026-07-29](images/context-settings-context-output-controls-output-settings-highlighted-publication-srgb-e11d676ab2bf-2026-07-29.png)
+
 **Item templates** wrap each note or item. Useful variables include `{{KEY}}`, `{{TIME_AGO}}`, and `{{LINK_DEPTH}}`.
 
 Templates only change copied/exported text. They do not change your vault files.
@@ -236,6 +250,8 @@ Context Pro helps when the work needs more than plain notes.
 
 - Richer sources: media, PDFs, Bases, repos, and external files on supported Pro workflows.
 - Finer control: dynamic groups, exclusions, heading filters, and advanced context workflows on supported Pro workflows.
+
+![context-media-two-images-two-page-pdf-current-media-documentation-1200x800-desktop-2026-07-30](images/context-media-two-images-two-page-pdf-current-media-documentation-1200x800-desktop-2026-07-30.png)
 
 Use Pro when the assignment needs those sources or controls. Pro is not required for the first win.
 
