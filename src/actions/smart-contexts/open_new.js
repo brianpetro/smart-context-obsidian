@@ -153,7 +153,7 @@ function unique_strings(values) {
 
 export const commands = {
   'new-context-open-selector': {
-    name: 'Open Context Builder',
+    name: 'Open new context in builder',
 
     register_when({ plugin }) {
       return plugin.manifest.id === 'smart-context';
