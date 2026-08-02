@@ -1,11 +1,17 @@
 import test from 'ava';
-import { write_smart_drag_data } from 'obsidian-smart-env/src/utils/smart_drag_drop.js';
+import {
+  SMART_DRAG_DATA_TYPE,
+  write_smart_drag_data,
+} from 'obsidian-smart-env/src/utils/smart_drag_drop.js';
 import { resolve_dropped_context_item_keys } from './resolve_dropped_context_item_keys.js';
 
 function create_data_transfer(data = {}) {
   return {
     data: { ...data },
     files: [],
+    get types() {
+      return Object.keys(this.data);
+    },
     getData(type) {
       return this.data[type] || '';
     },
@@ -88,6 +94,38 @@ test('resolve_dropped_context_item_keys does not treat named contexts as ordinar
   t.deepEqual(resolve_dropped_context_item_keys(env, data_transfer), []);
 });
 
+test('resolve_dropped_context_item_keys rejects a mixed unsupported Smart batch', (t) => {
+  const env = create_env();
+  const data_transfer = create_data_transfer({
+    'text/plain': 'Projects/Alpha.md',
+  });
+  write_smart_drag_data(data_transfer, [
+    env.smart_sources.get('Projects/Alpha.md'),
+    {
+      collection_key: 'smart_contexts',
+      key: 'context-1',
+    },
+  ]);
+
+  t.deepEqual(resolve_dropped_context_item_keys(env, data_transfer), []);
+});
+
+test('resolve_dropped_context_item_keys rejects a mixed unresolved Smart batch', (t) => {
+  const env = create_env();
+  const data_transfer = create_data_transfer({
+    'text/plain': 'Projects/Alpha.md',
+  });
+  write_smart_drag_data(data_transfer, [
+    env.smart_sources.get('Projects/Alpha.md'),
+    {
+      collection_key: 'smart_sources',
+      key: 'Missing.md',
+    },
+  ]);
+
+  t.deepEqual(resolve_dropped_context_item_keys(env, data_transfer), []);
+});
+
 test('resolve_dropped_context_item_keys resolves native files and media', (t) => {
   const env = create_env();
   const data_transfer = create_data_transfer({
@@ -132,7 +170,7 @@ test('resolve_dropped_context_item_keys rejects an ambiguous file basename', (t)
   t.deepEqual(resolve_dropped_context_item_keys(env, data_transfer), []);
 });
 
-test('resolve_dropped_context_item_keys falls back to native data when Smart refs do not resolve', (t) => {
+test('resolve_dropped_context_item_keys does not fall back when Smart refs do not resolve', (t) => {
   const env = create_env();
   const data_transfer = create_data_transfer({
     'text/plain': 'Projects/Alpha.md',
@@ -142,7 +180,15 @@ test('resolve_dropped_context_item_keys falls back to native data when Smart ref
     key: 'Missing.md',
   });
 
-  t.deepEqual(resolve_dropped_context_item_keys(env, data_transfer), [
-    'Projects/Alpha.md',
-  ]);
+  t.deepEqual(resolve_dropped_context_item_keys(env, data_transfer), []);
+});
+
+test('resolve_dropped_context_item_keys does not fall back for malformed Smart data', (t) => {
+  const env = create_env();
+  const data_transfer = create_data_transfer({
+    [SMART_DRAG_DATA_TYPE]: '{not-json',
+    'text/plain': 'Projects/Alpha.md',
+  });
+
+  t.deepEqual(resolve_dropped_context_item_keys(env, data_transfer), []);
 });

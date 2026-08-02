@@ -1,7 +1,15 @@
-import { read_smart_drag_data } from 'obsidian-smart-env/src/utils/smart_drag_drop.js';
+import {
+  has_smart_drag_data,
+  read_smart_drag_data,
+} from 'obsidian-smart-env/src/utils/smart_drag_drop.js';
 import { parse_dropped_obsidian_data } from 'obsidian-smart-env/src/utils/parse_dropped_obsidian_data.js';
 import { expand_folders_to_item_keys } from './folder_selection.js';
 import { get_selected_context_item_keys } from './get_selected_context_item_keys.js';
+
+const SMART_CONTEXT_COLLECTION_KEYS = new Set([
+  'smart_sources',
+  'smart_blocks',
+]);
 
 function normalize_path(value) {
   return String(value || '')
@@ -48,18 +56,18 @@ function get_smart_item_keys(env, data_transfer) {
   const smart_drag_data = read_smart_drag_data(data_transfer);
   if (!smart_drag_data) return [];
 
-  return smart_drag_data.items
-    .map(({ collection_key, item_key }) => {
-      if (collection_key === 'smart_sources') {
-        return env.smart_sources?.get?.(item_key)?.key;
-      }
-      if (collection_key === 'smart_blocks') {
-        return env.smart_blocks?.get?.(item_key)?.key;
-      }
-      return null;
-    })
-    .filter(Boolean)
-  ;
+  const item_keys = [];
+
+  for (const { collection_key, item_key } of smart_drag_data.items) {
+    if (!SMART_CONTEXT_COLLECTION_KEYS.has(collection_key)) return [];
+
+    const key = env?.[collection_key]?.get?.(item_key)?.key;
+    if (!key) return [];
+
+    item_keys.push(key);
+  }
+
+  return item_keys;
 }
 
 function get_native_item_keys(env, data_transfer) {
@@ -99,17 +107,16 @@ function get_native_item_keys(env, data_transfer) {
 /**
  * Resolve one dropped batch into Smart Context item keys.
  *
- * Smart Source and Smart Block identity is preferred. Native File Navigator
- * data is used only when no supported Smart refs resolve.
+ * Smart Source and Smart Block identity is authoritative when the Smart MIME
+ * type is present. Native File Navigator data is used only when it is absent.
  *
  * @param {object} env
  * @param {DataTransfer|object} data_transfer
  * @returns {string[]}
  */
 export function resolve_dropped_context_item_keys(env, data_transfer) {
-  const smart_item_keys = get_smart_item_keys(env, data_transfer);
-  const item_keys = smart_item_keys.length
-    ? smart_item_keys
+  const item_keys = has_smart_drag_data(data_transfer)
+    ? get_smart_item_keys(env, data_transfer)
     : get_native_item_keys(env, data_transfer)
   ;
 
