@@ -52,6 +52,7 @@ function create_env() {
     smart_sources: {
       items: sources,
       fs: {
+        base_path: '/vault',
         file_paths,
         folder_paths: [
           'Projects',
@@ -153,7 +154,7 @@ test('resolve_dropped_context_item_keys resolves File Navigator file objects', (
 test('resolve_dropped_context_item_keys expands a uniquely matched nested folder', (t) => {
   const env = create_env();
   const data_transfer = create_data_transfer({
-    'text/plain': 'Acme.md',
+    'text/plain': 'Acme',
   });
 
   t.deepEqual(resolve_dropped_context_item_keys(env, data_transfer), [
@@ -161,10 +162,43 @@ test('resolve_dropped_context_item_keys expands a uniquely matched nested folder
   ]);
 });
 
+test('resolve_dropped_context_item_keys does not interpret explicit Markdown text as a folder', (t) => {
+  const env = create_env();
+  const data_transfer = create_data_transfer({
+    'text/plain': 'Acme.md',
+  });
+
+  t.deepEqual(resolve_dropped_context_item_keys(env, data_transfer), []);
+});
+
 test('resolve_dropped_context_item_keys rejects an ambiguous file basename', (t) => {
   const env = create_env();
   const data_transfer = create_data_transfer({
     'text/plain': 'Alpha.md',
+  });
+
+  t.deepEqual(resolve_dropped_context_item_keys(env, data_transfer), []);
+});
+
+test('resolve_dropped_context_item_keys rejects file and folder collisions', (t) => {
+  const env = create_env();
+  env.smart_sources.items['Acme.md'] = {
+    key: 'Acme.md',
+    collection_key: 'smart_sources',
+  };
+  env.smart_sources.fs.file_paths.push('Acme.md');
+  env.smart_sources.fs.folder_paths.push('Acme');
+  const data_transfer = create_data_transfer({
+    'text/plain': 'Acme',
+  });
+
+  t.deepEqual(resolve_dropped_context_item_keys(env, data_transfer), []);
+});
+
+test('resolve_dropped_context_item_keys rejects outside-vault absolute paths', (t) => {
+  const env = create_env();
+  const data_transfer = create_data_transfer({
+    'text/plain': '/outside/Projects/Clients/Acme/Beta.md',
   });
 
   t.deepEqual(resolve_dropped_context_item_keys(env, data_transfer), []);

@@ -2,7 +2,11 @@ import {
   has_smart_drag_data,
   read_smart_drag_data,
 } from 'obsidian-smart-env/src/utils/smart_drag_drop.js';
-import { parse_dropped_obsidian_data } from 'obsidian-smart-env/src/utils/parse_dropped_obsidian_data.js';
+import {
+  classify_dropped_obsidian_entry,
+  get_dropped_obsidian_entry_path,
+  parse_dropped_obsidian_entries,
+} from 'obsidian-smart-env/src/utils/parse_dropped_obsidian_data.js';
 import { expand_folders_to_item_keys } from './folder_selection.js';
 import { get_selected_context_item_keys } from './get_selected_context_item_keys.js';
 
@@ -10,41 +14,6 @@ const SMART_CONTEXT_COLLECTION_KEYS = new Set([
   'smart_sources',
   'smart_blocks',
 ]);
-
-function normalize_path(value) {
-  return String(value || '')
-    .trim()
-    .replace(/\\+/g, '/')
-    .replace(/\/+$/g, '')
-  ;
-}
-
-/**
- * Resolve an exact or uniquely matching vault-relative path.
- * @param {string[]} known_paths
- * @param {string} dropped_path
- * @param {boolean} [allow_appended_md=false]
- * @returns {string}
- */
-function resolve_known_path(known_paths, dropped_path, allow_appended_md = false) {
-  const normalized_drop = normalize_path(dropped_path);
-  if (!normalized_drop) return '';
-
-  const paths = known_paths.map(normalize_path).filter(Boolean);
-  const exact_path = paths.find((path) => path === normalized_drop);
-  if (exact_path) return exact_path;
-
-  const matches = paths.filter((path) => {
-    const candidates = allow_appended_md ? [path, `${path}.md`] : [path];
-    return candidates.some((candidate) => {
-      return normalized_drop.endsWith(`/${candidate}`)
-        || candidate.endsWith(`/${normalized_drop}`)
-      ;
-    });
-  });
-
-  return matches.length === 1 ? matches[0] : '';
-}
 
 function get_file_extension(file_path) {
   const file_name = String(file_path || '').split('/').pop() || '';
@@ -72,32 +41,56 @@ function get_smart_item_keys(env, data_transfer) {
 
 function get_native_item_keys(env, data_transfer) {
   const smart_sources = env?.smart_sources;
-  const file_paths = smart_sources?.fs?.file_paths || env?.fs?.file_paths || [];
-  const folder_paths = smart_sources?.fs?.folder_paths || [];
+  const smart_fs = smart_sources?.fs || env?.fs;
+  const file_paths = Array.from(new Set([
+    ...(smart_fs?.file_paths || []),
+    ...Object.keys(smart_sources?.items || {}),
+  ]));
+  const folder_paths = smart_fs?.folder_paths || [];
+  const vault_path = smart_fs?.base_path || '';
   const item_keys = [];
 
-  for (const dropped_path of parse_dropped_obsidian_data(data_transfer)) {
-    const block = env.smart_blocks?.get?.(dropped_path);
-    const source = env.smart_sources?.get?.(dropped_path);
-    if (block?.key || source?.key) {
-      item_keys.push(block?.key || source.key);
+  for (const entry of parse_dropped_obsidian_entries(data_transfer)) {
+    const entry_path = get_dropped_obsidian_entry_path(entry, vault_path);
+    const block = env?.smart_blocks?.get?.(entry_path);
+    if (block?.key) {
+      item_keys.push(block.key);
       continue;
     }
 
-    const file_path = resolve_known_path(file_paths, dropped_path);
-    if (file_path) {
+    const classified_entry = classify_dropped_obsidian_entry(entry, {
+      file_paths,
+      folder_paths,
+      vault_path,
+    });
+    if (
+      classified_entry.status !== 'exact'
+      && classified_entry.status !== 'recovered'
+    ) {
+      continue;
+    }
+
+    if (classified_entry.kind === 'file') {
+      const source = env?.smart_sources?.get?.(classified_entry.path);
+      if (source?.key) {
+        item_keys.push(source.key);
+        continue;
+      }
+
       item_keys.push(...get_selected_context_item_keys([
         {
-          path: file_path,
-          extension: get_file_extension(file_path),
+          path: classified_entry.path,
+          extension: get_file_extension(classified_entry.path),
         },
       ], smart_sources));
       continue;
     }
 
-    const folder_path = resolve_known_path(folder_paths, dropped_path, true);
-    if (folder_path) {
-      item_keys.push(...expand_folders_to_item_keys([folder_path], smart_sources));
+    if (classified_entry.kind === 'folder') {
+      item_keys.push(...expand_folders_to_item_keys(
+        [classified_entry.path],
+        smart_sources,
+      ));
     }
   }
 
