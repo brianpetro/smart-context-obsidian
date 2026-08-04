@@ -1,6 +1,6 @@
 import { get_truncated_context_selections } from '../../utils/context_output_guard.js';
 
-export const version = '3.1.5';
+export const version = '3.1.7';
 
 const media_extension_re = /\.(?:png|jpe?g|gif|bmp|webp|ico|svg|avif|pdf)$/i;
 
@@ -122,9 +122,7 @@ export function post_process(ctx, container, params = {}) {
  * @returns {any}
  */
 export function get_context_summary(ctx, params = {}) {
-  const selection_entries = Object.entries(ctx?.data?.context_items || {})
-    .filter(([, item_data]) => item_data?.exclude !== true)
-  ;
+  const selection_entries = Object.entries(ctx?.data?.context_items || {});
   if (Array.isArray(params.context_items)) {
     return build_hydrated_summary(
       ctx,

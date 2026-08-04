@@ -4,18 +4,13 @@ import {
   remove_named_context_rule,
 } from './rules_list.js';
 
-test('get_named_context_rules returns only active direct named-context rules', (t) => {
+test('get_named_context_rules returns direct named-context rules', (t) => {
   const ctx = {
     data: {
       context_items: {
         Alpha: {
           key: 'Alpha',
           named_context: true,
-        },
-        Beta: {
-          key: 'Beta',
-          named_context: true,
-          exclude: true,
         },
         'note.md': {
           key: 'note.md',

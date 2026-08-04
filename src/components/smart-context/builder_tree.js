@@ -9,7 +9,7 @@ import { register_item_hover_popover } from 'obsidian-smart-env/src/utils/regist
 import { get_truncated_context_selections } from '../../utils/context_output_guard.js';
 import styles from './builder_tree.css';
 
-export const version = '3.1.6';
+export const version = '3.1.7';
 
 export const BUILDER_TREE_COLLAPSE_THRESHOLD = 50;
 export const BUILDER_TREE_CHILD_BATCH_SIZE = 100;
@@ -90,7 +90,6 @@ export function post_process(ctx, container, params = {}) {
   const render_tree = () => {
     const context_items = ctx.context_items
       .filter(params.filter)
-      .filter((item) => item?.data?.exclude !== true)
     ;
     context_item_by_key = new Map(
       context_items.map((item) => [get_item_key(item), item]),

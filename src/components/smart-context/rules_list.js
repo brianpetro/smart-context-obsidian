@@ -11,11 +11,7 @@ export const version = '3.1.7';
  */
 export function get_named_context_rules(ctx) {
   return Object.entries(ctx?.data?.context_items || {})
-    .filter(([, item_data]) => {
-      return item_data?.named_context === true
-        && item_data?.exclude !== true
-      ;
-    })
+    .filter(([, item_data]) => item_data?.named_context === true)
     .map(([storage_key, item_data]) => ({
       storage_key,
       name: String(item_data?.key || storage_key || '').trim(),

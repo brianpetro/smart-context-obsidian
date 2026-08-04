@@ -162,13 +162,9 @@ export function build_context_items_from_graph(graph = [], params = {}) {
  *
  * @param {Record<string, any>} target
  * @param {Record<string, any>} incoming
- * @param {object} [params={}]
- * @param {boolean} [params.preserve_excluded=true]
  * @returns {Record<string, any>}
  */
-export function merge_context_items_min_depth(target = {}, incoming = {}, params = {}) {
-  const preserve_excluded = params.preserve_excluded !== false;
-
+export function merge_context_items_min_depth(target = {}, incoming = {}) {
   for (const [key, raw_value] of Object.entries(incoming || {})) {
     if (!key) continue;
 
@@ -177,8 +173,6 @@ export function merge_context_items_min_depth(target = {}, incoming = {}, params
       : {}
     ;
     const existing = target[key];
-
-    if (preserve_excluded && existing?.exclude) continue;
 
     const existing_depth = Number.isFinite(existing?.d) ? existing.d : Infinity;
     const incoming_depth = Number.isFinite(incoming_value?.d) ? incoming_value.d : 0;
@@ -225,12 +219,8 @@ export function build_context_items_from_graphs(params = {}) {
     include_root,
   });
 
-  const merged_items = merge_context_items_min_depth({}, outlink_items, {
-    preserve_excluded: false,
-  });
-  merge_context_items_min_depth(merged_items, inlink_items, {
-    preserve_excluded: false,
-  });
+  const merged_items = merge_context_items_min_depth({}, outlink_items);
+  merge_context_items_min_depth(merged_items, inlink_items);
 
   for (const key of Object.keys(merged_items)) {
     const has_outlink = Object.prototype.hasOwnProperty.call(outlink_items, key);

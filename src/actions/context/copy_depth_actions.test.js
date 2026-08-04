@@ -98,7 +98,6 @@ test('copy-depth availability uses the active context maximum depth', (t) => {
     { key: 'root', data: { d: 0 } },
     { key: 'out-1', data: { d: 1 } },
     { key: 'in-3', data: { d: 3, inlink: true } },
-    { key: 'excluded-6', data: { d: 6, exclude: true } },
     { key: 'media-5', data: { d: 5 }, is_media: true },
   ]);
 
@@ -172,7 +171,6 @@ test('Core copy-at-depth action routes text, ZIP, and tree output through the su
   t.true(filter({ key: 'out-2', data: { d: 2 } }));
   t.false(filter({ key: 'out-3', data: { d: 3 } }));
   t.false(filter({ key: 'in-1', data: { d: 1, inlink: true } }));
-  t.false(filter({ key: 'excluded', data: { d: 0, exclude: true } }));
   t.false(filter({ key: 'media', data: { d: 0 }, is_media: true }));
   t.false(filter({ key: 'user-filtered', data: { d: 0 } }));
 

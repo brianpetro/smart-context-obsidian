@@ -329,7 +329,6 @@ export class CopyContextModal extends SuggestModal {
 
     // const ctx_items = Object.values(this.ctx.context_items.items);
     const ctx_items = this.ctx.context_items.filter((item) => {
-      if (item.data.exclude) return false;
       if (this.params.with_media) return item.is_media;
       if (item.is_media) return false;
       return true;

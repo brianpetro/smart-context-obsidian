@@ -50,7 +50,6 @@ export function build_copy_context_depth_filter(params = {}) {
 
   return (item) => {
     if (user_filter && !user_filter(item)) return false;
-    if (item?.data?.exclude === true) return false;
     if (!include_media && item?.is_media === true) return false;
     if (get_item_depth(item) > max_depth) return false;
     if (!include_inlinks && item?.data?.inlink === true) return false;
@@ -303,7 +302,7 @@ function get_active_context_items(ctx) {
   if (typeof context_items?.filter !== 'function') return [];
 
   return context_items.filter((item) => {
-    return item?.data?.exclude !== true;
+    return true;
   });
 }
 

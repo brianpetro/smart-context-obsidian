@@ -57,7 +57,6 @@ export function get_named_context_items(named_context, smart_contexts) {
   const context_items = context?.data?.context_items || {};
 
   return Object.entries(context_items)
-    .filter(([, item_data]) => !item_data?.exclude)
     .map(([key, item_data]) => ({
       key,
       size: item_data?.size,

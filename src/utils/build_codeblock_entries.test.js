@@ -14,20 +14,15 @@ test('build_codeblock_entries keeps named context line without expanded items', 
   t.deepEqual(entries, ['ctx:: some name']);
 });
 
-test('build_codeblock_entries skips legacy excluded context items', (t) => {
+test('build_codeblock_entries serializes durable exclusions after inclusions', (t) => {
   const entries = build_codeblock_entries({
     context_items: {
       'public.md': {
         key: 'public.md',
       },
-      'secret.md': {
-        key: 'secret.md',
-        exclude: true,
-      },
       Shared: {
         key: 'Shared',
         named_context: true,
-        exclude: true,
       },
     },
     exclusions: {
@@ -39,6 +34,7 @@ test('build_codeblock_entries skips legacy excluded context items', (t) => {
   });
 
   t.deepEqual(entries, [
+    'ctx:: Shared',
     'public.md',
     '!private.md',
   ]);
