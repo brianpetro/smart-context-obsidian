@@ -264,6 +264,7 @@ export default class SmartContextPlugin extends SmartPlugin {
             delete cb_ctx.data.context_items[old_name];
             cb_ctx.data.context_items[new_name] = {
               key: new_name,
+              kind: 'named_context',
               named_context: true,
             };
           }

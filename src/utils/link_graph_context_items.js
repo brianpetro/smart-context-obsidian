@@ -1,4 +1,5 @@
 import { LINK_DIRECTIONS } from 'smart-sources/actions/get_links_to_depth.js';
+import { normalize_context_item_data } from 'smart-contexts/context_items.js';
 
 export { LINK_DIRECTIONS };
 
@@ -149,7 +150,7 @@ export function build_context_items_from_graph(graph = [], params = {}) {
       section: entry.section,
     };
 
-    context_items[key] = next_item;
+    context_items[key] = /** @type {*} */ (normalize_context_item_data(key, next_item));
   }
 
   return context_items;

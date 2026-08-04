@@ -56,6 +56,7 @@ test('convert to named opens the configured Builder', (t) => {
   t.deepEqual(ctx.data.context_items, {
     Shared: {
       key: 'Shared',
+      kind: 'named_context',
       named_context: true,
     },
   });

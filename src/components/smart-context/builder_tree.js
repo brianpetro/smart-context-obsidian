@@ -9,7 +9,7 @@ import { register_item_hover_popover } from 'obsidian-smart-env/src/utils/regist
 import { get_truncated_context_selections } from '../../utils/context_output_guard.js';
 import styles from './builder_tree.css';
 
-export const version = '3.1.5';
+export const version = '3.1.6';
 
 export const BUILDER_TREE_COLLAPSE_THRESHOLD = 50;
 export const BUILDER_TREE_CHILD_BATCH_SIZE = 100;
@@ -26,7 +26,7 @@ export function build_html() {
  * @returns {Promise<HTMLElement>}
  */
 export async function render(ctx, params = {}) {
-  this.apply_style_sheet(styles);
+  // this.apply_style_sheet(styles); //, {id: 'builder_tree', force_refresh: true});
   const frag = this.create_doc_fragment(build_html());
   const container = frag.firstElementChild;
   container.dataset.contextKey = String(ctx?.data?.key || '');
@@ -78,7 +78,7 @@ export function post_process(ctx, container, params = {}) {
 
     container.replaceChildren();
     if (folder_paths.size > 0) {
-      const toggle_all_button = document.createElement('button');
+      const toggle_all_button = activeDocument.createElement('button');
       toggle_all_button.type = 'button';
       toggle_all_button.className = 'sc-context-builder-tree-toggle-all';
       toggle_all_button.textContent = all_expanded ? 'Collapse all' : 'Expand all';
@@ -112,7 +112,7 @@ export function post_process(ctx, container, params = {}) {
       truncated_selections: get_truncated_selection_map(ctx),
     };
 
-    folder_paths = get_tree_folder_paths(tree_root);
+    const next_folder_paths = get_tree_folder_paths(tree_root);
     const crossed_collapse_threshold = Number.isFinite(previous_item_count)
       && previous_item_count <= BUILDER_TREE_COLLAPSE_THRESHOLD
       && context_items.length > BUILDER_TREE_COLLAPSE_THRESHOLD
@@ -124,10 +124,14 @@ export function post_process(ctx, container, params = {}) {
       );
       did_initialize_expansion = true;
     } else {
-      expanded_paths = new Set(
-        Array.from(expanded_paths).filter((path) => folder_paths.has(path)),
+      expanded_paths = get_next_expanded_paths(
+        expanded_paths,
+        folder_paths,
+        next_folder_paths,
+        context_items.length <= BUILDER_TREE_COLLAPSE_THRESHOLD,
       );
     }
+    folder_paths = next_folder_paths;
     previous_item_count = context_items.length;
 
     render_tree_dom();
@@ -382,7 +386,7 @@ function render_tree_list(node, params, list_path = ROOT_LIST_PATH) {
     || BUILDER_TREE_CHILD_BATCH_SIZE
   ;
   const visible_children = children.slice(0, limit);
-  const list = document.createElement('ul');
+  const list = activeDocument.createElement('ul');
   list.className = 'sc-context-builder-tree-list';
   visible_children.forEach((child) => {
     list.appendChild(render_tree_item(child, params));
@@ -390,10 +394,10 @@ function render_tree_list(node, params, list_path = ROOT_LIST_PATH) {
 
   const remaining = children.length - visible_children.length;
   if (remaining > 0) {
-    const show_more_item = document.createElement('li');
+    const show_more_item = activeDocument.createElement('li');
     show_more_item.className = 'sc-context-builder-tree-more-item';
 
-    const show_more_button = document.createElement('button');
+    const show_more_button = activeDocument.createElement('button');
     show_more_button.type = 'button';
     show_more_button.className = 'sc-context-builder-tree-show-more';
     show_more_button.dataset.listPath = list_path;
@@ -434,11 +438,11 @@ function render_tree_item(tree_item, params) {
   );
   const truncation = params.truncated_selections.get(normalize_tree_path(path));
 
-  const item = document.createElement('li');
+  const item = activeDocument.createElement('li');
   item.className = `sc-context-builder-tree-item ${is_folder ? 'is-folder' : 'is-file'}`;
   if (is_expanded) item.classList.add('is-expanded');
 
-  const row = document.createElement('div');
+  const row = activeDocument.createElement('div');
   row.className = 'sc-context-builder-tree-row';
   row.dataset.path = path;
   row.dataset.folder = String(is_folder);
@@ -448,7 +452,7 @@ function render_tree_item(tree_item, params) {
   item.appendChild(row);
 
   if (has_children) {
-    const toggle_button = document.createElement('button');
+    const toggle_button = activeDocument.createElement('button');
     toggle_button.type = 'button';
     toggle_button.className = 'clickable-icon sc-context-builder-tree-toggle';
     toggle_button.dataset.path = path;
@@ -460,12 +464,12 @@ function render_tree_item(tree_item, params) {
     setIcon(toggle_button, is_expanded ? 'chevron-down' : 'chevron-right');
     row.appendChild(toggle_button);
   } else {
-    const toggle_spacer = document.createElement('span');
+    const toggle_spacer = activeDocument.createElement('span');
     toggle_spacer.className = 'sc-context-builder-tree-toggle-spacer';
     row.appendChild(toggle_spacer);
   }
 
-  const remove_button = document.createElement('button');
+  const remove_button = activeDocument.createElement('button');
   remove_button.type = 'button';
   remove_button.className = 'sc-context-builder-tree-remove';
   remove_button.dataset.path = path;
@@ -492,16 +496,16 @@ function render_tree_item(tree_item, params) {
   remove_button.textContent = '×';
   row.appendChild(remove_button);
 
-  const icon = document.createElement('span');
+  const icon = activeDocument.createElement('span');
   icon.className = 'sc-context-builder-tree-type-icon';
-  setIcon(icon, get_context_item_icon(context_item, is_folder));
+  setIcon(icon, get_context_item_icon(context_item, tree_item));
   row.appendChild(icon);
 
-  const name = document.createElement(context_item ? 'button' : 'span');
+  const name = activeDocument.createElement(context_item ? 'button' : 'span');
   if (context_item) name.type = 'button';
   name.className = 'sc-context-builder-tree-name';
   name.textContent = context_item
-    ? get_context_item_label(context_item)
+    ? get_context_item_label(context_item, tree_item)
     : (tree_item.name || path)
   ;
   if (context_item) {
@@ -520,7 +524,7 @@ function render_tree_item(tree_item, params) {
       params.tree_stats_cache,
     );
     if (descendant_count > 0) {
-      const count = document.createElement('span');
+      const count = activeDocument.createElement('span');
       count.className = 'sc-context-builder-tree-count';
       count.textContent = `${descendant_count.toLocaleString()} item${descendant_count === 1 ? '' : 's'}`;
       row.appendChild(count);
@@ -537,7 +541,7 @@ function render_tree_item(tree_item, params) {
       total_size,
     );
     if (size_label) {
-      const size = document.createElement('span');
+      const size = activeDocument.createElement('span');
       size.className = 'sc-context-builder-tree-size';
       size.textContent = size_label;
       row.appendChild(size);
@@ -547,7 +551,7 @@ function render_tree_item(tree_item, params) {
   }
 
   if (truncation) {
-    const truncated = document.createElement('span');
+    const truncated = activeDocument.createElement('span');
     truncated.className = 'sc-context-builder-tree-truncated';
     const max_items = Number(truncation.max_items) || 0;
     truncated.textContent = max_items
@@ -566,7 +570,7 @@ function render_tree_item(tree_item, params) {
   }
 
   if (is_missing) {
-    const warning = document.createElement('span');
+    const warning = activeDocument.createElement('span');
     warning.className = 'sc-context-builder-tree-warning';
     warning.setAttribute('aria-label', 'Missing source');
     setIcon(warning, 'alert-triangle');
@@ -614,7 +618,7 @@ function render_origin_badges(row, context_item) {
  * @returns {HTMLButtonElement}
  */
 function create_origin_badge(params) {
-  const badge = document.createElement(params.interactive ? 'button' : 'span');
+  const badge = activeDocument.createElement(params.interactive ? 'button' : 'span');
   if (params.interactive) badge.type = 'button';
   badge.className = `sc-context-builder-tree-origin ${params.class_name || ''}`;
   badge.setAttribute('aria-label', params.label);
@@ -652,10 +656,14 @@ function get_item_ref(context_item) {
 
 /**
  * @param {any} context_item
- * @param {boolean} is_folder
+ * @param {object} tree_item
  * @returns {string}
  */
-function get_context_item_icon(context_item, is_folder) {
+export function get_context_item_icon(context_item, tree_item = {}) {
+  const item_kind = tree_item?.kind || context_item?.data?.kind || '';
+  if (item_kind === 'block') return 'heading';
+
+  const is_folder = tree_item?.is_file !== true;
   try {
     return context_item?.icon_type || (is_folder ? 'folder' : 'file-text');
   } catch (error) {
@@ -932,6 +940,36 @@ export function get_default_expanded_paths(
 }
 
 /**
+ * Preserve the user's expansion state while expanding newly introduced
+ * branches in small contexts so added block leaves are immediately visible.
+ *
+ * @param {Set<string>} expanded_paths
+ * @param {Set<string>} previous_folder_paths
+ * @param {Set<string>} next_folder_paths
+ * @param {boolean} [expand_new_paths=false]
+ * @returns {Set<string>}
+ */
+export function get_next_expanded_paths(
+  expanded_paths,
+  previous_folder_paths,
+  next_folder_paths,
+  expand_new_paths = false,
+) {
+  const next_expanded_paths = new Set(
+    Array.from(expanded_paths || [])
+      .filter((path) => next_folder_paths?.has(path)),
+  );
+
+  if (expand_new_paths) {
+    next_folder_paths?.forEach((path) => {
+      if (!previous_folder_paths?.has(path)) next_expanded_paths.add(path);
+    });
+  }
+
+  return next_expanded_paths;
+}
+
+/**
  * @param {object} tree_root
  * @returns {Set<string>}
  */
@@ -1064,24 +1102,46 @@ function get_item_size(item) {
 
 /**
  * @param {any} context_item
+ * @param {object|null} [tree_item=null]
  * @returns {string}
  */
-export function get_context_item_label(context_item) {
+export function get_context_item_label(context_item, tree_item = null) {
   const key = get_item_key(context_item);
-  const [source_path, ...block_parts] = key.split('#');
+  const data = context_item?.data && typeof context_item.data === 'object'
+    ? context_item.data
+    : {}
+  ;
+  const block_idx = key.indexOf('#');
+  const is_block = data.kind === 'block'
+    || typeof data.subpath === 'string'
+    || block_idx !== -1
+  ;
+  const source_path = typeof data.source_path === 'string' && data.source_path
+    ? data.source_path
+    : (block_idx === -1 ? key : key.slice(0, block_idx))
+  ;
   const source_name = source_path.split('/').pop() || source_path;
-  if (!block_parts.length) return source_name;
+  if (!is_block) return source_name;
 
-  const block_name = block_parts.filter(Boolean).pop() || '';
-  if (block_name.startsWith('{')) {
+  const subpath = typeof data.subpath === 'string'
+    ? data.subpath
+    : (block_idx === -1 ? '' : key.slice(block_idx + 1))
+  ;
+  const tree_name = String(tree_item?.name || '');
+  const block_name = tree_name
+    || subpath.split('#').filter(Boolean).pop()
+    || ''
+  ;
+  if (!block_name || block_name === '#') return 'Root block';
+  if (/^#?\{/.test(block_name)) {
     const item_ref = get_item_ref(context_item);
     const lines = Array.isArray(item_ref?.lines)
       ? item_ref.lines.join('-')
       : ''
     ;
-    return lines ? `${source_name} › Lines ${lines}` : `${source_name} › ${block_name}`;
+    return lines ? `Lines ${lines}` : block_name;
   }
-  return `${source_name} › ${block_name}`;
+  return block_name.replace(/^#+/, '');
 }
 
 /**

@@ -1,7 +1,9 @@
-import { is_text_file } from "smart-file-system/utils/ignore.js";
+import { normalize_context_item_data } from 'smart-contexts/context_items.js';
+
 /**
  * @param {object} [params={}]
  * @param {Record<string, object>} [params.context_items]
+ * @param {Record<string, object>} [params.exclusions]
  * @param {string} [params.named_context_line_prefix]
  * @returns {string[]}
  */
@@ -20,32 +22,19 @@ export function build_codeblock_entries(params = {}) {
 
   // add context lines
   Object.entries(context_items).forEach(([item_key, item_data]) => {
-    if (!item_data) return;
-    if (item_data.named_context) {
-      entries.push('ctx:: ' + item_data.key || item_key);
+    if (!item_data || item_data.exclude === true) return;
+    const normalized_data = normalize_context_item_data(item_key, item_data);
+    if (normalized_data.kind === 'named_context') {
+      entries.push(`ctx:: ${normalized_data.key || item_key}`);
       return;
     }
-    if (item_key.startsWith('external:')) {
-      const external_key = item_key.replace(/^external:/, '');
-      if (item_data.folder === true && is_text_file(item_key)) {
-        entries.push(external_key + '/'); // handle folders that look like files by adding trailing slash
-      } else {
-        entries.push(external_key);
-      }
-      return;
-    }
-    entries.push(item_key);
+    entries.push(get_codeblock_item_key(item_key, normalized_data));
   });
 
   // add exclusions
   Object.entries(exclusions).forEach(([exclusion_key, exclusion_data]) => {
-    if(exclusion_key.startsWith('external:')) {
-      exclusion_key = exclusion_key.slice('external:'.length);
-    }
-    if(exclusion_key.startsWith('../')) {
-      exclusion_key = exclusion_key.slice('../'.length);
-    }
-    entries.push('!' + exclusion_key);
+    const normalized_data = normalize_context_item_data(exclusion_key, exclusion_data);
+    entries.push(`!${get_codeblock_item_key(exclusion_key, normalized_data)}`);
   });
 
   return entries
@@ -63,6 +52,22 @@ export function build_codeblock_entries(params = {}) {
       return left.localeCompare(right);
     })
   ;
+}
+
+/**
+ * @param {string} item_key
+ * @param {object} item_data
+ * @returns {string}
+ */
+function get_codeblock_item_key(item_key, item_data = {}) {
+  let output_key = item_data.source_path || item_data.key || item_key;
+  if (item_data.kind === 'block' && typeof item_data.subpath === 'string') {
+    output_key = `${output_key}#${item_data.subpath}`;
+  }
+  if (item_data.kind === 'folder' && !output_key.endsWith('/')) {
+    output_key += '/';
+  }
+  return output_key;
 }
 
 export default build_codeblock_entries;

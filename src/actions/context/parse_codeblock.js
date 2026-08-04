@@ -1,4 +1,5 @@
 import { murmur_hash_32_alphanumeric } from 'smart-utils/create_hash.js';
+import { normalize_context_item_data } from 'smart-contexts/context_items.js';
 
 /**
  * Parse codeblock content into context items, named contexts, and passthrough lines.
@@ -41,5 +42,5 @@ export function parse_codeblock_line(line) {
     item_data.key = `${item_data.key.slice(6).trim()}`;
     item_data.named_context = true;
   }
-  return item_data;
+  return normalize_context_item_data(item_data.key, item_data);
 }

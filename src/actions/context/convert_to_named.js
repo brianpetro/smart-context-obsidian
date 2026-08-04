@@ -35,6 +35,7 @@ export function finalize_named_context(params, named_ctx) {
   this.data.context_items = {
     [named_ctx.name]: {
       key: named_ctx.name,
+      kind: 'named_context',
       named_context: true,
     }
   };

@@ -1,10 +1,12 @@
 import test from 'ava';
 import {
   format_size_label,
+  get_context_item_icon,
   get_context_item_label,
   get_context_size_totals,
   get_default_expanded_paths,
   get_named_contexts_to_watch,
+  get_next_expanded_paths,
   resolve_tree_item_remove_state,
   reveal_missing_tree_items,
 } from './builder_tree.js';
@@ -58,6 +60,31 @@ test('Builder tree expands small contexts and collapses large contexts by defaul
     Array.from(get_default_expanded_paths(tree, 51)),
     [],
   );
+});
+
+test('Builder tree expands newly introduced branches without reopening collapsed existing branches', (t) => {
+  const expanded_paths = get_next_expanded_paths(
+    new Set(['Existing/Open', 'Removed']),
+    new Set(['Existing/Open', 'Existing/Closed', 'Removed']),
+    new Set(['Existing/Open', 'Existing/Closed', 'Added', 'Added/Nested']),
+    true,
+  );
+
+  t.deepEqual(
+    Array.from(expanded_paths),
+    ['Existing/Open', 'Added', 'Added/Nested'],
+  );
+});
+
+test('Builder tree leaves newly introduced branches collapsed for large contexts', (t) => {
+  const expanded_paths = get_next_expanded_paths(
+    new Set(['Existing/Open']),
+    new Set(['Existing/Open']),
+    new Set(['Existing/Open', 'Added']),
+    false,
+  );
+
+  t.deepEqual(Array.from(expanded_paths), ['Existing/Open']);
 });
 
 test('Builder tree reveals every branch and lazy batch containing missing items', (t) => {
@@ -153,21 +180,52 @@ test('Builder tree missing reveal leaves expansion unchanged without missing ite
   t.is(visible_child_limits.size, 0);
 });
 
-test('Builder tree labels keep source and block identity readable', (t) => {
+test('Builder tree labels use local block identity within the source branch', (t) => {
   t.is(
     get_context_item_label({ key: 'reference/GTD/1_next_actions.md' }),
     '1_next_actions.md',
   );
   t.is(
-    get_context_item_label({ key: 'Notes/Plan.md#Decisions' }),
-    'Plan.md › Decisions',
+    get_context_item_label(
+      { key: 'Notes/Plan.md#Decisions' },
+      { name: 'Decisions', kind: 'block' },
+    ),
+    'Decisions',
   );
   t.is(
-    get_context_item_label({
-      key: 'Notes/Plan.md#Decisions#{1}',
-      item_ref: { lines: [12, 18] },
-    }),
-    'Plan.md › Lines 12-18',
+    get_context_item_label(
+      { key: 'Notes/Plan.md#' },
+      { name: '#', kind: 'block' },
+    ),
+    'Root block',
+  );
+  t.is(
+    get_context_item_label(
+      {
+        key: 'Notes/Plan.md#Decisions#{1}',
+        item_ref: { lines: [12, 18] },
+      },
+      { name: '#{1}', kind: 'block' },
+    ),
+    'Lines 12-18',
+  );
+});
+
+test('Builder tree uses heading icons for block branches and leaves', (t) => {
+  t.is(
+    get_context_item_icon(null, { kind: 'folder', is_file: false }),
+    'folder',
+  );
+  t.is(
+    get_context_item_icon(null, { kind: 'block', is_file: false }),
+    'heading',
+  );
+  t.is(
+    get_context_item_icon(
+      { data: { kind: 'block' }, icon_type: 'file-text' },
+      { kind: 'block', is_file: true },
+    ),
+    'heading',
   );
 });
 
