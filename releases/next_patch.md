@@ -53,3 +53,6 @@ Rename command for opening context builder to clarify functionality
 
 
 Improved: context handling by introducing 'kind' property for named contexts and normalizing context item data across various modules
+
+
+Updated: Smart Environment v3
