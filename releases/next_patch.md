@@ -56,3 +56,6 @@ Improved: context handling by introducing 'kind' property for named contexts and
 
 
 Updated: Smart Environment v3
+
+
+Refactor context item filtering by removing exclusion checks and updating tests for clarity
