@@ -87,7 +87,7 @@ export async function render(ctx, params = {}) {
   }, 0);
   this.attach_disposer(container, () => {
     disposed = true;
-    if (initialize_timeout) clearTimeout(initialize_timeout);
+    if (initialize_timeout) activeWindow.clearTimeout(initialize_timeout);
     initialize_timeout = null;
   });
 
@@ -204,7 +204,7 @@ export async function post_process(ctx, container, params = {}) {
     if (!missing_el) return;
     missing_el.scrollIntoView({ block: 'nearest' });
     missing_el.classList.add('is-flash');
-    if (missing_flash_timeout) clearTimeout(missing_flash_timeout);
+    if (missing_flash_timeout) activeWindow.clearTimeout(missing_flash_timeout);
     missing_flash_timeout = activeWindow.setTimeout(() => {
       missing_el.classList.remove('is-flash');
       missing_flash_timeout = null;
@@ -247,7 +247,7 @@ export async function post_process(ctx, container, params = {}) {
     if (!truncated_el) return;
     truncated_el.scrollIntoView({ block: 'nearest' });
     truncated_el.classList.add('is-flash');
-    if (missing_flash_timeout) clearTimeout(missing_flash_timeout);
+    if (missing_flash_timeout) activeWindow.clearTimeout(missing_flash_timeout);
     missing_flash_timeout = activeWindow.setTimeout(() => {
       truncated_el.classList.remove('is-flash');
       missing_flash_timeout = null;
@@ -461,7 +461,7 @@ export async function post_process(ctx, container, params = {}) {
     () => container.removeEventListener('contextmenu', on_context_menu),
     () => modal.clear_builder_chrome_refresh(refresh_builder_chrome),
     () => {
-      if (missing_flash_timeout) clearTimeout(missing_flash_timeout);
+      if (missing_flash_timeout) activeWindow.clearTimeout(missing_flash_timeout);
       missing_flash_timeout = null;
       refresh_summary = null;
       refresh_primary = null;
