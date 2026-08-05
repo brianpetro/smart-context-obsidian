@@ -82,7 +82,7 @@ export async function render(ctx, params = {}) {
     }
   };
 
-  initialize_timeout = setTimeout(() => {
+  initialize_timeout = activeWindow.setTimeout(() => {
     void initialize();
   }, 0);
   this.attach_disposer(container, () => {
@@ -119,7 +119,7 @@ export function dispose_unmounted_builder(builder) {
   if (builder.style) builder.style.display = 'none';
   builder.setAttribute?.('aria-hidden', 'true');
   body.appendChild(builder);
-  setTimeout(() => builder.remove?.(), 0);
+  activeWindow.setTimeout(() => builder.remove?.(), 0);
 }
 
 /**
@@ -205,7 +205,7 @@ export async function post_process(ctx, container, params = {}) {
     missing_el.scrollIntoView({ block: 'nearest' });
     missing_el.classList.add('is-flash');
     if (missing_flash_timeout) clearTimeout(missing_flash_timeout);
-    missing_flash_timeout = setTimeout(() => {
+    missing_flash_timeout = activeWindow.setTimeout(() => {
       missing_el.classList.remove('is-flash');
       missing_flash_timeout = null;
     }, 700);
@@ -218,7 +218,7 @@ export async function post_process(ctx, container, params = {}) {
     update_review_state();
     refresh_summary?.();
     review_container.scrollTop = 0;
-    setTimeout(() => {
+    activeWindow.setTimeout(() => {
       if (!is_disposed() && review_mode === 'excluded') focus_exclusions?.();
     }, 0);
   };
@@ -227,7 +227,7 @@ export async function post_process(ctx, container, params = {}) {
     review_mode = 'included';
     update_review_state();
     refresh_summary?.();
-    setTimeout(() => {
+    activeWindow.setTimeout(() => {
       if (is_disposed() || review_mode !== 'included') return;
       review_container.scrollTop = included_review_scroll_top;
       const trigger = /** @type {HTMLButtonElement|null} */ (
@@ -248,7 +248,7 @@ export async function post_process(ctx, container, params = {}) {
     truncated_el.scrollIntoView({ block: 'nearest' });
     truncated_el.classList.add('is-flash');
     if (missing_flash_timeout) clearTimeout(missing_flash_timeout);
-    missing_flash_timeout = setTimeout(() => {
+    missing_flash_timeout = activeWindow.setTimeout(() => {
       truncated_el.classList.remove('is-flash');
       missing_flash_timeout = null;
     }, 700);

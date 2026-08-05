@@ -385,7 +385,7 @@ export class ContextBuilderModal extends SmartFuzzySuggestModal {
         }
       }
 
-      setTimeout(() => {
+      activeWindow.setTimeout(() => {
         if (!this.is_request_current(request_id)) return;
         this.update_suggestions_view();
         if (selected_index !== -1) this.chooser?.setSelectedItem(selected_index);
@@ -423,7 +423,7 @@ export class ContextBuilderModal extends SmartFuzzySuggestModal {
     this.inputEl.value = '';
     this.apply_active_source_mode_copy();
     this.refresh_builder_chrome();
-    setTimeout(() => {
+    activeWindow.setTimeout(() => {
       if (!this._is_closed) this.focus_search();
     }, 0);
     return this.update_suggestions(source_mode);

@@ -208,7 +208,7 @@ export class CopyContextModal extends SuggestModal {
     this.titleEl.style.justifyContent = 'space-between';
     this.titleEl.style.margin = 'var(--size-4-4)';
 
-    setTimeout(() => this.inputEl.focus(), 0); // make sure input is focused (otherwise unfocussed after adding titleEl with button)
+    activeWindow.setTimeout(() => this.inputEl.focus(), 0); // make sure input is focused (otherwise unfocussed after adding titleEl with button)
   }
 
   /* ------------------------------------------------------ */

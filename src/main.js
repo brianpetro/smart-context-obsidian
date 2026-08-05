@@ -57,7 +57,7 @@ export default class SmartContextPlugin extends SmartPlugin {
 
     // First-run onboarding
     if (this.is_new_user()) {
-      setTimeout(() => {
+      activeWindow.setTimeout(() => {
         StoryModal.open(this, {
           title: 'Getting Started With Smart Context',
           url: 'https://smartconnections.app/story/smart-context-getting-started/?utm_source=sc-new-user',
