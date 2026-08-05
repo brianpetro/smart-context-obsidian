@@ -1,9 +1,9 @@
 {
   "id": "smart-context",
   "name": "Smart Context",
-  "version": "3.1.2",
+  "version": "3.3.0",
   "minAppVersion": "1.0.0",
-  "description": "Copy folder contents (Markdown & Canvas files) to the clipboard with a Smart Context approach.",
+  "description": "Choose exactly what AI should know by building reviewable context from notes. Quickly copy folder contents and easily handle other context management tasks.",
   "author": "🌴 Brian",
   "authorUrl": "https://smartconnections.app",
   "isDesktopOnly": false
