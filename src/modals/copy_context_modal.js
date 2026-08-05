@@ -1,122 +1,11 @@
 import { SuggestModal, setIcon } from 'obsidian';
+import styles from './copy_context_modal.css';
 import {
   build_depth_suggestions,
   build_without_codeblock_depth_zero_context_items,
   estimate_tokens,
   format_context_estimate,
 } from '../utils/context_suggestions.js';
-
-const COPY_CONTEXT_MODAL_STYLE_ID = 'sc-copy-context-modal-style';
-
-/**
- * Install CSS for the CopyContextModal once per app session.
- *
- * @returns {void}
- */
-function ensure_copy_context_modal_styles_installed() {
-  if (document.getElementById(COPY_CONTEXT_MODAL_STYLE_ID)) {
-    return;
-  }
-
-  const style = document.createElement('style');
-  style.id = COPY_CONTEXT_MODAL_STYLE_ID;
-  style.textContent = `
-  .sc-copy-context-modal .sc-copy-modal__suggestion {
-    padding: 0;
-    margin: 0 8px;
-  }
-
-  .sc-copy-context-modal .sc-copy-modal__row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-
-    padding: 10px 12px;
-
-    border: 1px solid var(--background-modifier-border);
-    background: var(--background-secondary);
-
-    transition: background-color 120ms ease, border-color 120ms ease;
-  }
-
-  .sc-copy-context-modal .sc-copy-modal__suggestion--group-gap .sc-copy-modal__row {
-    margin-top: 10px;
-  }
-
-  .sc-copy-context-modal .sc-copy-modal__suggestion--group-start .sc-copy-modal__row {
-    border-bottom: 0;
-    border-radius: 12px 12px 0 0;
-  }
-
-  .sc-copy-context-modal .sc-copy-modal__suggestion--group-end .sc-copy-modal__row {
-    border-radius: 0 0 12px 12px;
-  }
-
-  .sc-copy-context-modal .sc-copy-modal__suggestion--group-start.sc-copy-modal__suggestion--group-end .sc-copy-modal__row {
-    border-bottom: 1px solid var(--background-modifier-border);
-    border-radius: 12px;
-  }
-
-  .sc-copy-context-modal .sc-copy-modal__suggestion.is-selected .sc-copy-modal__row {
-    background: var(--background-modifier-hover);
-    border-color: var(--background-modifier-border-hover, var(--background-modifier-border));
-  }
-
-  .sc-copy-context-modal .sc-copy-modal__left {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-  }
-
-  .sc-copy-context-modal .sc-copy-modal__depth {
-    font-weight: 600;
-    white-space: nowrap;
-  }
-
-  .sc-copy-context-modal .sc-copy-modal__badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 2px 8px;
-
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 999px;
-
-    font-size: var(--font-ui-smaller);
-    line-height: 1.6;
-
-    color: var(--text-muted);
-    background: var(--background-primary);
-    white-space: nowrap;
-  }
-
-  .sc-copy-context-modal .sc-copy-modal__badge-icon {
-    display: inline-flex;
-    align-items: center;
-  }
-
-  .sc-copy-context-modal .sc-copy-modal__suggestion--include-inlinks .sc-copy-modal__badge {
-    color: var(--text-accent);
-    border-color: var(--text-accent);
-    background: var(--background-primary);
-  }
-
-  .sc-copy-context-modal .sc-copy-modal__right {
-    margin-left: auto;
-    text-align: right;
-
-    font-size: var(--font-ui-smaller);
-    color: var(--text-muted);
-    white-space: nowrap;
-
-    font-variant-numeric: tabular-nums;
-  }
-  `;
-
-  document.head.appendChild(style);
-}
 
 /**
  * Add grouping metadata to depth suggestions.
@@ -325,8 +214,6 @@ export class CopyContextModal extends SuggestModal {
   /* ------------------------------------------------------ */
 
   async onOpen() {
-    ensure_copy_context_modal_styles_installed();
-
     // const ctx_items = Object.values(this.ctx.context_items.items);
     const ctx_items = this.ctx.context_items.filter((item) => {
       if (this.params.with_media) return item.is_media;
