@@ -69,9 +69,6 @@ export function get_named_context_items(named_context, smart_contexts) {
 export function render_name_input(ctx, container) {
   const name_wrapper = document.createElement('div');
   name_wrapper.className = 'sc-context-name-wrapper';
-  name_wrapper.style.display = 'flex';
-  name_wrapper.style.alignItems = 'center';
-  name_wrapper.style.gap = 'var(--size-4-2)';
   container.appendChild(name_wrapper);
 
   const name_input = document.createElement('input');

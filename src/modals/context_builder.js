@@ -109,8 +109,6 @@ export class ContextBuilderModal extends SmartFuzzySuggestModal {
     const render_id = ++this._render_id;
 
     this.modalEl.classList.add('sc-context-builder-modal');
-    this.modalEl.style.display = 'flex';
-    this.modalEl.style.flexDirection = 'column';
     this.modalEl.querySelector('.sc-context-builder-error')?.remove();
 
     const previous_builder = this._builder_container;

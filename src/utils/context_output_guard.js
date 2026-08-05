@@ -1,3 +1,54 @@
+import { Notice } from 'obsidian';
+
+/**
+ * Show a persistent inline confirmation notice.
+ *
+ * @param {string} message
+ * @returns {Promise<boolean>}
+ */
+function show_inline_confirmation(message) {
+  return new Promise((resolve) => {
+    const frag = activeDocument.createDocumentFragment();
+    const container = activeDocument.createElement('div');
+    container.className = 'sc-context-output-confirm';
+
+    const message_el = activeDocument.createElement('div');
+    message_el.textContent = message;
+    container.appendChild(message_el);
+
+    const actions = activeDocument.createElement('div');
+    actions.className = 'sc-context-output-confirm-actions';
+
+    const cancel_button = activeDocument.createElement('button');
+    cancel_button.type = 'button';
+    cancel_button.textContent = 'Cancel';
+
+    const continue_button = activeDocument.createElement('button');
+    continue_button.type = 'button';
+    continue_button.className = 'mod-warning';
+    continue_button.textContent = 'Continue';
+
+    actions.append(cancel_button, continue_button);
+    container.appendChild(actions);
+    frag.appendChild(container);
+
+    const notice = new Notice(frag, 0);
+    const finish = (confirmed) => {
+      notice.hide();
+      resolve(confirmed);
+    };
+
+    cancel_button.addEventListener('click', () => finish(false));
+    continue_button.addEventListener('click', () => finish(true));
+    container.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      finish(false);
+    });
+    cancel_button.focus();
+  });
+}
+
 /**
  * Resolve an item's known source size.
  *
@@ -110,12 +161,12 @@ export function get_truncated_context_selections(ctx) {
  * @param {import('smart-contexts').SmartContext} ctx
  * @param {object} [params={}]
  * @param {boolean} [params.allow_truncated]
- * @param {(message:string)=>boolean} [params.confirm_truncated]
+ * @param {(message:string)=>boolean|Promise<boolean>} [params.confirm_truncated]
  * @param {string} [params.action_label='continue']
  * @param {string} [params.event_source='context_output_guard']
- * @returns {boolean}
+ * @returns {Promise<boolean>}
  */
-export function confirm_truncated_context(ctx, params = {}) {
+export async function confirm_truncated_context(ctx, params = {}) {
   const truncated = get_truncated_context_selections(ctx);
   if (!truncated.length || params.allow_truncated === true) return true;
 
@@ -133,15 +184,12 @@ export function confirm_truncated_context(ctx, params = {}) {
   const message = `Some selected folders were truncated while resolving context: ${path_text}. `
     + `The output will be incomplete. Continue and ${action_label}?`
   ;
-  const confirm_fn = typeof params.confirm_truncated === 'function'
-    ? params.confirm_truncated
-    : (typeof activeWindow?.confirm === 'function'
-      ? (confirm_message) => activeWindow.confirm(confirm_message)
-      : null)
-  ;
-
   try {
-    if (confirm_fn?.(message)) return true;
+    const confirmed = typeof params.confirm_truncated === 'function'
+      ? await params.confirm_truncated(message)
+      : await show_inline_confirmation(message)
+    ;
+    if (confirmed) return true;
   } catch (error) {
     console.warn('Smart Context: Failed to confirm truncated output', error);
   }

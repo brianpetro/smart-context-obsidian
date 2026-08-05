@@ -116,7 +116,6 @@ export function dispose_unmounted_builder(builder) {
   }
 
   builder.hidden = true;
-  if (builder.style) builder.style.display = 'none';
   builder.setAttribute?.('aria-hidden', 'true');
   body.appendChild(builder);
   activeWindow.setTimeout(() => builder.remove?.(), 0);

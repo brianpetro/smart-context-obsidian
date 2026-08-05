@@ -1,4 +1,6 @@
 .sc-context-builder-modal {
+  display: flex;
+  flex-direction: column;
   width: min(960px, 94vw);
 }
 
@@ -37,6 +39,7 @@
   border-bottom: 1px solid var(--sc-context-builder-border);
 }
 
+.sc-context-builder[hidden],
 .sc-context-builder [hidden] {
   display: none !important;
 }
@@ -89,6 +92,12 @@
 .sc-context-builder-origin-undo:hover {
   color: var(--text-normal);
   background: var(--background-modifier-hover);
+}
+
+.sc-context-name-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
 }
 
 .sc-context-builder-name .sc-context-name-wrapper {
@@ -307,4 +316,17 @@ button.sc-context-builder-ui-chip {
     scroll-behavior: auto !important;
     transition: none !important;
   }
+}
+
+.sc-context-output-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4-2);
+  max-width: 520px;
+}
+
+.sc-context-output-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--size-4-2);
 }

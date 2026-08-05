@@ -102,12 +102,12 @@ function find_context_codeblock_range(lines = []) {
     if (start === -1) {
       if (!is_context_codeblock_fence(line)) continue;
       start = i;
-      const match = line.match(/^\`\`\`([^\s]+)\s*$/);
+      const match = line.match(/^```([^\s]+)\s*$/);
       codeblock_type = match?.[1] || default_context_codeblock_type;
       continue;
     }
 
-    if (/^\`\`\`\s*$/.test(line)) {
+    if (/^```\s*$/.test(line)) {
       return {
         start,
         end: i,

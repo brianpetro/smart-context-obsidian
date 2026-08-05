@@ -42,7 +42,7 @@ test('context output limits fail closed on item or byte caps', (t) => {
   }), null);
 });
 
-test('truncated selections require explicit acknowledgement', (t) => {
+test('truncated selections require explicit acknowledgement', async (t) => {
   const emitted = [];
   const ctx = {
     data: {
@@ -64,16 +64,16 @@ test('truncated selections require explicit acknowledgement', (t) => {
     key: 'external:../repo',
     max_items: 1000,
   }]);
-  t.false(confirm_truncated_context(ctx, {
-    confirm_truncated: () => false,
+  t.false(await confirm_truncated_context(ctx, {
+    confirm_truncated: async () => false,
     action_label: 'copy it',
   }));
   t.is(emitted[0].event_key, 'context:truncated_output_blocked');
 
-  t.true(confirm_truncated_context(ctx, {
+  t.true(await confirm_truncated_context(ctx, {
     confirm_truncated: () => true,
   }));
-  t.true(confirm_truncated_context(ctx, {
+  t.true(await confirm_truncated_context(ctx, {
     allow_truncated: true,
   }));
 });

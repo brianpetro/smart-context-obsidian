@@ -11,7 +11,6 @@ export class SmartContextSettingTab extends SmartPluginSettingsTab {
     const getting_started_container = container.createDiv({
       cls: 'smart-context-getting-started-container',
     });
-    getting_started_container.style.marginBottom = '1em';
     const launch_button = getting_started_container.createEl('button', {
       cls: 'sc-getting-started-button',
       text: 'Getting started guide',

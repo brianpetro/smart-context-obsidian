@@ -33,7 +33,7 @@ function find_context_codeblock_range(markdown = '') {
       continue;
     }
 
-    if (/^\`\`\`\s*$/.test(line)) {
+    if (/^```\s*$/.test(line)) {
       return {
         start,
         end: i,

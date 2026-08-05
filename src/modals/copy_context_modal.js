@@ -204,9 +204,7 @@ export class CopyContextModal extends SuggestModal {
       );
     });
 
-    this.titleEl.style.display = 'flex';
-    this.titleEl.style.justifyContent = 'space-between';
-    this.titleEl.style.margin = 'var(--size-4-4)';
+    this.titleEl.classList.add('sc-copy-context-modal__title');
 
     activeWindow.setTimeout(() => this.inputEl.focus(), 0); // make sure input is focused (otherwise unfocussed after adding titleEl with button)
   }

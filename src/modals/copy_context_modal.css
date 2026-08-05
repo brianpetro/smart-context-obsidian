@@ -90,3 +90,9 @@
 
   font-variant-numeric: tabular-nums;
 }
+
+.sc-copy-context-modal .sc-copy-context-modal__title {
+  display: flex;
+  justify-content: space-between;
+  margin: var(--size-4-4);
+}
