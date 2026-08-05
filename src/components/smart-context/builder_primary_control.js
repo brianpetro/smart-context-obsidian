@@ -236,7 +236,7 @@ async function run_primary_action(ctx, button, action, params) {
 function open_copy_menu(ctx, event, params, menu_params) {
   const app = ctx?.env?.obsidian_app
     || ctx?.env?.plugin?.app
-    || globalThis.app
+    || activeWindow?.app
   ;
   if (!app) return;
 
@@ -270,7 +270,7 @@ function open_copy_menu(ctx, event, params, menu_params) {
 function open_overflow_menu(ctx, event, groups, params, menu_params) {
   const app = ctx?.env?.obsidian_app
     || ctx?.env?.plugin?.app
-    || globalThis.app
+    || activeWindow?.app
   ;
   if (!app) return;
 

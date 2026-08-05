@@ -419,7 +419,7 @@ export async function post_process(ctx, container, params = {}) {
 
     const app = ctx?.env?.obsidian_app
       || ctx?.env?.plugin?.app
-      || globalThis.app
+      || activeWindow?.app
     ;
     if (!app) return;
 

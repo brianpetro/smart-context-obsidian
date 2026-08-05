@@ -135,8 +135,8 @@ export function confirm_truncated_context(ctx, params = {}) {
   ;
   const confirm_fn = typeof params.confirm_truncated === 'function'
     ? params.confirm_truncated
-    : (typeof globalThis.confirm === 'function'
-      ? (confirm_message) => globalThis.confirm(confirm_message)
+    : (typeof activeWindow?.confirm === 'function'
+      ? (confirm_message) => activeWindow.confirm(confirm_message)
       : null)
   ;
 

@@ -19,7 +19,7 @@ export function smart_contexts_open_onboarding(params = {}) {
     return true;
   }
 
-  const open_url = globalThis.window?.open || globalThis.open;
+  const open_url = activeWindow?.open || window.open;
   if (typeof open_url !== 'function') return false;
 
   open_url(HELP_URL, '_external');

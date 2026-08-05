@@ -6,7 +6,7 @@ const CODEBLOCK_HELP_URL = 'https://smartconnections.app/smart-context/codeblock
  * @returns {boolean}
  */
 export function context_open_codeblock_help() {
-  const open_url = globalThis.window?.open || globalThis.open;
+  const open_url = activeWindow?.open || window.open;
   if (typeof open_url !== 'function') return false;
 
   open_url(CODEBLOCK_HELP_URL, '_external');
