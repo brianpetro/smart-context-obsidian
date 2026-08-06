@@ -1,7 +1,7 @@
 {
   "id": "smart-context",
   "name": "Smart Context",
-  "version": "3.3.1",
+  "version": "3.3.2",
   "minAppVersion": "1.8.7",
   "description": "Choose exactly what AI should know by building reviewable context from notes. Quickly copy folder contents and easily handle other context management tasks.",
   "author": "🌴 Brian",
