@@ -37,6 +37,7 @@
   "devDependencies": {
     "ava": "^5.3.1",
     "esbuild": "^0.25.9",
+    "jsbrains": "github:brianpetro/jsbrains#4916663abda31a347d0ef9e50fd1c5cad4088222",
     "obsidian": "^1.12.3"
   },
   "workspaces": [
