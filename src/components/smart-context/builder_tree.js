@@ -7,7 +7,7 @@ import { build_path_tree } from 'obsidian-smart-env/src/utils/smart-context/buil
 import { create_render_scheduler } from 'obsidian-smart-env/src/utils/render_utils.js';
 import { register_item_hover_popover } from 'obsidian-smart-env/src/utils/register_item_hover_popover.js';
 import { get_truncated_context_selections } from '../../utils/context_output_guard.js';
-import styles from './builder_tree.css';
+import './builder_tree.css';
 
 export const version = '3.1.7';
 
@@ -26,7 +26,6 @@ export function build_html() {
  * @returns {Promise<HTMLElement>}
  */
 export async function render(ctx, params = {}) {
-  // this.apply_style_sheet(styles); //, {id: 'builder_tree', force_refresh: true});
   const frag = this.create_doc_fragment(build_html());
   const container = frag.firstElementChild;
   container.dataset.contextKey = String(ctx?.data?.key || '');
@@ -648,7 +647,7 @@ function register_context_item_preview(target, context_item) {
 function get_item_ref(context_item) {
   try {
     return context_item?.item_ref || null;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -665,7 +664,7 @@ export function get_context_item_icon(context_item, tree_item = {}) {
   const is_folder = tree_item?.is_file !== true;
   try {
     return context_item?.icon_type || (is_folder ? 'folder' : 'file-text');
-  } catch (error) {
+  } catch {
     return is_folder ? 'folder' : 'file-text';
   }
 }
@@ -1058,7 +1057,7 @@ function normalize_tree_path(path = '') {
 function is_media_context_item(context_item) {
   try {
     return context_item?.is_media === true;
-  } catch (error) {
+  } catch {
     return false;
   }
 }

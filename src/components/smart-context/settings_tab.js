@@ -25,8 +25,7 @@ export async function render(settings_tab, params = {}) {
  */
 export async function post_process(settings_tab, container, params = {}) {
   const env = settings_tab.env;
-  const render_component = env.smart_components?.render_component.bind(env.smart_components);
-  
+
   const smart_contexts = env.smart_contexts;
   const contexts_container = container.querySelector('.smart-contexts');
   render_settings_config(

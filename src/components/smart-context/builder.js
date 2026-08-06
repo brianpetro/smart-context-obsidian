@@ -82,12 +82,12 @@ export async function render(ctx, params = {}) {
     }
   };
 
-  initialize_timeout = activeWindow.setTimeout(() => {
+  initialize_timeout = window.setTimeout(() => {
     void initialize();
   }, 0);
   this.attach_disposer(container, () => {
     disposed = true;
-    if (initialize_timeout) activeWindow.clearTimeout(initialize_timeout);
+    if (initialize_timeout) window.clearTimeout(initialize_timeout);
     initialize_timeout = null;
   });
 
@@ -118,7 +118,7 @@ export function dispose_unmounted_builder(builder) {
   builder.hidden = true;
   builder.setAttribute?.('aria-hidden', 'true');
   body.appendChild(builder);
-  activeWindow.setTimeout(() => builder.remove?.(), 0);
+  window.setTimeout(() => builder.remove?.(), 0);
 }
 
 /**
@@ -203,8 +203,8 @@ export async function post_process(ctx, container, params = {}) {
     if (!missing_el) return;
     missing_el.scrollIntoView({ block: 'nearest' });
     missing_el.classList.add('is-flash');
-    if (missing_flash_timeout) activeWindow.clearTimeout(missing_flash_timeout);
-    missing_flash_timeout = activeWindow.setTimeout(() => {
+    if (missing_flash_timeout) window.clearTimeout(missing_flash_timeout);
+    missing_flash_timeout = window.setTimeout(() => {
       missing_el.classList.remove('is-flash');
       missing_flash_timeout = null;
     }, 700);
@@ -217,7 +217,7 @@ export async function post_process(ctx, container, params = {}) {
     update_review_state();
     refresh_summary?.();
     review_container.scrollTop = 0;
-    activeWindow.setTimeout(() => {
+    window.setTimeout(() => {
       if (!is_disposed() && review_mode === 'excluded') focus_exclusions?.();
     }, 0);
   };
@@ -226,7 +226,7 @@ export async function post_process(ctx, container, params = {}) {
     review_mode = 'included';
     update_review_state();
     refresh_summary?.();
-    activeWindow.setTimeout(() => {
+    window.setTimeout(() => {
       if (is_disposed() || review_mode !== 'included') return;
       review_container.scrollTop = included_review_scroll_top;
       const trigger = /** @type {HTMLButtonElement|null} */ (
@@ -246,8 +246,8 @@ export async function post_process(ctx, container, params = {}) {
     if (!truncated_el) return;
     truncated_el.scrollIntoView({ block: 'nearest' });
     truncated_el.classList.add('is-flash');
-    if (missing_flash_timeout) activeWindow.clearTimeout(missing_flash_timeout);
-    missing_flash_timeout = activeWindow.setTimeout(() => {
+    if (missing_flash_timeout) window.clearTimeout(missing_flash_timeout);
+    missing_flash_timeout = window.setTimeout(() => {
       truncated_el.classList.remove('is-flash');
       missing_flash_timeout = null;
     }, 700);
@@ -460,7 +460,7 @@ export async function post_process(ctx, container, params = {}) {
     () => container.removeEventListener('contextmenu', on_context_menu),
     () => modal.clear_builder_chrome_refresh(refresh_builder_chrome),
     () => {
-      if (missing_flash_timeout) activeWindow.clearTimeout(missing_flash_timeout);
+      if (missing_flash_timeout) window.clearTimeout(missing_flash_timeout);
       missing_flash_timeout = null;
       refresh_summary = null;
       refresh_primary = null;

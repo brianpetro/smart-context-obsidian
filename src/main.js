@@ -3,7 +3,7 @@ import {
 } from 'obsidian';
 import { SmartPlugin } from 'obsidian-smart-env/smart_plugin.js';
 
-import { SmartEnv, merge_env_config } from 'obsidian-smart-env';
+import { SmartEnv } from 'obsidian-smart-env';
 
 import { SmartContextSettingTab } from './views/settings_tab.js';
 
@@ -57,7 +57,7 @@ export default class SmartContextPlugin extends SmartPlugin {
 
     // First-run onboarding
     if (this.is_new_user()) {
-      activeWindow.setTimeout(() => {
+      window.setTimeout(() => {
         StoryModal.open(this, {
           title: 'Getting Started With Smart Context',
           url: 'https://smartconnections.app/story/smart-context-getting-started/?utm_source=sc-new-user',

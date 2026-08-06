@@ -1,5 +1,5 @@
 import { SuggestModal, setIcon } from 'obsidian';
-import styles from './copy_context_modal.css';
+import './copy_context_modal.css';
 import {
   build_depth_suggestions,
   build_without_codeblock_depth_zero_context_items,
@@ -206,7 +206,7 @@ export class CopyContextModal extends SuggestModal {
 
     this.titleEl.classList.add('sc-copy-context-modal__title');
 
-    activeWindow.setTimeout(() => this.inputEl.focus(), 0); // make sure input is focused (otherwise unfocussed after adding titleEl with button)
+    window.setTimeout(() => this.inputEl.focus(), 0); // make sure input is focused (otherwise unfocussed after adding titleEl with button)
   }
 
   /* ------------------------------------------------------ */
