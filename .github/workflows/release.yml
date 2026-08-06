@@ -38,3 +38,4 @@ jobs:
       attest_release_assets: ${{ inputs.attest_release_assets }}
       dependency_owner: brianpetro
     secrets: inherit
+
