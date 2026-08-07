@@ -159,10 +159,17 @@ export class CopyContextModal extends SuggestModal {
     this.ctx = ctx;
     this.params = params;
     this.suggestions = [];
+    this.use_mod_select = false;
     this.use_shift_select = false;
 
     this.scope.register(['Shift'], 'Enter', (evt) => {
       this.use_shift_select = true;
+      this.selectActiveSuggestion(evt);
+      return false;
+    });
+
+    this.scope.register(['Mod'], 'Enter', (evt) => {
+      this.use_mod_select = true;
       this.selectActiveSuggestion(evt);
       return false;
     });
@@ -187,6 +194,10 @@ export class CopyContextModal extends SuggestModal {
         }
       ]
     ;
+    instructions.push({
+      command: 'CMD/CTRL + Select',
+      purpose: 'Open items through the selected depth in a new Context Builder.',
+    });
     this.setInstructions(instructions);
 
     // add heading to this.titleEl
@@ -277,10 +288,15 @@ export class CopyContextModal extends SuggestModal {
   }
 
   async onChooseSuggestion(item, evt) {
+    const open_in_builder = this.use_mod_select
+      || evt?.metaKey
+      || evt?.ctrlKey
+    ;
     const copy_media = this.params.with_media === true
       || this.use_shift_select === true
       || evt?.shiftKey === true
     ;
+    this.use_mod_select = false;
     this.use_shift_select = false;
     if (copy_media && !this.env.is_pro) {
       this?.env?.events?.emit?.('context:pro_required', {
@@ -292,6 +308,40 @@ export class CopyContextModal extends SuggestModal {
       });
       return;
     }
+
+    const filter = (ctx_item) => {
+      if (ctx_item.data.d > item.d) return false;
+      if (!item.include_inlinks && ctx_item.data.inlink) return false;
+      if (copy_media && !ctx_item.is_media) return false;
+      if (!copy_media && ctx_item.is_media) return false;
+      return true;
+    };
+
+    if (open_in_builder) {
+      const selected_ctx = item?.without_codeblock
+        ? build_without_codeblock_depth_zero_context(this.ctx)
+        : this.ctx
+      ;
+      if (!selected_ctx) {
+        this?.env?.events?.emit?.('context:copy_empty', {
+          level: 'warning',
+          message: 'No context items to open.',
+          event_source: 'copy_context_modal.onChooseSuggestion',
+        });
+        return;
+      }
+
+      const add_items = selected_ctx.context_items
+        .filter(filter)
+        .map((ctx_item) => ctx_item.key)
+      ;
+      this.env.smart_contexts.actions.smart_contexts_open_new({
+        add_items,
+        event_source: 'copy_context_modal.onChooseSuggestion',
+      });
+      return;
+    }
+
     this?.env?.events?.emit?.('context:copy_started', {
       // level: 'info',
       message: copy_media ? 'Copying media...' : 'Copying text...',
@@ -320,13 +370,7 @@ export class CopyContextModal extends SuggestModal {
     await this.ctx.actions.context_copy_to_clipboard({
       ...this.params,
       with_media: copy_media,
-      filter: (ctx_item) => {
-        if (ctx_item.data.d > item.d) return false;
-        if (!item.include_inlinks && ctx_item.data.inlink) return false;
-        if (copy_media && !ctx_item.is_media) return false;
-        if (!copy_media && ctx_item.is_media) return false;
-        return true;
-      },
+      filter,
       max_depth: item.d, // for stats notification
     });
   }
