@@ -18,7 +18,6 @@ import { context_add as context_add_action, display_name as context_add_action_d
 import { context_convert_to_named as context_convert_to_named_action, menus as context_convert_to_named_action_menus } from './src/actions/context/convert_to_named.js';
 import { context_copy_at_depth as context_copy_at_depth_action, display_name as context_copy_at_depth_action_display_name, action_scope as context_copy_at_depth_action_action_scope, menus as context_copy_at_depth_action_menus } from './src/actions/context/copy_at_depth.js';
 import { context_delete_context as context_delete_context_action, menus as context_delete_context_action_menus } from './src/actions/context/delete_context.js';
-import { context_get as context_get_action, display_name as context_get_action_display_name, display_description as context_get_action_display_description, action_scope as context_get_action_action_scope, tool as context_get_action_tool, input_schema as context_get_action_input_schema, output_schema as context_get_action_output_schema } from './src/actions/context/get.js';
 import { context_make_copy as context_make_copy_action, menus as context_make_copy_action_menus } from './src/actions/context/make_copy.js';
 import { context_open_builder as context_open_builder_action, menus as context_open_builder_action_menus } from './src/actions/context/open_builder.js';
 import { context_open_codeblock_builder as context_open_codeblock_builder_action, menus as context_open_codeblock_builder_action_menus } from './src/actions/context/open_codeblock_builder.js';
@@ -72,7 +71,6 @@ export const smart_env_config = {
     context_convert_to_named: { action: context_convert_to_named_action, menus: context_convert_to_named_action_menus, version: "3.1.1" },
     context_copy_at_depth: { action: context_copy_at_depth_action, display_name: context_copy_at_depth_action_display_name, action_scope: context_copy_at_depth_action_action_scope, menus: context_copy_at_depth_action_menus, version: "3.1.1" },
     context_delete_context: { action: context_delete_context_action, menus: context_delete_context_action_menus, version: "3.1.1" },
-    context_get: { action: context_get_action, display_name: context_get_action_display_name, display_description: context_get_action_display_description, action_scope: context_get_action_action_scope, tool: context_get_action_tool, input_schema: context_get_action_input_schema, output_schema: context_get_action_output_schema, version: "3.1.1" },
     context_make_copy: { action: context_make_copy_action, menus: context_make_copy_action_menus, version: "3.1.1" },
     context_open_builder: { action: context_open_builder_action, menus: context_open_builder_action_menus, version: "3.1.1" },
     context_open_codeblock_builder: { action: context_open_codeblock_builder_action, menus: context_open_codeblock_builder_action_menus, version: "3.1.1" },

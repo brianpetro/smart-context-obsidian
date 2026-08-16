@@ -1,6 +1,5 @@
 import test from 'ava';
 import { context_add } from './context/add.js';
-import { context_get } from './context/get.js';
 import { context_read } from './context/read.js';
 import { context_remove } from './context/remove.js';
 import { smart_contexts_create } from './smart-contexts/create.js';
@@ -104,13 +103,6 @@ test('Smart Context tool actions list, create, resolve, read, add, and remove', 
     params: { name: 'alpha' },
   });
   t.is(resolved, alpha);
-  t.deepEqual(context_get.call(alpha), {
-    ok: true,
-    name: 'Alpha',
-    key: 'alpha',
-    total: 0,
-    items: [],
-  });
   t.is(await context_read.call(alpha), '<context>Alpha</context>');
 
   const added = await context_add.call(alpha, {
