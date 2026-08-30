@@ -26,18 +26,30 @@ export { build_context_items_from_graphs } from '../../utils/link_graph_context_
  * @param {object} [params={}]
  * @param {'out'|'in'|'both'} [params.direction='both'] - Link direction(s).
  * @param {boolean} [params.include_self=true] - Include the root source.
+ * @param {number} [params.link_depth=5] - Maximum link depth, from 0 through 5.
  * @param {Record<string, Array<object>>} [params.outlinks_by_source] - Transient outlinks keyed by source key.
  * @returns {Promise<import('smart-contexts').SmartContext|null>}
  */
 export async function source_get_context(params = {}) {
-  const LINK_DEPTH = 5;
+  const link_depth = params.link_depth === undefined
+    ? 5
+    : params.link_depth
+  ;
+  if (
+    !Number.isInteger(link_depth)
+    || link_depth < 0
+    || link_depth > 5
+  ) {
+    throw new TypeError('link_depth must be an integer from 0 through 5.');
+  }
+
   const direction = normalize_link_direction(params.direction);
   const include_self =
     typeof params.include_self === 'boolean' ? params.include_self : true
   ;
 
   const outlink_graph = includes_outlinks(direction)
-    ? await get_links_to_depth(this, LINK_DEPTH, {
+    ? await get_links_to_depth(this, link_depth, {
       direction: LINK_DIRECTIONS.OUT,
       include_self,
       outlinks_by_source: params.outlinks_by_source,
@@ -45,7 +57,7 @@ export async function source_get_context(params = {}) {
     : []
   ;
   const inlink_graph = includes_inlinks(direction)
-    ? await get_links_to_depth(this, LINK_DEPTH, {
+    ? await get_links_to_depth(this, link_depth, {
       direction: LINK_DIRECTIONS.IN,
       include_self,
     })
@@ -61,6 +73,20 @@ export async function source_get_context(params = {}) {
 
   const smart_contexts = this.env.smart_contexts;
   const context_key = this.key;
+
+  if (params.link_depth !== undefined) {
+    const current_context =
+      smart_contexts.get?.(context_key)
+      || smart_contexts.items?.[context_key]
+    ;
+    Object.entries(current_context?.data?.context_items || {})
+      .forEach(([key, item]) => {
+        if (item?.link === true) {
+          delete current_context.data.context_items[key];
+        }
+      })
+    ;
+  }
 
   if (context_items[this.key]) {
     context_items[this.key].current = true;
