@@ -261,14 +261,84 @@
   cursor: grabbing;
 }
 
-.sc-contexts-dashboard-name {
+.sc-contexts-dashboard-item-copy {
   flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sc-contexts-dashboard-name {
   min-width: 0;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: var(--font-smaller);
+}
+
+.sc-contexts-dashboard button.sc-contexts-dashboard-description-preview {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--font-smallest);
+  line-height: 1.25;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.sc-contexts-dashboard button.sc-contexts-dashboard-description-preview:hover,
+.sc-contexts-dashboard button.sc-contexts-dashboard-description-preview:active {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-normal);
+  transform: none;
+}
+
+.sc-contexts-dashboard button.sc-contexts-dashboard-description-preview:focus-visible {
+  outline: 2px solid var(--sc-contexts-focus);
+  outline-offset: 2px;
+  box-shadow: none;
+  color: var(--text-normal);
+}
+
+.sc-contexts-dashboard-item:not(.has-description) .sc-contexts-dashboard-item-copy {
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--size-4-2);
+}
+
+.sc-contexts-dashboard-item:not(.has-description) .sc-contexts-dashboard-name {
+  flex: 1 1 auto;
+}
+
+.sc-contexts-dashboard-item:not(.has-description) button.sc-contexts-dashboard-description-preview {
+  flex: 0 0 auto;
+  width: auto;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.sc-contexts-dashboard-item:not(.has-description) button.sc-contexts-dashboard-description-preview:hover {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .sc-contexts-dashboard-count {
@@ -351,7 +421,105 @@
 
 .sc-contexts-dashboard-item-detail {
   border-top: 1px solid var(--sc-contexts-divider);
-  padding: var(--size-4-3) var(--size-4-4);
+  padding: var(--size-4-3) var(--size-4-4) var(--size-4-4);
+  background: var(--sc-contexts-surface-subtle);
+}
+
+.sc-contexts-dashboard-description-editor-header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px var(--size-4-2);
+  margin-bottom: var(--size-4-2);
+}
+
+.sc-contexts-dashboard-description-label {
+  color: var(--text-normal);
+  font-size: var(--font-ui-small);
+  font-weight: var(--font-semibold);
+}
+
+.sc-contexts-dashboard-description-help,
+.sc-contexts-dashboard-description-shortcut {
+  color: var(--text-faint);
+  font-size: var(--font-smallest);
+  line-height: 1.3;
+}
+
+.sc-contexts-dashboard textarea.sc-contexts-dashboard-description-input {
+  display: block;
+  width: 100%;
+  min-height: 104px;
+  box-sizing: border-box;
+  padding: var(--size-4-3);
+  border: 1px solid var(--sc-contexts-border-strong);
+  border-radius: var(--radius-m);
+  background: var(--background-primary);
+  box-shadow: none;
+  color: var(--text-normal);
+  resize: vertical;
+  font: inherit;
+  font-size: var(--font-ui-small);
+  line-height: 1.5;
+}
+
+.sc-contexts-dashboard textarea.sc-contexts-dashboard-description-input:hover {
+  border-color: color-mix(in srgb, var(--text-muted) 55%, var(--sc-contexts-border-strong));
+}
+
+.sc-contexts-dashboard textarea.sc-contexts-dashboard-description-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--sc-contexts-focus);
+}
+
+.sc-contexts-dashboard textarea.sc-contexts-dashboard-description-input::placeholder {
+  color: var(--text-faint);
+}
+
+.sc-contexts-dashboard textarea.sc-contexts-dashboard-description-input:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.sc-contexts-dashboard-description-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+  margin-top: var(--size-4-3);
+}
+
+.sc-contexts-dashboard-description-shortcut {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.sc-contexts-dashboard button.sc-contexts-dashboard-description-cancel,
+.sc-contexts-dashboard button.sc-contexts-dashboard-description-save {
+  min-width: 72px;
+  height: 30px;
+  padding: 0 var(--size-4-3);
+  border-radius: var(--radius-s);
+  font-weight: 500;
+}
+
+.sc-contexts-dashboard-item.is-editing-description,
+.sc-contexts-dashboard-item.is-editing-description:hover,
+.sc-contexts-dashboard-item.is-editing-description:focus-within {
+  border-color: color-mix(in srgb, var(--interactive-accent) 55%, var(--sc-contexts-border-strong));
+  background: var(--sc-contexts-surface);
+  box-shadow: var(--sc-contexts-shadow);
+  transform: none;
+}
+
+.sc-contexts-dashboard-item.is-editing-description .sc-contexts-dashboard-description-preview {
+  display: none;
+}
+
+.sc-contexts-dashboard-item.is-editing-description .sc-contexts-dashboard-item-header[draggable="true"] {
+  cursor: default;
 }
 
 /* Inline delete confirmation */

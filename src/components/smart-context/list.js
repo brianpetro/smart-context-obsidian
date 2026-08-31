@@ -5,6 +5,8 @@ import { is_codeblock_context_key } from '../../utils/pure_utils.js';
 const DASHBOARD_CLASS = 'sc-contexts-dashboard';
 const DASHBOARD_LIST_CLASS = 'sc-contexts-dashboard-list';
 
+export const version = '3.1.3';
+
 /**
  * Normalize filter input.
  * @param {object} raw_filters

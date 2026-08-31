@@ -9,6 +9,51 @@ export function get_context_name_input_value(ctx) {
 }
 
 /**
+ * @param {import('smart-contexts').SmartContext} ctx
+ * @returns {string}
+ */
+export function get_context_description_input_value(ctx) {
+  return String(ctx?.data?.description ?? '').trim();
+}
+
+/**
+ * Persist a plain-text description from a Named Context input.
+ *
+ * Pro uses the registered context_update action so agent and UI writes share
+ * the same behavior. Core falls back to the common SmartContext data field.
+ *
+ * @param {import('smart-contexts').SmartContext} ctx
+ * @param {object} [params]
+ * @param {string} [params.input_value]
+ * @param {string} [params.event_source]
+ * @returns {Promise<void>}
+ */
+export async function persist_context_description(ctx, params = {}) {
+  const description = String(params.input_value ?? '').trim();
+  if (description === get_context_description_input_value(ctx)) return;
+
+  if (ctx.actions?.context_update) {
+    await ctx.actions.context_update({
+      description,
+      ...(params.event_source
+        ? { event_source: params.event_source }
+        : {}),
+    });
+    return;
+  }
+
+  ctx.data.description = description;
+  ctx.queue_save();
+  ctx.emit_event('context:updated', {
+    description,
+    updated: ['description'],
+    ...(params.event_source
+      ? { event_source: params.event_source }
+      : {}),
+  });
+}
+
+/**
  * Persist a name from the builder input.
  *
  * Rules:
