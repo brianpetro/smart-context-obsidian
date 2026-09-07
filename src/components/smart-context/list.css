@@ -318,19 +318,7 @@
   color: var(--text-normal);
 }
 
-.sc-contexts-dashboard-item:not(.has-description) .sc-contexts-dashboard-item-copy {
-  flex-direction: row;
-  align-items: baseline;
-  gap: var(--size-4-2);
-}
-
-.sc-contexts-dashboard-item:not(.has-description) .sc-contexts-dashboard-name {
-  flex: 1 1 auto;
-}
-
 .sc-contexts-dashboard-item:not(.has-description) button.sc-contexts-dashboard-description-preview {
-  flex: 0 0 auto;
-  width: auto;
   color: var(--text-faint);
   font-style: italic;
 }
