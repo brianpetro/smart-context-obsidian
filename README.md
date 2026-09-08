@@ -145,7 +145,7 @@ Use Builder when:
 
 How it works:
 
-1. Run **Smart Context: Open Selector for New Context**.
+1. Run **Smart Context: Open new context in builder**.
 2. Search for notes or use the available suggestions.
 3. Press **Enter** to add a note.
 4. Press **Right Arrow** to choose blocks or sections when a full note is too much.
