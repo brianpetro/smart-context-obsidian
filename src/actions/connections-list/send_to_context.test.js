@@ -260,3 +260,22 @@ test('generated configs preserve explicit placeholder and override versions', (t
   ));
   t.true(context_config.includes(version_entry));
 });
+
+
+test('Context handoff requires an explicit visible operand and stays synchronous', t => {
+  const calls = [];
+  const scope = {
+    item: { key: 'Target.md' },
+    results: [{ item: { key: 'Hidden.md' }, score: 0.99 }],
+    get_visible_results() { t.fail('Actions do not reconstruct presentation.'); },
+    env: {
+      events: { emit() {} },
+      smart_contexts: { actions: { smart_contexts_open_new(params) { calls.push(params); return {}; } } },
+    },
+    emit_event() {},
+  };
+  t.false(context_action.call(scope, { event_source: 'test.standalone' }));
+  t.deepEqual(calls, []);
+  t.true(context_action.call(scope, { visible_results: [{ item: { key: 'Pinned.md' }, score: 0.2 }] }));
+  t.deepEqual(calls[0].add_items.map(item => item.key), ['Target.md', 'Pinned.md']);
+});

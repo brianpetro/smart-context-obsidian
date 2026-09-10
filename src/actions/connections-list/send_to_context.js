@@ -9,7 +9,7 @@
 function get_context_items(connections_list, params = {}) {
   const results = Array.isArray(params.visible_results)
     ? params.visible_results
-    : connections_list?.results || []
+    : []
   ;
   if (!results.length) return [];
 
