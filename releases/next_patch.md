@@ -4,7 +4,7 @@ The redesigned Builder makes it easier to review your sources before copying. Op
 
 ![[context-builder-current-sanitized-documentation-1280x450-desktop-2026-08-06.png]]
 
-*The redesigned Builder keeps your source tree and copy controls together. Pro source modes are also shown.*
+*Review the source tree, size estimate, and copy controls in one place. This capture also includes Pro source modes.*
 
 ### Copy your latest changes
 
@@ -16,7 +16,7 @@ Hold Cmd on macOS or Ctrl on Windows/Linux while selecting a link depth to open 
 
 ![[context-depth-current-documentation-1200x800-desktop-2026-08-05.png]]
 
-*Compare the available link depths and their item counts before choosing a selection.*
+*Each depth shows its expected characters, tokens, and item count before you choose.*
 
 Saved Contexts are easier to maintain, too: edit their descriptions directly in the list, without the description control cutting off their names.
 
