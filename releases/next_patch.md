@@ -1,24 +1,24 @@
-### Know what's in your context
+### See exactly what you are about to copy
 
-The redesigned Builder makes it easier to review your sources before copying. Open a saved Context from its badge, see its changes reflected in the tree, and remove several items in a row without waiting for the view to reload. Missing sources are highlighted with an option to remove them.
+The redesigned Builder puts your source tree, estimated size, and copy controls in one place. Open an included saved Context from its badge, see it refresh when it changes, remove several items one after another, and clean up missing sources before copying.
 
 ![[context-builder-current-sanitized-documentation-1280x450-desktop-2026-08-06.png]]
 
-*Review the source tree, size estimate, and copy controls in one place. This capture also includes Pro source modes.*
+*Review the source tree, estimated size, and copy controls together before using the Context. This capture also shows Pro source modes.*
 
-### Copy your latest changes
+Saved Contexts are easier to scan and maintain, too: edit descriptions directly in the list without the description control cutting off their names.
 
-Before copying context to the clipboard, Smart Context now processes queued note updates. The output and link tree also identify the current file, so you can see how it fits into the context you're sharing.
+### Copy the latest version of your Context
 
-### Follow links, then refine the selection
+Before copying to the clipboard, Smart Context processes queued note updates so the compiled text reflects your latest changes. Context output and the link tree also identify the current file, making its role in the selection explicit.
 
-Hold Cmd on macOS or Ctrl on Windows/Linux while selecting a link depth to open the items through that depth as a new Context in the Builder. Adjust the selection there before copying.
+### Follow links, then fine-tune the selection
+
+Hold Cmd on macOS or Ctrl on Windows/Linux while choosing a link depth to open everything through that depth as a new Context in the Builder. Review the estimated size first, then adjust the selection before copying.
 
 ![[context-depth-current-documentation-1200x800-desktop-2026-08-05.png]]
 
-*Each depth shows its expected characters, tokens, and item count before you choose.*
-
-Saved Contexts are easier to maintain, too: edit their descriptions directly in the list, without the description control cutting off their names.
+*Compare the expected characters, tokens, and item count at each depth before opening the selection in the Builder.*
 
 ### Full release notes
 
