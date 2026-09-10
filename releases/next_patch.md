@@ -2,6 +2,10 @@
 
 The redesigned Builder makes it easier to review your sources before copying. Open a saved Context from its badge, see its changes reflected in the tree, and remove several items in a row without waiting for the view to reload. Missing sources are highlighted with an option to remove them.
 
+![[context-builder-current-sanitized-documentation-1280x450-desktop-2026-08-06.png]]
+
+*The redesigned Builder keeps your source tree and copy controls together. Pro source modes are also shown.*
+
 ### Copy your latest changes
 
 Before copying context to the clipboard, Smart Context now processes queued note updates. The output and link tree also identify the current file, so you can see how it fits into the context you're sharing.
@@ -9,6 +13,10 @@ Before copying context to the clipboard, Smart Context now processes queued note
 ### Follow links, then refine the selection
 
 Hold Cmd on macOS or Ctrl on Windows/Linux while selecting a link depth to open the items through that depth as a new Context in the Builder. Adjust the selection there before copying.
+
+![[context-depth-current-documentation-1200x800-desktop-2026-08-05.png]]
+
+*Compare the available link depths and their item counts before choosing a selection.*
 
 Saved Contexts are easier to maintain, too: edit their descriptions directly in the list, without the description control cutting off their names.
 
