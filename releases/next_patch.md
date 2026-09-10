@@ -1,13 +1,41 @@
-up
+### Know what's in your context
 
+The redesigned Builder makes it easier to review your sources before copying. Open a saved Context from its badge, see its changes reflected in the tree, and remove several items in a row without waiting for the view to reload. Missing sources are highlighted with an option to remove them.
 
-Added: cmd/ctrl selection in depth selection modal opens the items up to the selected depth as a new context in the builder
+### Copy your latest changes
 
+Before copying context to the clipboard, Smart Context now processes queued note updates. The output and link tree also identify the current file, so you can see how it fits into the context you're sharing.
 
-Added: context description management in the named context list view
+### Follow links, then refine the selection
 
+Hold Cmd on macOS or Ctrl on Windows/Linux while selecting a link depth to open the items through that depth as a new Context in the Builder. Adjust the selection there before copying.
 
-Improved: Named context list styles so "add description" doesn't cut off name
+Saved Contexts are easier to maintain, too: edit their descriptions directly in the list, without the description control cutting off their names.
 
+### Full release notes
 
-Updated: Connections to context actions should reflect recent Connections changes
+#### Builder and saved Contexts
+
+- Redesigned the Context Builder with the v2 interface used by Core and Pro.
+- Named Context badges in the tree now open the included Context.
+- The tree refreshes when an included named Context changes.
+- Remove several items in succession without waiting for background processing and a full redraw after each removal.
+- Missing items are highlighted in the Builder, with a notification that offers to remove them.
+- Item removal now handles differences in path formatting more consistently, with automated checks for path normalization and matching.
+- Hold Cmd on macOS or Ctrl on Windows/Linux while selecting a link depth to open all items through that depth as a new Context in the Builder.
+- Edit descriptions directly in the named Contexts list. The **Add description** control no longer cuts off Context names.
+- Context suggestions now support source filters.
+
+#### Copying and output
+
+- Clipboard copies process queued source updates before compiling the text. An information notice appears only when updates are waiting.
+- Context output and the link tree now identify the current file.
+- Context-output templates preserve the section reference when an item links to a specific part of a note.
+- Context menus now include options to clear the selection, copy the link tree, and copy the text to the clipboard.
+- Individual items in the context tree now provide context-item and source menus.
+- Markdown context-tree output now supports filtering, with automated checks.
+
+#### Integrations and maintenance
+
+- Updated the Connections-to-Context handoff to remain compatible with the revised Connections integration.
+- Removed exclusion metadata from stored context items.
