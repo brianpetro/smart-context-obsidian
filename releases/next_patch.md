@@ -47,3 +47,6 @@ Hold Cmd on macOS or Ctrl on Windows/Linux while choosing a link depth to open e
 
 - Updated the Connections-to-Context handoff to remain compatible with the revised Connections integration.
 - Removed exclusion metadata from stored context items.
+
+
+Improved: drag-and-drop functionality by adding window blur event handling in post_process
