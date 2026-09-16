@@ -429,6 +429,8 @@ async function post_process(ctx, container, opts = {}) {
   const set_drag_over = (active) => {
     container.classList.toggle('is-drag-over', Boolean(active));
   };
+  const on_window_blur = () => set_drag_over(false);
+  const owner_window = container.ownerDocument.defaultView;
   const is_description_editor_event = (event) => {
     return Boolean(event.target?.closest?.('.sc-contexts-dashboard-item-detail'));
   };
@@ -482,12 +484,14 @@ async function post_process(ctx, container, opts = {}) {
   container.addEventListener('dragover', on_dragover);
   container.addEventListener('dragleave', on_dragleave);
   container.addEventListener('drop', on_drop);
+  owner_window?.addEventListener('blur', on_window_blur);
 
   disposers.push(() => {
     container.removeEventListener('dragenter', on_dragenter);
     container.removeEventListener('dragover', on_dragover);
     container.removeEventListener('dragleave', on_dragleave);
     container.removeEventListener('drop', on_drop);
+    owner_window?.removeEventListener('blur', on_window_blur);
     set_drag_over(false);
   });
 
