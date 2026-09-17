@@ -129,6 +129,7 @@ export class ContextBuilderModal extends SmartFuzzySuggestModal {
           surface: 'context_builder',
           modal: this,
           origin: this.origin,
+          on_open_item: (context_item, event) => this.open_item(context_item, event),
         },
       );
       if (!builder) throw new Error('Context Builder component returned no element.');
@@ -147,6 +148,21 @@ export class ContextBuilderModal extends SmartFuzzySuggestModal {
       if (!this._is_closed && render_id === this._render_id) {
         this.show_render_error(error);
       }
+    }
+  }
+
+  /** Park the same Context before uncovering its source. */
+  async open_item(context_item, event) {
+    if (this._is_closed || this._opening_item) return false;
+    this._opening_item = true;
+    try {
+      const view = await this.smart_context.actions.context_open_builder_view({ active: false });
+      if (!view || this._is_closed) return false;
+      this.close();
+      await view.open_item(context_item, event);
+      return true;
+    } finally {
+      this._opening_item = false;
     }
   }
 

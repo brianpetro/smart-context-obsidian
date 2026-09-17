@@ -39,6 +39,27 @@
   border-bottom: 1px solid var(--sc-context-builder-border);
 }
 
+/* The review view reuses the Builder without the modal's fuzzy results. */
+.sc-context-builder-view {
+  height: 100%;
+  max-height: none;
+  box-sizing: border-box;
+  border-bottom: 0;
+}
+
+.sc-context-builder-view .sc-context-builder-header {
+  flex-direction: column;
+}
+
+.sc-context-builder-view .sc-context-builder-review {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.sc-context-builder-view .sc-context-builder-source-modes {
+  flex-wrap: wrap;
+}
+
 .sc-context-builder[hidden],
 .sc-context-builder [hidden] {
   display: none !important;
@@ -289,7 +310,7 @@ button.sc-context-builder-ui-chip {
 }
 
 @media (max-width: 640px) {
-  .sc-context-builder {
+  .sc-context-builder:not(.sc-context-builder-view) {
     max-height: 55vh;
   }
 

@@ -1,16 +1,18 @@
 import { Menu, setIcon } from 'obsidian';
 import { build_context_actions_menu } from 'obsidian-smart-env/src/utils/smart-context/copy_actions.js';
 import { render_name_input } from '../../utils/named_context_utils.js';
-import styles from './builder.css';
+import './builder.css';
+import './builder_view.css';
 
-export const version = '3.1.6';
+export const version = '3.1.7';
 
 let builder_instance_id = 0;
 
-export function build_html() {
+export function build_html(ctx, params = {}) {
+  const is_review_view = params.surface === 'context_builder_view';
   return `
     <div class="sc-context-builder">
-      <div class="sc-context-builder-header">
+      ${is_review_view ? '<div class="sc-context-builder-header"></div>' : `<div class="sc-context-builder-header">
         <div class="sc-context-builder-header-copy">
           <div class="sc-context-builder-origin-row">
             <span class="sc-context-builder-origin"></span>
@@ -20,23 +22,26 @@ export function build_html() {
           <div class="sc-context-builder-summary"></div>
         </div>
         <div class="sc-context-builder-primary"></div>
-      </div>
+      </div>`}
 
       <div class="sc-context-builder-review">
         <div class="sc-context-builder-empty" hidden>
-          <div class="sc-context-builder-empty-title">Start with useful evidence</div>
+          <div class="sc-context-builder-empty-title">${is_review_view ? 'Add sources to this context' : 'Start with useful evidence'}</div>
           <div class="sc-context-builder-empty-description">
-            Add the note or sources this assignment depends on. You can review the package before copying it.
+            ${is_review_view
+              ? 'Drop notes or folders here, or use Add sources above. Review the sources before copying.'
+              : 'Add the note or sources this assignment depends on. You can review the package before copying it.'
+            }
           </div>
         </div>
         <div class="sc-context-builder-tree"></div>
         <div class="sc-context-builder-exclusions" hidden></div>
       </div>
 
-      <div class="sc-context-builder-source-nav">
+      ${is_review_view ? '' : `<div class="sc-context-builder-source-nav">
         <div class="sc-context-builder-source-modes" role="tablist" aria-label="Context source types"></div>
         <div class="sc-context-builder-source-description"></div>
-      </div>
+      </div>`}
     </div>
   `.trim();
 }
@@ -48,15 +53,16 @@ export function build_html() {
  * @returns {Promise<HTMLElement>}
  */
 export async function render(ctx, params = {}) {
-  this.apply_style_sheet(styles);
-  const frag = this.create_doc_fragment(build_html());
+  const is_review_view = params.surface === 'context_builder_view';
+  const frag = this.create_doc_fragment(build_html(ctx, params));
   const container = frag.firstElementChild;
+  if (is_review_view) container.classList.add('sc-context-builder-view');
   let disposed = false;
   let initialize_timeout = null;
 
   const is_disposed = () => {
     if (container.dataset.contextBuilderDisposed === 'true') return true;
-    if (disposed) return true;
+    if (disposed || params.is_disposed?.()) return true;
     if (params.modal?._is_closed === true) return true;
     return Boolean(
       params.modal?._builder_container
@@ -78,18 +84,22 @@ export async function render(ctx, params = {}) {
         params.modal.show_render_error(error);
         return;
       }
+      if (is_review_view) {
+        dispose_unmounted_builder(container);
+        throw error;
+      }
       console.error('Context Builder: Failed to initialize Builder', error);
     }
   };
 
-  initialize_timeout = window.setTimeout(() => {
-    void initialize();
-  }, 0);
   this.attach_disposer(container, () => {
     disposed = true;
     if (initialize_timeout) window.clearTimeout(initialize_timeout);
     initialize_timeout = null;
   });
+
+  if (is_review_view) await initialize();
+  else initialize_timeout = window.setTimeout(() => { void initialize(); }, 0);
 
   return container;
 }
@@ -133,11 +143,33 @@ export function dispose_unmounted_builder(builder) {
  */
 export async function post_process(ctx, container, params = {}) {
   const modal = params.modal;
-  if (!modal) throw new Error('Context Builder requires a modal.');
+  const is_review_view = params.surface === 'context_builder_view';
+  const origin = modal?.origin || params.origin || { kind: 'preselected' };
+  const open_suggestions = (source_mode) => {
+    if (modal) return source_mode
+      ? modal.set_active_source_mode(source_mode)
+      : modal.focus_search()
+    ;
+    return ctx.collection.open_builder(ctx, {
+      source_mode,
+      event_source: 'context_builder_view.add',
+    });
+  };
   const is_disposed = typeof params.is_disposed === 'function'
     ? params.is_disposed
     : () => false
   ;
+
+  if (is_review_view) {
+    const header = await ctx.env.smart_components.render_component(
+      'smart_context_builder_view_header', ctx, params,
+    );
+    if (is_disposed()) {
+      dispose_unmounted_builder(header);
+      return container;
+    }
+    container.querySelector('.sc-context-builder-header').replaceWith(header);
+  }
 
   const origin_el = container.querySelector('.sc-context-builder-origin');
   const undo_btn = container.querySelector('.sc-context-builder-origin-undo');
@@ -191,8 +223,8 @@ export async function post_process(ctx, container, params = {}) {
   render_name_input(ctx, name_container);
 
   const render_origin = () => {
-    origin_el.textContent = get_context_origin_label(modal.origin);
-    undo_btn.hidden = !modal.has_undoable_origin_seed;
+    origin_el.textContent = get_context_origin_label(modal?.origin || origin);
+    undo_btn.hidden = !modal?.has_undoable_origin_seed;
   };
 
   const focus_first_missing_item = () => {
@@ -343,10 +375,10 @@ export async function post_process(ctx, container, params = {}) {
       get_menu_params: () => ({
         ...params,
         modal,
-        origin: modal.origin,
+        origin: modal?.origin || origin,
         include_copy_depth_submenu: false,
       }),
-      on_add_sources: () => modal.focus_search(),
+      on_add_sources: () => open_suggestions(),
       on_ready(callback) {
         refresh_primary = callback;
       },
@@ -370,28 +402,65 @@ export async function post_process(ctx, container, params = {}) {
 
   const render_source_modes = () => {
     source_modes_container.replaceChildren();
-    modal.source_modes.forEach((source_mode) => {
-      const is_active = source_mode.action_key === modal.active_source_mode;
+    const source_modes = modal?.source_modes || ctx.env.resolve_menu_actions(
+      'smart_context:suggest', ctx, { surface: 'context_builder' },
+    ).filter((action) => action.disabled !== true && action.menu_only !== true);
+    source_modes_container.setAttribute('role', modal ? 'tablist' : 'group');
+    if (is_review_view && !modal) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'sc-context-builder-source-mode sc-context-builder-view-add';
+      button.setAttribute('aria-haspopup', 'menu');
+      button.title = 'Add sources, or drop notes and folders onto this view';
+      button.disabled = source_modes.length === 0;
+      const icon = document.createElement('span');
+      icon.className = 'sc-context-builder-source-mode-icon';
+      setIcon(icon, 'plus');
+      button.appendChild(icon);
+      button.append('Add sources');
+      button.addEventListener('click', () => {
+        if (is_disposed()) return;
+        const menu = new Menu(ctx.env.obsidian_app || ctx.env.plugin.app);
+        source_modes.forEach((source_mode) => {
+          menu.addItem((item) => item
+            .setTitle(source_mode.title)
+            .setIcon(source_mode.icon)
+            .onClick(() => {
+              if (!is_disposed()) open_suggestions(source_mode.action_key);
+            })
+          );
+        });
+        const { left, bottom } = button.getBoundingClientRect();
+        menu.showAtPosition({ x: left, y: bottom });
+      });
+      source_modes_container.appendChild(button);
+      source_description.hidden = true;
+      return;
+    }
+    source_modes.forEach((source_mode) => {
+      const is_active = source_mode.action_key === modal?.active_source_mode;
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'sc-context-builder-source-mode';
-      button.setAttribute('role', 'tab');
-      button.setAttribute('aria-selected', String(is_active));
-      button.tabIndex = is_active ? 0 : -1;
+      if (modal) {
+        button.setAttribute('role', 'tab');
+        button.setAttribute('aria-selected', String(is_active));
+      }
+      button.tabIndex = !modal || is_active ? 0 : -1;
       if (is_active) button.classList.add('is-active');
 
       const icon_el = document.createElement('span');
       icon_el.className = 'sc-context-builder-source-mode-icon';
       setIcon(icon_el, source_mode.icon);
       button.appendChild(icon_el);
-      button.append(source_mode.label);
+      button.append(modal ? source_mode.label : `Add ${source_mode.title}`);
       button.addEventListener('click', () => {
-        modal.set_active_source_mode(source_mode.action_key);
+        open_suggestions(source_mode.action_key);
       });
       source_modes_container.appendChild(button);
     });
 
-    source_description.textContent = modal.active_source_mode_meta?.description || '';
+    source_description.textContent = modal?.active_source_mode_meta?.description || '';
     source_description.hidden = !source_description.textContent;
   };
 
@@ -405,9 +474,9 @@ export async function post_process(ctx, container, params = {}) {
     update_review_state();
   };
   refresh_builder_chrome();
-  modal.set_builder_chrome_refresh(refresh_builder_chrome);
+  modal?.set_builder_chrome_refresh(refresh_builder_chrome);
 
-  const on_undo_click = () => modal.undo_origin_seed();
+  const on_undo_click = () => modal?.undo_origin_seed();
   undo_btn.addEventListener('click', on_undo_click);
 
   const on_context_menu = (event) => {
@@ -427,7 +496,7 @@ export async function post_process(ctx, container, params = {}) {
       build_context_actions_menu(ctx, menu, {
         ...params,
         modal,
-        origin: modal.origin,
+        origin: modal?.origin || origin,
         include_copy_depth_submenu: false,
       });
     } catch (error) {
@@ -450,15 +519,23 @@ export async function post_process(ctx, container, params = {}) {
   if (is_disposed()) {
     container.removeEventListener('contextmenu', on_context_menu);
     undo_btn.removeEventListener('click', on_undo_click);
-    modal.clear_builder_chrome_refresh(refresh_builder_chrome);
+    modal?.clear_builder_chrome_refresh(refresh_builder_chrome);
     return container;
   }
 
+  const refresh_name = () => {
+    const input = name_container.querySelector('input');
+    if (input === input?.ownerDocument.activeElement) return;
+    name_container.replaceChildren();
+    render_name_input(ctx, name_container);
+  };
   this.attach_disposer(container, [
     ctx.on_event('context:updated', refresh_context_state),
+    ctx.on_event('context:named', refresh_name),
+    ctx.on_event('context:renamed', refresh_name),
     () => undo_btn.removeEventListener('click', on_undo_click),
     () => container.removeEventListener('contextmenu', on_context_menu),
-    () => modal.clear_builder_chrome_refresh(refresh_builder_chrome),
+    () => modal?.clear_builder_chrome_refresh(refresh_builder_chrome),
     () => {
       if (missing_flash_timeout) window.clearTimeout(missing_flash_timeout);
       missing_flash_timeout = null;

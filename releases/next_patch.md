@@ -50,3 +50,12 @@ Hold Cmd on macOS or Ctrl on Windows/Linux while choosing a link depth to open e
 
 
 Improved: drag-and-drop functionality by adding window blur event handling in post_process
+
+
+
+- Added a reusable Context Builder review view bound to the same SmartContext as the modal. Opening a source hands review to the sidebar; mobile uses a document-tab fallback. Add sources reopens the existing suggestion modal.
+- Added review-view name/description editing, compact action controls, Smart Context branding, responsive rules spacing, and clearer root-item indentation. The registered header follows build_html, render, and post_process; styles are scoped to the review view.
+- Added native File Navigator and Smart source/block drops through the shared resolver and configured Context add action. Folder drops add resolved files, not dynamic Pro folder rules; text-editor drops retain editor behavior.
+- Canonical Builder inline/menu removal shares a pending queue, preserves folder metadata, batches at the render boundary, and keeps pending rows hidden across updates and view handoff. Failures reconcile from actual membership rather than inventing rollback.
+- Direct inclusion removal is separate from exclusion restoration. Core and Pro reuse the shared target normalizer, which preserves folder:true when duplicate targets are merged. Core named-context removal restrictions remain intact.
+

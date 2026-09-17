@@ -33,8 +33,7 @@ export function remove_named_context_rule(ctx, storage_key = '') {
   const context_items = ctx?.data?.context_items;
   if (!key || context_items?.[key]?.named_context !== true) return false;
 
-  delete context_items[key];
-  ctx.queue_save?.();
+  ctx.remove_item(key, { emit_updated: false });
   ctx.emit_event?.('context:updated', {
     removed_key: key,
     removed_keys: [key],

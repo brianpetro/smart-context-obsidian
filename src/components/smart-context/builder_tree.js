@@ -5,6 +5,10 @@ import {
 } from 'obsidian';
 import { build_path_tree } from 'obsidian-smart-env/src/utils/smart-context/build_path_tree.js';
 import { create_render_scheduler } from 'obsidian-smart-env/src/utils/render_utils.js';
+import {
+  item_matches_remove_path,
+  normalize_remove_targets,
+} from 'obsidian-smart-env/src/utils/smart-context/remove_path_utils.js';
 import { register_item_hover_popover } from 'obsidian-smart-env/src/utils/register_item_hover_popover.js';
 import { get_truncated_context_selections } from '../../utils/context_output_guard.js';
 import './builder_tree.css';
@@ -14,6 +18,7 @@ export const version = '3.1.7';
 export const BUILDER_TREE_COLLAPSE_THRESHOLD = 50;
 export const BUILDER_TREE_CHILD_BATCH_SIZE = 100;
 const ROOT_LIST_PATH = '__root__';
+const removal_queues = new WeakMap();
 
 export function build_html() {
   return '<div class="sc-context-builder-tree"></div>';
@@ -61,6 +66,8 @@ export function post_process(ctx, container, params = {}) {
   const visible_child_limits = new Map();
   let did_initialize_expansion = false;
   let previous_item_count = null;
+  let resolved_items = [];
+  const removal_queue = get_removal_queue(ctx);
 
   const render_tree_dom = () => {
     const all_expanded = folder_paths.size > 0
@@ -86,10 +93,15 @@ export function post_process(ctx, container, params = {}) {
     if (list) container.appendChild(list);
   };
 
-  const render_tree = () => {
-    const context_items = ctx.context_items
-      .filter(params.filter)
-    ;
+  // Reuse the last hydration for immediate hiding; canonical updates still reload it.
+  const render_tree = (items = ctx.context_items.filter(params.filter)) => {
+    resolved_items = items;
+    const pending_targets = [...removal_queue.pending, ...removal_queue.in_flight];
+    const context_items = items.filter((item) => {
+      return !pending_targets.some((target) => {
+        return item_matches_remove_path(get_item_key(item), target.path);
+      });
+    });
     context_item_by_key = new Map(
       context_items.map((item) => [get_item_key(item), item]),
     );
@@ -102,6 +114,7 @@ export function post_process(ctx, container, params = {}) {
     const size_totals = get_context_size_totals(context_items);
     tree_render_params = {
       ctx,
+      surface: params.surface,
       context_item_by_key,
       named_context_cache: new WeakMap(),
       tree_stats_cache: new WeakMap(),
@@ -142,10 +155,10 @@ export function post_process(ctx, container, params = {}) {
     }
   };
 
-  const render_tree_safely = () => {
+  const render_tree_safely = (items) => {
     if (disposed) return;
     try {
-      render_tree();
+      render_tree(items);
     } catch (error) {
       console.error('Context Builder: Failed to refresh content tree', error);
       if (render_error_reported) return;
@@ -158,7 +171,40 @@ export function post_process(ctx, container, params = {}) {
       });
     }
   };
-  schedule_render = create_render_scheduler(render_tree_safely);
+  schedule_render = create_render_scheduler(() => render_tree_safely());
+
+  const removal_listener = {
+    hide: () => render_tree_safely(resolved_items),
+    refresh: () => {
+      schedule_render.cancel();
+      render_tree_safely();
+    },
+  };
+
+  const queue_remove_path = (remove_button) => {
+    if (disposed) return;
+    if (remove_button.classList.contains('is-disabled')) {
+      emit_named_context_remove_blocked_notice(ctx, remove_button.dataset.namedContext);
+      return;
+    }
+
+    removal_queue.pending = normalize_remove_targets([
+      ...removal_queue.pending,
+      {
+        path: remove_button.dataset.path,
+        folder: remove_button.dataset.folder === 'true',
+      },
+    ]).filter((target) => {
+      // An in-flight request covers repeats, but not a stronger folder exclusion.
+      return !removal_queue.in_flight.some((active) => {
+        return item_matches_remove_path(target.norm_key, active.norm_key)
+          && (target.norm_key !== active.norm_key || active.folder || !target.folder)
+        ;
+      });
+    });
+    removal_queue.listeners.forEach((listener) => listener.hide());
+    removal_queue.schedule_flush();
+  };
 
   const render_tree_dom_safely = () => {
     if (disposed) return;
@@ -194,6 +240,25 @@ export function post_process(ctx, container, params = {}) {
 
   const on_named_context_lifecycle = () => {
     if (has_named_context_selections) schedule_render();
+  };
+
+  const open_context_item = (context_item, event) => {
+    if (disposed) return;
+    return Promise.resolve()
+      .then(() => params.on_open_item
+        ? params.on_open_item(context_item, event)
+        : context_item.open(event)
+      )
+      .catch((error) => {
+        console.error('Context Builder: Failed to open context item', error);
+        ctx?.env?.events?.emit?.('notification:error', {
+          level: 'error',
+          message: 'Failed to open context item.',
+          details: error instanceof Error ? error.message : String(error || ''),
+          event_source: 'context_builder.tree_open_item',
+        });
+      })
+    ;
   };
 
   const on_click = (event) => {
@@ -247,15 +312,7 @@ export function post_process(ctx, container, params = {}) {
       event.preventDefault();
       event.stopPropagation();
 
-      if (remove_button.classList.contains('is-disabled')) {
-        emit_named_context_remove_blocked_notice(
-          ctx,
-          remove_button.dataset.namedContext,
-        );
-        return;
-      }
-
-      remove_tree_path(ctx, remove_button);
+      queue_remove_path(remove_button);
       return;
     }
 
@@ -275,18 +332,7 @@ export function post_process(ctx, container, params = {}) {
     const context_item = context_item_by_key.get(item_name.dataset.itemKey);
     if (typeof context_item?.open !== 'function') return;
 
-    Promise.resolve()
-      .then(() => context_item.open(event))
-      .catch((error) => {
-        console.error('Context Builder: Failed to open context item', error);
-        ctx?.env?.events?.emit?.('notification:error', {
-          level: 'error',
-          message: 'Failed to open context item.',
-          details: error instanceof Error ? error.message : String(error || ''),
-          event_source: 'context_builder.tree_open_item',
-        });
-      })
-    ;
+    void open_context_item(context_item, event);
   };
 
   const on_context_menu = (event) => {
@@ -302,19 +348,17 @@ export function post_process(ctx, container, params = {}) {
     ;
     if (!app) return;
 
-    const named_context = get_context_item_named_context(context_item);
-    const remove_disabled = is_core_context(ctx) && Boolean(named_context);
+    const remove_button = row.querySelector('.sc-context-builder-tree-remove');
+    const remove_disabled = remove_button.classList.contains('is-disabled');
     const menu = new Menu(app);
     const menu_params = {
       ...params,
       context_item,
       smart_context: ctx,
       remove_disabled,
-      on_remove: () => {
-        ctx.remove_by_path?.(context_item.key);
-      },
+      on_remove: () => queue_remove_path(remove_button),
       on_remove_disabled: () => {
-        emit_named_context_remove_blocked_notice(ctx, named_context);
+        emit_named_context_remove_blocked_notice(ctx, remove_button.dataset.namedContext);
       },
     };
 
@@ -322,6 +366,11 @@ export function post_process(ctx, container, params = {}) {
       const item_ref = get_item_ref(context_item);
       if (item_ref) {
         ctx.env.build_menu?.('source:menu', menu, item_ref, menu_params);
+        if (params.on_open_item) {
+          // Keep the configured source actions; only route Open through this host.
+          menu.items.find((item) => item._action_key === 'source_open')
+            ?.onClick((event) => open_context_item(context_item, event));
+        }
         if (menu.items?.length) menu.addSeparator();
       }
       ctx.env.build_menu?.(
@@ -362,11 +411,15 @@ export function post_process(ctx, container, params = {}) {
     () => {
       disposed = true;
       schedule_render.cancel();
+      removal_queue.listeners.delete(removal_listener);
+      // Closing the last tree must not discard accepted removal requests.
+      if (!removal_queue.listeners.size) void removal_queue.schedule_flush.flush();
       params.on_ready?.(null);
     },
     () => container.removeEventListener('click', on_click),
     () => container.removeEventListener('contextmenu', on_context_menu),
   ]);
+  removal_queue.listeners.add(removal_listener);
   return container;
 }
 
@@ -492,7 +545,7 @@ function render_tree_item(tree_item, params) {
         : `Remove ${tree_item.name || path}`),
   );
   remove_button.textContent = '×';
-  row.appendChild(remove_button);
+  if (params.surface !== 'context_builder_view') row.appendChild(remove_button);
 
   const icon = activeDocument.createElement('span');
   icon.className = 'sc-context-builder-tree-type-icon';
@@ -513,6 +566,10 @@ function render_tree_item(tree_item, params) {
   if (is_missing) {
     name.classList.add('is-missing');
     name.setAttribute('title', 'Missing source');
+  }
+  if (params.surface === 'context_builder_view') {
+    const preview_hint = name.getAttribute('title');
+    name.setAttribute('title', preview_hint ? `${path}\n${preview_hint}` : path);
   }
   row.appendChild(name);
 
@@ -542,6 +599,15 @@ function render_tree_item(tree_item, params) {
       const size = activeDocument.createElement('span');
       size.className = 'sc-context-builder-tree-size';
       size.textContent = size_label;
+      if (params.surface === 'context_builder_view') {
+        const bytes_start = size_label.indexOf('(');
+        size.setAttribute('title', size_label);
+        size.textContent = size_label.slice(0, bytes_start);
+        const bytes = activeDocument.createElement('span');
+        bytes.className = 'sc-context-builder-tree-size-bytes';
+        bytes.textContent = size_label.slice(bytes_start);
+        size.appendChild(bytes);
+      }
       row.appendChild(size);
     }
 
@@ -575,6 +641,8 @@ function render_tree_item(tree_item, params) {
     row.appendChild(warning);
   }
 
+  // Review rows read source-first; keep DOM and keyboard order aligned.
+  if (params.surface === 'context_builder_view') row.appendChild(remove_button);
   if (child_list) item.appendChild(child_list);
   return item;
 }
@@ -670,29 +738,39 @@ export function get_context_item_icon(context_item, tree_item = {}) {
 }
 
 /**
+ * Share pending and in-flight removals across Builder trees for the same Context.
+ * This state is UI-local and never persisted on the Context.
+ *
  * @param {import('smart-contexts').SmartContext} ctx
- * @param {HTMLButtonElement} remove_button
- * @returns {void}
+ * @returns {object}
  */
-function remove_tree_path(ctx, remove_button) {
-  const path = String(remove_button.dataset.path || '').trim();
-  if (!path) return;
+function get_removal_queue(ctx) {
+  if (removal_queues.has(ctx)) return removal_queues.get(ctx);
 
-  remove_button.disabled = true;
-  const folder = remove_button.dataset.folder === 'true';
-  try {
-    if (typeof ctx.remove_by_path === 'function') {
-      const removed_keys = ctx.remove_by_path(path, { folder });
-      if (removed_keys === false || (Array.isArray(removed_keys) && !removed_keys.length)) {
-        remove_button.disabled = false;
-      }
-      return;
+  const queue = { pending: [], in_flight: [], listeners: new Set() };
+  queue.schedule_flush = create_render_scheduler(async () => {
+    if (queue.in_flight.length || !queue.pending.length) return;
+    queue.in_flight = queue.pending;
+    queue.pending = [];
+    try {
+      await ctx.remove_by_paths(queue.in_flight.map(({ path, folder }) => ({ path, folder })));
+    } catch (error) {
+      console.error('Context Builder: Failed to remove tree items', error);
+      ctx?.env?.events?.emit?.('notification:error', {
+        level: 'error',
+        message: 'Context Builder could not remove the selected items.',
+        details: error instanceof Error ? error.message : String(error || ''),
+        event_source: 'context_builder.tree_remove',
+      });
+    } finally {
+      queue.in_flight = [];
+      // Read actual membership after success, no-op, or partial failure; never reinsert rows.
+      queue.listeners.forEach((listener) => listener.refresh());
+      if (queue.pending.length) queue.schedule_flush();
     }
-    ctx.remove_item?.(path);
-  } catch (error) {
-    remove_button.disabled = false;
-    console.error('Context Builder: Failed to remove tree item', error);
-  }
+  });
+  removal_queues.set(ctx, queue);
+  return queue;
 }
 
 /**

@@ -8,6 +8,7 @@ import { render as smart_context_builder_component, version as smart_context_bui
 import { render as smart_context_builder_primary_control_component, version as smart_context_builder_primary_control_component_version } from './src/components/smart-context/builder_primary_control.js';
 import { render as smart_context_builder_summary_component, version as smart_context_builder_summary_component_version } from './src/components/smart-context/builder_summary.js';
 import { render as smart_context_builder_tree_component, version as smart_context_builder_tree_component_version } from './src/components/smart-context/builder_tree.js';
+import { render as smart_context_builder_view_header_component, version as smart_context_builder_view_header_component_version } from './src/components/smart-context/builder_view_header.js';
 import { render as smart_context_list_component, version as smart_context_list_component_version } from './src/components/smart-context/list.js';
 import { render as smart_context_list_item_component, version as smart_context_list_item_component_version } from './src/components/smart-context/list_item.js';
 import { render as smart_context_rules_list_component, version as smart_context_rules_list_component_version } from './src/components/smart-context/rules_list.js';
@@ -19,6 +20,7 @@ import { context_copy_at_depth as context_copy_at_depth_action, display_name as 
 import { context_delete_context as context_delete_context_action, menus as context_delete_context_action_menus } from './src/actions/context/delete_context.js';
 import { context_make_copy as context_make_copy_action, menus as context_make_copy_action_menus } from './src/actions/context/make_copy.js';
 import { context_open_builder as context_open_builder_action, menus as context_open_builder_action_menus } from './src/actions/context/open_builder.js';
+import { context_open_builder_view as context_open_builder_view_action, menus as context_open_builder_view_action_menus } from './src/actions/context/open_builder_view.js';
 import { context_open_codeblock_builder as context_open_codeblock_builder_action, menus as context_open_codeblock_builder_action_menus } from './src/actions/context/open_codeblock_builder.js';
 import { context_open_codeblock_help as context_open_codeblock_help_action, menus as context_open_codeblock_help_action_menus } from './src/actions/context/open_codeblock_help.js';
 import { context_open_copy_depth_selector as context_open_copy_depth_selector_action, display_name as context_open_copy_depth_selector_action_display_name, action_scope as context_open_copy_depth_selector_action_action_scope, menus as context_open_copy_depth_selector_action_menus } from './src/actions/context/open_copy_depth_selector.js';
@@ -50,39 +52,41 @@ export const smart_env_config = {
   },
   components: {
     context_codeblock: { render: context_codeblock_component, version: context_codeblock_component_version },
-    smart_context_actions: { render: smart_context_actions_component, version: "3.1.2" },
+    smart_context_actions: { render: smart_context_actions_component, version: "3.1.3" },
     smart_context_builder: { render: smart_context_builder_component, version: smart_context_builder_component_version },
     smart_context_builder_primary_control: { render: smart_context_builder_primary_control_component, version: smart_context_builder_primary_control_component_version },
     smart_context_builder_summary: { render: smart_context_builder_summary_component, version: smart_context_builder_summary_component_version },
     smart_context_builder_tree: { render: smart_context_builder_tree_component, version: smart_context_builder_tree_component_version },
+    smart_context_builder_view_header: { render: smart_context_builder_view_header_component, version: smart_context_builder_view_header_component_version },
     smart_context_list: { render: smart_context_list_component, version: smart_context_list_component_version },
     smart_context_list_item: { render: smart_context_list_item_component, version: smart_context_list_item_component_version },
     smart_context_rules_list: { render: smart_context_rules_list_component, version: smart_context_rules_list_component_version },
-    smart_context_settings_tab: { render: smart_context_settings_tab_component, version: "3.1.2" }
+    smart_context_settings_tab: { render: smart_context_settings_tab_component, version: "3.1.3" }
   },
   actions: {
     connections_list_send_to_context: { action: connections_list_send_to_context_action, menus: connections_list_send_to_context_action_menus, version: connections_list_send_to_context_action_version },
-    context_convert_to_named: { action: context_convert_to_named_action, menus: context_convert_to_named_action_menus, version: "3.1.2" },
-    context_copy_at_depth: { action: context_copy_at_depth_action, display_name: context_copy_at_depth_action_display_name, action_scope: context_copy_at_depth_action_action_scope, menus: context_copy_at_depth_action_menus, version: "3.1.2" },
-    context_delete_context: { action: context_delete_context_action, menus: context_delete_context_action_menus, version: "3.1.2" },
-    context_make_copy: { action: context_make_copy_action, menus: context_make_copy_action_menus, version: "3.1.2" },
-    context_open_builder: { action: context_open_builder_action, menus: context_open_builder_action_menus, version: "3.1.2" },
-    context_open_codeblock_builder: { action: context_open_codeblock_builder_action, menus: context_open_codeblock_builder_action_menus, version: "3.1.2" },
-    context_open_codeblock_help: { action: context_open_codeblock_help_action, menus: context_open_codeblock_help_action_menus, version: "3.1.2" },
-    context_open_copy_depth_selector: { action: context_open_copy_depth_selector_action, display_name: context_open_copy_depth_selector_action_display_name, action_scope: context_open_copy_depth_selector_action_action_scope, menus: context_open_copy_depth_selector_action_menus, version: "3.1.2" },
-    context_parse_codeblock: { action: context_parse_codeblock_action, version: "3.1.2" },
-    env_copy_folder_to_clipboard: { action: env_copy_folder_to_clipboard_action, commands: env_copy_folder_to_clipboard_action_commands, menus: env_copy_folder_to_clipboard_action_menus, version: "3.1.2" },
-    env_copy_selected_folders_to_clipboard: { action: env_copy_selected_folders_to_clipboard_action, menus: env_copy_selected_folders_to_clipboard_action_menus, version: "3.1.2" },
-    env_copy_selected_notes_to_clipboard: { action: env_copy_selected_notes_to_clipboard_action, menus: env_copy_selected_notes_to_clipboard_action_menus, version: "3.1.2" },
-    env_open_file_selection_in_context_builder: { action: env_open_file_selection_in_context_builder_action, menus: env_open_file_selection_in_context_builder_action_menus, version: "3.1.2" },
-    env_open_folder_in_context_builder: { action: env_open_folder_in_context_builder_action, menus: env_open_folder_in_context_builder_action_menus, version: "3.1.2" },
+    context_convert_to_named: { action: context_convert_to_named_action, menus: context_convert_to_named_action_menus, version: "3.1.3" },
+    context_copy_at_depth: { action: context_copy_at_depth_action, display_name: context_copy_at_depth_action_display_name, action_scope: context_copy_at_depth_action_action_scope, menus: context_copy_at_depth_action_menus, version: "3.1.3" },
+    context_delete_context: { action: context_delete_context_action, menus: context_delete_context_action_menus, version: "3.1.3" },
+    context_make_copy: { action: context_make_copy_action, menus: context_make_copy_action_menus, version: "3.1.3" },
+    context_open_builder: { action: context_open_builder_action, menus: context_open_builder_action_menus, version: "3.1.3" },
+    context_open_builder_view: { action: context_open_builder_view_action, menus: context_open_builder_view_action_menus, version: "3.1.3" },
+    context_open_codeblock_builder: { action: context_open_codeblock_builder_action, menus: context_open_codeblock_builder_action_menus, version: "3.1.3" },
+    context_open_codeblock_help: { action: context_open_codeblock_help_action, menus: context_open_codeblock_help_action_menus, version: "3.1.3" },
+    context_open_copy_depth_selector: { action: context_open_copy_depth_selector_action, display_name: context_open_copy_depth_selector_action_display_name, action_scope: context_open_copy_depth_selector_action_action_scope, menus: context_open_copy_depth_selector_action_menus, version: "3.1.3" },
+    context_parse_codeblock: { action: context_parse_codeblock_action, version: "3.1.3" },
+    env_copy_folder_to_clipboard: { action: env_copy_folder_to_clipboard_action, commands: env_copy_folder_to_clipboard_action_commands, menus: env_copy_folder_to_clipboard_action_menus, version: "3.1.3" },
+    env_copy_selected_folders_to_clipboard: { action: env_copy_selected_folders_to_clipboard_action, menus: env_copy_selected_folders_to_clipboard_action_menus, version: "3.1.3" },
+    env_copy_selected_notes_to_clipboard: { action: env_copy_selected_notes_to_clipboard_action, menus: env_copy_selected_notes_to_clipboard_action_menus, version: "3.1.3" },
+    env_open_file_selection_in_context_builder: { action: env_open_file_selection_in_context_builder_action, menus: env_open_file_selection_in_context_builder_action_menus, version: "3.1.3" },
+    env_open_folder_in_context_builder: { action: env_open_folder_in_context_builder_action, menus: env_open_folder_in_context_builder_action_menus, version: "3.1.3" },
     lookup_list_send_to_smart_context: { action: lookup_list_send_to_smart_context_action, menus: lookup_list_send_to_smart_context_action_menus, version: lookup_list_send_to_smart_context_action_version },
-    smart_contexts_insert_codeblock: { action: smart_contexts_insert_codeblock_action, commands: smart_contexts_insert_codeblock_action_commands, version: "3.1.2" },
-    smart_contexts_open_dashboard: { action: smart_contexts_open_dashboard_action, commands: smart_contexts_open_dashboard_action_commands, ribbon_icons: smart_contexts_open_dashboard_action_ribbon_icons, menus: smart_contexts_open_dashboard_action_menus, version: "3.1.2" },
-    smart_contexts_open_new: { action: smart_contexts_open_new_action, commands: smart_contexts_open_new_action_commands, ribbon_icons: smart_contexts_open_new_action_ribbon_icons, version: "3.1.2" },
-    smart_contexts_open_onboarding: { action: smart_contexts_open_onboarding_action, commands: smart_contexts_open_onboarding_action_commands, menus: smart_contexts_open_onboarding_action_menus, version: "3.1.2" },
-    source_copy_current: { action: source_copy_current_action, commands: source_copy_current_action_commands, version: "3.1.2" },
-    source_get_context: { action: source_get_context_action, version: "3.1.2" },
-    source_open_copy_current_menu: { action: source_open_copy_current_menu_action, display_name: source_open_copy_current_menu_action_display_name, action_scope: source_open_copy_current_menu_action_action_scope, ribbon_icons: source_open_copy_current_menu_action_ribbon_icons, version: "3.1.2" }
+    smart_contexts_insert_codeblock: { action: smart_contexts_insert_codeblock_action, commands: smart_contexts_insert_codeblock_action_commands, version: "3.1.3" },
+    smart_contexts_open_dashboard: { action: smart_contexts_open_dashboard_action, commands: smart_contexts_open_dashboard_action_commands, ribbon_icons: smart_contexts_open_dashboard_action_ribbon_icons, menus: smart_contexts_open_dashboard_action_menus, version: "3.1.3" },
+    smart_contexts_open_new: { action: smart_contexts_open_new_action, commands: smart_contexts_open_new_action_commands, ribbon_icons: smart_contexts_open_new_action_ribbon_icons, version: "3.1.3" },
+    smart_contexts_open_onboarding: { action: smart_contexts_open_onboarding_action, commands: smart_contexts_open_onboarding_action_commands, menus: smart_contexts_open_onboarding_action_menus, version: "3.1.3" },
+    source_copy_current: { action: source_copy_current_action, commands: source_copy_current_action_commands, version: "3.1.3" },
+    source_get_context: { action: source_get_context_action, version: "3.1.3" },
+    source_open_copy_current_menu: { action: source_open_copy_current_menu_action, display_name: source_open_copy_current_menu_action_display_name, action_scope: source_open_copy_current_menu_action_action_scope, ribbon_icons: source_open_copy_current_menu_action_ribbon_icons, version: "3.1.3" }
   }
 };

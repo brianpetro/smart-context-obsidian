@@ -1,0 +1,465 @@
+/* Review-only overrides: the modal keeps its existing layout and controls. */
+.workspace-leaf-content[data-type="smart-context-builder"] > .view-content {
+  padding: 0;
+  overflow: hidden;
+}
+
+.sc-context-builder.sc-context-builder-view {
+  container: sc-context-review / inline-size;
+  min-width: 0;
+  gap: var(--size-4-2);
+  padding: var(--size-4-2);
+}
+
+.sc-context-builder-view .sc-context-builder-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  grid-template-areas: "identity primary" "meta meta";
+  flex: 0 0 auto;
+  align-items: start;
+  gap: var(--size-4-1) var(--size-4-2);
+}
+
+.sc-context-builder-view .sc-context-builder-origin-row {
+  display: none;
+}
+
+.sc-context-builder-view .sc-context-builder-header-copy {
+  grid-area: identity;
+  gap: 2px;
+}
+
+.sc-context-builder-view .sc-context-builder-primary {
+  grid-area: primary;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  width: auto;
+  justify-self: end;
+}
+
+.sc-context-builder-view .sc-context-builder-view-brand {
+  order: 1;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.sc-context-builder-view .sc-context-builder-view-meta {
+  grid-area: meta;
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  min-width: 0;
+}
+
+.sc-context-builder-view .sc-context-builder-summary {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-self: center;
+}
+
+.sc-context-builder-view .sc-context-builder-name .sc-context-name-input {
+  flex: 1 1 auto;
+  width: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-inline: var(--size-4-1);
+  font-size: var(--font-ui-medium);
+  font-weight: var(--font-semibold);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sc-context-builder-view .sc-context-builder-name .sc-context-name-input:hover,
+.sc-context-builder-view .sc-context-builder-name .sc-context-name-input:focus {
+  border-color: var(--background-modifier-border);
+  background: var(--background-modifier-form-field);
+}
+
+.sc-context-builder-view .sc-context-name-status {
+  flex: 0 0 auto;
+}
+
+.sc-context-builder-view .sc-context-builder-ui-chip {
+  height: auto;
+  min-height: 24px;
+  box-shadow: none;
+}
+
+.sc-context-builder-view .sc-context-builder-ui-summary > button.sc-context-builder-ui-chip::before {
+  content: none;
+}
+
+.sc-context-builder-view .sc-context-builder-ui-primary-control {
+  width: auto;
+  flex-wrap: nowrap;
+  gap: var(--size-2-1, 2px);
+}
+
+.sc-context-builder-view .sc-context-builder-ui-primary-group {
+  flex: 0 0 auto;
+}
+
+.sc-context-builder-view .sc-context-builder-ui-primary-main {
+  flex: 0 0 auto;
+  padding-inline: var(--size-4-2);
+}
+
+.sc-context-builder-view .sc-context-builder-ui-overflow,
+.sc-context-builder-view .sc-context-builder-ui-secondary-action {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sc-context-builder-view .sc-context-builder-ui-overflow:hover,
+.sc-context-builder-view .sc-context-builder-ui-secondary-action:hover {
+  background: var(--background-modifier-hover);
+}
+
+.sc-context-builder-view .sc-context-builder-review {
+  overflow-x: hidden;
+  /* Leave the last row reachable above Obsidian's overlaid status bar. */
+  padding-bottom: calc(var(--status-bar-height, 26px) + env(safe-area-inset-bottom, 0px));
+  scroll-padding-bottom: var(--status-bar-height, 26px);
+  scrollbar-gutter: stable;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* Rules share the tree's content edge; neither review layer adds an inset. */
+.sc-context-builder-view .sc-context-builder-exclusions,
+.sc-context-builder-view .sc-context-exclusions-review,
+.sc-context-builder-view .sc-context-rules-review {
+  min-width: 0;
+  padding: 0;
+}
+
+.sc-context-builder-view .sc-context-exclusions-review,
+.sc-context-builder-view .sc-context-rules-review {
+  gap: var(--size-4-2);
+}
+
+/* Pro's count row shares a class with Core's padded disclosure summary. */
+.sc-context-builder-view .sc-context-exclusions-review .sc-context-rules-summary {
+  padding: 0;
+}
+
+.sc-context-builder-view .sc-context-exclusions-back,
+.sc-context-builder-view .sc-context-rules-back {
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+
+.sc-context-builder-view .sc-context-exclusions-header,
+.sc-context-builder-view .sc-context-exclusions-group-header {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+}
+
+.sc-context-builder-view .sc-context-exclusions-group-header {
+  align-items: center;
+}
+
+.sc-context-builder-view .sc-context-exclusions-item {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: var(--size-4-2);
+}
+
+.sc-context-builder-view .sc-context-exclusions-actions {
+  grid-column: auto;
+  justify-self: end;
+}
+
+.sc-context-builder-view .sc-context-exclusions-action {
+  flex: 0 0 auto;
+}
+
+.sc-context-builder-view .sc-context-rules-item {
+  align-items: center;
+  flex-wrap: nowrap;
+  padding: var(--size-4-2);
+}
+
+.sc-context-builder-view .sc-context-rules-actions {
+  width: auto;
+  padding: 0;
+}
+
+.sc-context-builder-view .sc-context-exclusions-title:focus-visible,
+.sc-context-builder-view .sc-context-rules-title:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
+}
+
+/* The primary control already offers Add sources when membership is empty. */
+.sc-context-builder-view .sc-context-builder-header:has([data-intent="add_sources"]) .sc-context-builder-source-nav {
+  display: none;
+}
+
+.sc-context-builder-view .sc-context-builder-empty {
+  margin-top: var(--size-4-2);
+  padding: var(--size-4-5) var(--size-4-3);
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  text-align: start;
+}
+
+.sc-context-builder-view .sc-context-builder-empty-description {
+  margin: 0;
+}
+
+/* Both the wrapper and rendered tree use this class. Avoid double padding. */
+.sc-context-builder-view .sc-context-builder-tree {
+  padding: 0;
+}
+
+.sc-context-builder-view .sc-context-builder-tree-list {
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Indent actual children, not leaves that have no disclosure control. */
+.sc-context-builder-view .sc-context-builder-tree-list .sc-context-builder-tree-list {
+  margin-left: 10px;
+  padding-left: 22px;
+}
+
+.sc-context-builder-view .sc-context-builder-tree-toggle-spacer {
+  display: none;
+}
+
+.sc-context-builder-view .sc-context-builder-tree-row {
+  min-height: 30px;
+  padding: 1px 2px;
+}
+
+/* Obsidian/theme buttons can be flex-centered, clipping both ends of a name. */
+.sc-context-builder-view .sc-context-builder-tree-name {
+  display: block;
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: start;
+}
+
+.sc-context-builder-view .sc-context-builder-tree-size,
+.sc-context-builder-view .sc-context-builder-tree-count {
+  display: inline-flex;
+  padding-inline: var(--size-4-1);
+  background: transparent;
+}
+
+.sc-context-builder-view .sc-context-builder-tree-size {
+  gap: 0.25em;
+}
+
+.sc-context-builder-view .sc-context-builder-tree-remove,
+.sc-context-builder-view .sc-context-builder-tree-toggle,
+.sc-context-builder-view .sc-context-builder-tree-toggle-all {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.sc-context-builder-view .sc-context-builder-tree-remove {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  color: var(--text-faint);
+}
+
+.sc-context-builder-view .sc-context-builder-tree-row:hover .sc-context-builder-tree-remove,
+.sc-context-builder-view .sc-context-builder-tree-row:focus-within .sc-context-builder-tree-remove {
+  color: var(--text-muted);
+}
+
+.sc-context-builder-view .sc-context-builder-tree-remove:not(.is-disabled):hover {
+  color: var(--text-error);
+  background: var(--background-modifier-hover);
+}
+
+.sc-context-builder-view .sc-context-builder-tree-toggle-all {
+  margin-bottom: 0;
+}
+
+.sc-context-builder-view .sc-context-builder-source-nav {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+}
+
+.sc-context-builder-view .sc-context-builder-view-add {
+  min-height: 32px;
+  color: var(--text-normal);
+}
+
+.sc-context-builder-view button:focus-visible,
+.sc-context-builder-view .sc-context-name-input:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
+}
+
+/* Keep the identity area expanded through the name-to-description pointer handoff. */
+.sc-context-builder-view .sc-context-builder-header:has(.sc-context-name-input:focus),
+.sc-context-builder-view .sc-context-builder-header:has(.sc-context-builder-description-preview:active) {
+  grid-template-areas: "identity identity" "primary primary" "meta meta";
+}
+
+/* Edit below the identity/actions row instead of pushing the actions beneath it. */
+.sc-context-builder-view .sc-context-builder-header:has(.sc-context-builder-description-editor:not([hidden])) {
+  grid-template-areas: "identity primary" "editor editor" "meta meta";
+}
+
+.sc-context-builder-view .sc-context-builder-header:has(.sc-context-builder-description-editor:not([hidden])):has(.sc-context-name-input:focus) {
+  grid-template-areas: "identity identity" "primary primary" "editor editor" "meta meta";
+}
+
+.sc-context-builder-view .sc-context-builder-description-editor {
+  grid-area: editor;
+  min-width: 0;
+}
+
+.sc-context-builder-view .sc-context-builder-name .sc-context-name-input:focus {
+  text-overflow: clip;
+}
+
+.sc-context-builder-view .sc-context-builder-description-preview {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 24px;
+  padding: 0 var(--size-4-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  font-weight: normal;
+  text-align: start;
+}
+
+.sc-context-builder-view .sc-context-builder-description-preview:hover {
+  background: var(--background-modifier-hover);
+}
+
+.sc-context-builder-view .sc-context-builder-description-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.sc-context-builder-view .sc-context-builder-description-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--size-4-1);
+  padding-top: var(--size-4-1);
+}
+
+.sc-context-builder.sc-context-builder-view.is-drag-over {
+  outline: 2px dashed var(--interactive-accent);
+  outline-offset: -3px;
+  background: color-mix(in srgb, var(--interactive-accent) 6%, var(--background-primary));
+}
+
+/* Keep actions beside the name even in a narrow sidebar, not on another row. */
+@container sc-context-review (max-width: 680px) {
+  .sc-context-builder-view .sc-context-builder-ui-button-label {
+    display: none;
+  }
+
+  .sc-context-builder-view .sc-context-builder-ui-primary-main,
+  .sc-context-builder-view .sc-context-builder-ui-primary-chevron,
+  .sc-context-builder-view .sc-context-builder-ui-overflow,
+  .sc-context-builder-view .sc-context-builder-ui-secondary-action {
+    width: 28px;
+    min-width: 28px;
+    min-height: 32px;
+    height: 32px;
+    padding: 0;
+    flex: 0 0 auto;
+  }
+}
+
+@container sc-context-review (min-width: 360px) {
+  .sc-context-builder-view .sc-context-builder-ui-primary-control[data-intent="add_sources"] .sc-context-builder-ui-button-label {
+    display: inline;
+  }
+
+  .sc-context-builder-view .sc-context-builder-ui-primary-control[data-intent="add_sources"] .sc-context-builder-ui-primary-main {
+    width: auto;
+    padding-inline: var(--size-4-2);
+  }
+}
+
+@container sc-context-review (max-width: 540px) {
+  .sc-context-builder-view .sc-context-builder-view-add {
+    width: 32px;
+    padding: 0;
+    gap: 0;
+    font-size: 0;
+    justify-content: center;
+  }
+}
+
+@container sc-context-review (max-width: 440px) {
+  .sc-context-builder-view .sc-context-builder-tree-size-bytes {
+    display: none;
+  }
+
+  .sc-context-builder-view .sc-context-exclusions-item:not(.is-heading) {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .sc-context-builder-view .sc-context-exclusions-item:not(.is-heading) .sc-context-exclusions-actions {
+    grid-column: 2;
+    justify-self: start;
+    flex-wrap: wrap;
+  }
+
+  .sc-context-builder-view .sc-context-rules-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .sc-context-builder-view .sc-context-rules-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    padding-left: calc(16px + var(--size-4-2));
+  }
+}
+
+@media (pointer: coarse) {
+  /* Match the disclosure control's additional 16px of touch width. */
+  .sc-context-builder-view .sc-context-builder-tree-list .sc-context-builder-tree-list {
+    padding-left: 38px;
+  }
+
+  .sc-context-builder-view .sc-context-builder-tree-remove,
+  .sc-context-builder-view .sc-context-builder-tree-toggle {
+    flex-basis: 36px;
+    width: 36px;
+    height: 36px;
+  }
+
+  .sc-context-builder-view .sc-context-builder-view-add {
+    min-height: 40px;
+  }
+}

@@ -16,6 +16,7 @@ import {
 
 import { StoryModal } from 'obsidian-smart-env/src/modals/story.js';
 
+import { ContextBuilderView } from './views/context_builder_view.js';
 import { ContextsDashboardView } from './views/contexts_dashboard_view.js';
 import { ReleaseNotesView } from './views/release_notes_view.js';
 import { smart_env_config } from './default.config.js';
@@ -35,6 +36,7 @@ export default class SmartContextPlugin extends SmartPlugin {
     this.app.workspace.onLayoutReady(this.initialize.bind(this));
     this.SmartEnv.create(this, this.smart_env_config);
     ContextsDashboardView.register_item_view(this, { skip_command_registration: true });
+    ContextBuilderView.register_item_view(this, { skip_command_registration: true });
     this.ReleaseNotesView.register_item_view(this, { skip_command_registration: true });
     this.addSettingTab(new SmartContextSettingTab(this.app, this, 'smart-context-builder'));
   }

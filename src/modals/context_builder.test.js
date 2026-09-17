@@ -1,5 +1,8 @@
 import test from 'ava';
+import { create_builder_fixture, deferred } from '../test_support/context_builder.js';
+import { post_process as compose_builder } from '../components/smart-context/builder.js';
 import { ContextBuilderModal } from './context_builder.js';
+import { context_suggest_blocks } from 'obsidian-smart-env/src/actions/context-suggest/blocks.js';
 import {
   dispose_unmounted_builder,
 } from '../components/smart-context/builder.js';
@@ -457,4 +460,155 @@ test('Builder leaves name input, fuzzy input, shortcuts, and non-letters unchang
 
   t.is(prevented_count, 0);
   t.is(input.value, 'query');
+});
+
+test.serial('Sections back-navigation updates the Builder mode and runs the placed Notes action', async (t) => {
+  const previous_window = globalThis.window;
+  globalThis.window = { setTimeout: (callback) => callback() };
+  t.teardown(() => {
+    if (previous_window === undefined) delete globalThis.window;
+    else globalThis.window = previous_window;
+  });
+
+  const notes = [{ key: 'notes/a.md' }];
+  const run_calls = [];
+  const refreshed_modes = [];
+  const modal = {
+    _request_id: 0,
+    _is_closed: false,
+    _source_mode_loading: false,
+    active_source_mode: 'context_suggest_blocks',
+    last_input_value: 'section',
+    inputEl: { value: 'section', placeholder: '' },
+    suggestions: [],
+    source_modes: [{
+      action_key: 'context_suggest_sources',
+      placeholder: 'Search notes...',
+      async run(params) {
+        run_calls.push(params);
+        return notes;
+      },
+    }],
+    env: { events: { emit: () => t.fail('Back-navigation must not emit an error') } },
+    get_source_mode: ContextBuilderModal.prototype.get_source_mode,
+    is_request_current: ContextBuilderModal.prototype.is_request_current,
+    set_active_source_mode: ContextBuilderModal.prototype.set_active_source_mode,
+    update_suggestions: ContextBuilderModal.prototype.update_suggestions,
+    apply_active_source_mode_copy() {
+      this.inputEl.placeholder = this.get_source_mode(this.active_source_mode).placeholder;
+    },
+    refresh_builder_chrome() {
+      refreshed_modes.push(this.active_source_mode);
+    },
+    set_default_instructions() {},
+    update_suggestions_view() {},
+    focus_search() {},
+  };
+  const ctx = {
+    env: {
+      smart_blocks: { items: { first: { key: 'notes/a.md#First', lines: [1, 9] } } },
+    },
+  };
+  const [suggestion] = context_suggest_blocks.call(ctx);
+
+  const result = await ContextBuilderModal.prototype.handle_choose_action.call(
+    modal,
+    suggestion,
+    'arrow_left_action',
+  );
+
+  t.is(result, notes);
+  t.is(modal.suggestions, notes);
+  t.is(modal.active_source_mode, 'context_suggest_sources');
+  t.is(modal.inputEl.value, '');
+  t.is(modal.inputEl.placeholder, 'Search notes...');
+  t.is(modal.last_input_value, null);
+  t.is(run_calls.length, 1);
+  t.is(run_calls[0].modal, modal);
+  t.is(run_calls[0].event_source, 'context_builder.suggest:context_suggest_sources');
+  t.true(refreshed_modes.length > 0);
+  t.true(refreshed_modes.every((mode) => mode === 'context_suggest_sources'));
+  t.false(modal._source_mode_loading);
+});
+
+test('source handoff waits for the review view, then closes before opening the source', async (t) => {
+  const pending = deferred();
+  const calls = [];
+  const item = {}, event = { ctrlKey: true };
+  const modal = {
+    _is_closed: false,
+    smart_context: { actions: { context_open_builder_view(params) { calls.push(['view', params]); return pending.promise; } } },
+    close() { this._is_closed = true; calls.push('close'); },
+  };
+  const opening = ContextBuilderModal.prototype.open_item.call(modal, item, event);
+  t.false(modal._is_closed);
+  t.false(await ContextBuilderModal.prototype.open_item.call(modal, item, event));
+  pending.resolve({ async open_item(received_item, received_event) { calls.push(['source', received_item, received_event]); } });
+  t.true(await opening);
+  t.deepEqual(calls, [['view', { active: false }], 'close', ['source', item, event]]);
+  t.false(modal._opening_item);
+});
+
+test('failed or cancelled review handoff leaves an open modal available for retry', async (t) => {
+  const modal = {
+    _is_closed: false,
+    smart_context: { actions: { async context_open_builder_view() { throw new Error('view failed'); } } },
+    close() { t.fail('failed handoff must not close the modal'); },
+  };
+  await t.throwsAsync(() => ContextBuilderModal.prototype.open_item.call(modal, {}, {}), { message: 'view failed' });
+  t.false(modal._opening_item);
+  t.false(modal._is_closed);
+  modal.smart_context.actions.context_open_builder_view = async () => null;
+  t.false(await ContextBuilderModal.prototype.open_item.call(modal, {}, {}));
+  t.false(modal._opening_item);
+});
+
+test('closing the modal while the review opens prevents late source navigation', async (t) => {
+  const pending = deferred();
+  const modal = {
+    _is_closed: false,
+    smart_context: { actions: { context_open_builder_view() { return pending.promise; } } },
+    close() { t.fail('already closed modal must not close again'); },
+  };
+  const opening = ContextBuilderModal.prototype.open_item.call(modal, {}, {});
+  modal._is_closed = true;
+  pending.resolve({ open_item() { t.fail('late source navigation'); } });
+  t.false(await opening);
+  t.false(modal._opening_item);
+});
+
+test.serial('real modal-to-view handoff retains the pending-removal mask and the original Context', async (t) => {
+  const fixture = create_builder_fixture(t, { data: { context_items: { 'a.md': { key: 'a.md' }, 'b.md': { key: 'b.md' } } } });
+  const modal = Object.assign(Object.create(ContextBuilderModal.prototype), {
+    env: fixture.env, smart_context: fixture.ctx, item_or_collection: fixture.ctx,
+    _is_closed: false, _request_id: 0, _render_id: 0,
+    origin: { kind: 'preselected', seeded_keys: [] },
+    source_modes: [{ action_key: 'context_suggest_sources', label: 'Notes', icon: 'file' }],
+    active_source_mode: 'context_suggest_sources',
+    close() { this.onClose(); },
+  });
+  const builder = fixture.builder_element();
+  fixture.doc.body.appendChild(builder);
+  modal._builder_container = builder;
+  await compose_builder.call(fixture.smart_view, fixture.ctx, builder, {
+    modal, on_open_item: (item, event) => modal.open_item(item, event),
+  });
+  const tree = builder.querySelectorAll('.sc-context-builder-tree').find((element) => element.listeners.has('click'));
+  const remove_button = tree.querySelectorAll('.sc-context-builder-tree-remove').find((button) => button.dataset.path === 'b.md');
+  await tree.dispatch('click', { target: remove_button });
+  t.truthy(fixture.ctx.data.context_items['b.md']);
+  const item = fixture.ctx.context_items.filter()[0];
+  const event = { shiftKey: true };
+  t.true(await modal.open_item(item, event));
+  const view = fixture.leaves.find((leaf) => leaf.view)?.view;
+  t.is(view.smart_context, fixture.ctx);
+  t.true(modal._is_closed);
+  t.false(builder.isConnected);
+  t.truthy(fixture.ctx.data.context_items['b.md']);
+  t.deepEqual(view.builder.querySelectorAll('.sc-context-builder-tree-row').map((row) => row.dataset.path), ['a.md']);
+  t.deepEqual(fixture.calls.filter((call) => call[0] === 'source'), [['source', 'a.md', event]]);
+  await fixture.frame();
+  t.deepEqual(Object.keys(fixture.ctx.data.context_items), ['a.md']);
+  t.deepEqual(view.builder.querySelectorAll('.sc-context-builder-tree-row').map((row) => row.dataset.path), ['a.md']);
+  t.is(fixture.calls.filter((call) => call[0] === 'save_context').length, 1);
 });
