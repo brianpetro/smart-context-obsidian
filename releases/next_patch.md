@@ -59,3 +59,6 @@ Improved: drag-and-drop functionality by adding window blur event handling in po
 - Canonical Builder inline/menu removal shares a pending queue, preserves folder metadata, batches at the render boundary, and keeps pending rows hidden across updates and view handoff. Failures reconcile from actual membership rather than inventing rollback.
 - Direct inclusion removal is separate from exclusion restoration. Core and Pro reuse the shared target normalizer, which preserves folder:true when duplicate targets are merged. Core named-context removal restrictions remain intact.
 
+
+
+Improved: enhance environment exclusion handling in context builder tree with visual indicators and settings link
