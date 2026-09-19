@@ -13,7 +13,7 @@ import { register_item_hover_popover } from 'obsidian-smart-env/src/utils/regist
 import { get_truncated_context_selections } from '../../utils/context_output_guard.js';
 import './builder_tree.css';
 
-export const version = '3.1.7';
+export const version = '3.1.8';
 
 export const BUILDER_TREE_COLLAPSE_THRESHOLD = 50;
 export const BUILDER_TREE_CHILD_BATCH_SIZE = 100;
@@ -262,6 +262,16 @@ export function post_process(ctx, container, params = {}) {
   };
 
   const on_click = (event) => {
+    const exclusions_button = event.target?.closest?.('.sc-context-builder-tree-env-excluded');
+    if (exclusions_button && container.contains(exclusions_button)) {
+      event.preventDefault();
+      event.stopPropagation();
+      const app = ctx.env.obsidian_app;
+      app.setting.open();
+      app.setting.openTabById('smart-environment');
+      return;
+    }
+
     const toggle_all_button = event.target?.closest?.(
       '.sc-context-builder-tree-toggle-all',
     );
@@ -481,6 +491,11 @@ function render_tree_item(tree_item, params) {
     : null
   ;
   const is_missing = tree_item.exists === false || context_item?.exists === false;
+  const is_env_excluded = context_item?.is_env_excluded === true;
+  const missing_message = is_env_excluded
+    ? 'Excluded by Smart Environment settings. Review excluded files and folders in Settings > Smart Environment > Sources, then reopen this context, or remove the item from this context.'
+    : 'Missing source'
+  ;
   const remove_state = resolve_tree_item_remove_state(
     params.ctx,
     tree_item,
@@ -499,6 +514,7 @@ function render_tree_item(tree_item, params) {
   row.dataset.folder = String(is_folder);
   if (context_item) row.dataset.itemKey = context_item.key;
   if (is_missing) row.classList.add('is-missing');
+  if (is_env_excluded) row.classList.add('is-env-excluded');
   if (truncation) row.classList.add('is-truncated');
   item.appendChild(row);
 
@@ -565,7 +581,8 @@ function render_tree_item(tree_item, params) {
   }
   if (is_missing) {
     name.classList.add('is-missing');
-    name.setAttribute('title', 'Missing source');
+    name.setAttribute('title', missing_message);
+    if (is_env_excluded) name.disabled = true;
   }
   if (params.surface === 'context_builder_view') {
     const preview_hint = name.getAttribute('title');
@@ -634,10 +651,17 @@ function render_tree_item(tree_item, params) {
   }
 
   if (is_missing) {
-    const warning = activeDocument.createElement('span');
+    const warning = activeDocument.createElement(is_env_excluded ? 'button' : 'span');
     warning.className = 'sc-context-builder-tree-warning';
-    warning.setAttribute('aria-label', 'Missing source');
-    setIcon(warning, 'alert-triangle');
+    warning.setAttribute('aria-label', missing_message);
+    warning.setAttribute('title', missing_message);
+    if (is_env_excluded) {
+      warning.type = 'button';
+      warning.classList.add('sc-context-builder-tree-env-excluded');
+      warning.textContent = 'Environment exclusion - Review';
+    } else {
+      setIcon(warning, 'alert-triangle');
+    }
     row.appendChild(warning);
   }
 

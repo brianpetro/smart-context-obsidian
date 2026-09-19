@@ -1,4 +1,8 @@
 import test from 'ava';
+import { ContextItem } from 'smart-contexts/context_item.js';
+import { normalize_context_item_data } from 'smart-contexts/context_items.js';
+import { ImageContextItemAdapter } from 'smart-contexts/adapters/context-items/image.js';
+import { PdfContextItemAdapter } from 'smart-contexts/adapters/context-items/pdf.js';
 import { create_builder_fixture } from '../../test_support/context_builder.js';
 import { SmartContext } from 'obsidian-smart-env/src/items/smart_context.js';
 import { context_item_remove } from 'obsidian-smart-env/src/actions/context-item/remove.js';
@@ -1169,4 +1173,115 @@ test.serial('review full-path tooltips retain preview and missing-source informa
   const title = review.row('Docs/a.md').querySelector('.sc-context-builder-tree-name').getAttribute('title');
   t.regex(title, /^Docs\/a\.md\nHold .+ to preview$/);
   t.is(review.row('Docs/missing.md').querySelector('.sc-context-builder-tree-name').getAttribute('title'), 'Docs/missing.md\nMissing source');
+});
+
+for (const [key, adapter_class, surface] of [
+  ['Attachments/Plan.png', ImageContextItemAdapter],
+  ['Attachments/Plan.pdf', PdfContextItemAdapter],
+  ['Attachments/Plan.png', ImageContextItemAdapter, 'context_builder_view'],
+  ['Attachments/Plan.pdf', PdfContextItemAdapter, 'context_builder_view'],
+]) {
+  test.serial(`Builder ${surface || 'modal'} retains excluded ${key}, links to settings, and restores its normal row after refresh`, async (t) => {
+    const fixture = create_removal_fixture(t, { items: { [key]: {} } });
+    let excluded = true;
+    const settings_calls = [];
+    fixture.ctx.env.obsidian_app.setting = {
+      open() { settings_calls.push('open'); },
+      openTabById(id) { settings_calls.push(id); },
+    };
+    fixture.ctx.env.smart_sources = {
+      fs: {
+        is_excluded: () => excluded,
+        exists_sync() {
+          if (excluded) throw new Error('Path is excluded');
+          return true;
+        },
+      },
+    };
+    const item = Object.assign(Object.create(ContextItem.prototype), {
+      data: normalize_context_item_data(key),
+      env: fixture.ctx.env,
+    });
+    item._context_type_adapter = new adapter_class(item);
+    fixture.ctx.context_items.filter = () => [item];
+
+    let reveal_missing;
+    const tree = fixture.mount(fixture.scope, {
+      surface,
+      on_ready(callback) { reveal_missing = callback; },
+    });
+    const row = tree.row(key);
+    t.truthy(row);
+    t.true(row.classList.contains('is-missing'));
+    t.true(row.classList.contains('is-env-excluded'));
+    t.true(row.querySelector('.sc-context-builder-tree-name').disabled);
+    t.true(reveal_missing());
+    const warning = tree.row(key).querySelector('.sc-context-builder-tree-env-excluded');
+    t.is(warning.type, 'button');
+    t.is(warning.textContent, 'Environment exclusion - Review');
+    t.regex(warning.getAttribute('title'), /Settings > Smart Environment > Sources/);
+    t.regex(warning.getAttribute('aria-label'), /Excluded by Smart Environment settings/);
+    const name = tree.row(key).querySelector('.sc-context-builder-tree-name');
+    const row_children = tree.row(key).children;
+    if (surface === 'context_builder_view') {
+      t.is(name.getAttribute('title'), `${key}\n${warning.getAttribute('title')}`);
+      t.true(row_children.at(-1).classList.contains('sc-context-builder-tree-remove'));
+    } else {
+      t.is(name.getAttribute('title'), warning.getAttribute('title'));
+      t.true(row_children[1].classList.contains('sc-context-builder-tree-remove'));
+    }
+    const event = tree.click('.sc-context-builder-tree-env-excluded');
+    t.true(event.prevented);
+    t.true(event.stopped);
+    t.deepEqual(settings_calls, ['open', 'smart-environment']);
+    t.truthy(fixture.ctx.data.context_items[key]);
+    t.deepEqual(fixture.notifications, []);
+
+    excluded = false;
+    fixture.events.emit('context:updated', { item_key: 'Current' });
+    await fixture.frame();
+    t.false(tree.row(key).classList.contains('is-missing'));
+    t.false(tree.row(key).classList.contains('is-env-excluded'));
+    t.falsy(tree.row(key).querySelector('.sc-context-builder-tree-env-excluded'));
+    t.not(tree.row(key).querySelector('.sc-context-builder-tree-name').disabled, true);
+    t.false(reveal_missing());
+    t.deepEqual(fixture.notifications, []);
+  });
+}
+
+test.serial('Builder keeps ordinary missing rows distinct from environment exclusions', (t) => {
+  const fixture = create_removal_fixture(t, { items: { 'missing.md': {} } });
+  fixture.ctx.context_items.filter = () => [{
+    key: 'missing.md',
+    data: {},
+    exists: false,
+    is_env_excluded: false,
+  }];
+  const tree = fixture.mount();
+  const row = tree.row('missing.md');
+
+  t.true(row.classList.contains('is-missing'));
+  t.false(row.classList.contains('is-env-excluded'));
+  t.is(row.querySelector('.sc-context-builder-tree-name').getAttribute('title'), 'Missing source');
+  t.is(row.querySelector('.sc-context-builder-tree-warning').getAttribute('aria-label'), 'Missing source');
+  t.falsy(row.querySelector('.sc-context-builder-tree-env-excluded'));
+});
+
+test.serial('Builder removes an environment-excluded item without changing environment settings', async (t) => {
+  const fixture = create_removal_fixture(t, { items: { 'Notes/Plan.md': {} } });
+  const filter = fixture.ctx.context_items.filter;
+  fixture.ctx.context_items.filter = () => filter().map((item) => ({
+    ...item,
+    exists: false,
+    is_env_excluded: true,
+  }));
+  const tree = fixture.mount();
+
+  tree.remove('Notes/Plan.md');
+  await fixture.frame();
+
+  t.deepEqual(fixture.calls, [[{ path: 'Notes/Plan.md', folder: false }]]);
+  t.deepEqual(fixture.ctx.data.context_items, {});
+  t.deepEqual(tree.rows(), []);
+  t.deepEqual(fixture.notifications, []);
 });

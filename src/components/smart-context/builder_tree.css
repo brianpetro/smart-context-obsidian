@@ -250,6 +250,23 @@ button.sc-context-builder-tree-name:focus-visible {
   height: 20px;
 }
 
+.sc-context-builder-tree-row.is-env-excluded .sc-context-builder-tree-name,
+.sc-context-builder-tree-env-excluded {
+  color: var(--color-orange, var(--text-warning));
+}
+
+.sc-context-builder-tree-env-excluded {
+  flex-shrink: 0;
+  width: auto;
+  height: auto;
+  padding: 2px var(--size-4-1);
+  border: 1px dashed currentColor;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+}
+
 .sc-context-builder-tree .is-flash {
   outline: 2px solid var(--interactive-accent);
   outline-offset: 2px;
