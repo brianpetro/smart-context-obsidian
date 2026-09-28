@@ -4,6 +4,9 @@ import {
   get_context_output_limit_error,
   get_context_output_size,
   get_truncated_context_selections,
+  get_zip_limits,
+  ZIP_EXPORT_MAX_ITEMS,
+  ZIP_EXPORT_MAX_BYTES,
 } from './context_output_guard.js';
 
 test('context output size uses resolved item sizes', (t) => {
@@ -135,4 +138,44 @@ test('truncated selection discovery includes nested named contexts without cycle
     key: 'external:../repo',
     max_items: 1000,
   }]);
+});
+
+test('ZIP limits share defaults when Context settings or either setting are unavailable', t => {
+  const defaults = { max_zip_items: ZIP_EXPORT_MAX_ITEMS, max_zip_bytes: ZIP_EXPORT_MAX_BYTES };
+  for (const ctx of [undefined, null, {}, { settings: {} }, { settings: { actions: {} } }]) {
+    t.deepEqual(get_zip_limits(ctx), defaults);
+  }
+  t.deepEqual(get_zip_limits({ settings: { actions: { context_export_zip: { max_zip_items: 5000 } } } }), {
+    ...defaults, max_zip_items: 5000,
+  });
+  t.deepEqual(get_zip_limits({ settings: { actions: { context_export_zip: { max_zip_size_mb: 128 } } } }), {
+    ...defaults, max_zip_bytes: 128 * 1024 * 1024,
+  });
+});
+
+test('ZIP size settings convert binary MB to bytes and preserve fractional MB', t => {
+  const settings = { actions: { context_export_zip: { max_zip_items: 3000.9, max_zip_size_mb: 128.25 } } };
+  t.deepEqual(get_zip_limits({ settings }), {
+    max_zip_items: 3000,
+    max_zip_bytes: 128.25 * 1024 * 1024,
+  });
+  t.is(settings.actions.context_export_zip.max_zip_items, 3000.9);
+  t.is(settings.actions.context_export_zip.max_zip_size_mb, 128.25);
+});
+
+test('invalid ZIP size settings fall back instead of disabling the byte guard', t => {
+  for (const value of [undefined, null, NaN, Infinity, -Infinity, Number.MAX_VALUE, 0, -1, 0.5, '', '128', true, {}]) {
+    const ctx = { settings: { actions: { context_export_zip: { max_zip_items: 4000, max_zip_size_mb: value } } } };
+    t.deepEqual(get_zip_limits(ctx), { max_zip_items: 4000, max_zip_bytes: ZIP_EXPORT_MAX_BYTES });
+  }
+});
+
+test('explicit ZIP byte limits override saved MB without changing settings', t => {
+  const settings = { actions: { context_export_zip: { max_zip_items: 2, max_zip_size_mb: 128 } } };
+  for (const [value, expected] of [[1.9, 1], [0, 1], [-2, 1], [NaN, 128 * 1024 * 1024], [Infinity, 128 * 1024 * 1024], ['10', 128 * 1024 * 1024]]) {
+    t.deepEqual(get_zip_limits({ settings }, { max_zip_items: 3, max_zip_bytes: value }), {
+      max_zip_items: 3, max_zip_bytes: expected,
+    });
+  }
+  t.deepEqual(settings.actions.context_export_zip, { max_zip_items: 2, max_zip_size_mb: 128 });
 });

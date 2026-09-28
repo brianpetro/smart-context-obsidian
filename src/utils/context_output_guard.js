@@ -1,5 +1,43 @@
 import { Notice } from 'obsidian';
 
+export const ZIP_EXPORT_MAX_ITEMS = 2000;
+export const ZIP_EXPORT_MAX_BYTES = 64 * 1024 * 1024;
+
+/**
+ * Use the same limits for preflight, direct builds, tools and file drops.
+ * Explicit parameters override the saved setting; invalid settings use defaults.
+ *
+ * @param {object} ctx - Context item or its collection; absent settings use defaults.
+ * @param {object} [params={}]
+ * @param {number} [params.max_zip_items]
+ * @param {number} [params.max_zip_bytes]
+ * @returns {{max_zip_items:number, max_zip_bytes:number}}
+ */
+export function get_zip_limits(ctx, params = {}) {
+  const settings = ctx?.settings?.actions?.context_export_zip || {};
+  const configured_max_items = settings.max_zip_items;
+  const configured_max_bytes = Number.isFinite(settings.max_zip_size_mb)
+    ? Math.floor(settings.max_zip_size_mb * 1024 * 1024)
+    : 0
+  ;
+  const max_zip_items = Number.isFinite(configured_max_items) && configured_max_items >= 1
+    ? Math.floor(configured_max_items)
+    : ZIP_EXPORT_MAX_ITEMS
+  ;
+  const max_zip_bytes = Number.isSafeInteger(configured_max_bytes) && configured_max_bytes >= 1024 * 1024
+    ? configured_max_bytes
+    : ZIP_EXPORT_MAX_BYTES
+  ;
+  return {
+    max_zip_items: Number.isFinite(params.max_zip_items)
+      ? Math.max(1, Math.floor(params.max_zip_items))
+      : max_zip_items,
+    max_zip_bytes: Number.isFinite(params.max_zip_bytes)
+      ? Math.max(1, Math.floor(params.max_zip_bytes))
+      : max_zip_bytes,
+  };
+}
+
 /**
  * Show a persistent inline confirmation notice.
  *
