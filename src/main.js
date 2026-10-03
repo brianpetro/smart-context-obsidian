@@ -33,12 +33,13 @@ export default class SmartContextPlugin extends SmartPlugin {
   smart_env_config = smart_env_config;
 
   onload() {
-    this.app.workspace.onLayoutReady(this.initialize.bind(this));
     this.SmartEnv.create(this, this.smart_env_config);
     ContextsDashboardView.register_item_view(this, { skip_command_registration: true });
     ContextBuilderView.register_item_view(this, { skip_command_registration: true });
     this.ReleaseNotesView.register_item_view(this, { skip_command_registration: true });
     this.addSettingTab(new SmartContextSettingTab(this.app, this, 'smart-context-builder'));
+    this.register_ribbon_actions();
+    this.app.workspace.onLayoutReady(this.initialize.bind(this));
   }
 
   /**
@@ -49,7 +50,6 @@ export default class SmartContextPlugin extends SmartPlugin {
    */
   async initialize() {
     await this.load_new_user_state();
-    this.register_ribbon_actions();
     await this.SmartEnv.wait_for({ loaded: true });
 
     this.register_command_actions();
