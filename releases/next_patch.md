@@ -62,3 +62,6 @@ Improved: drag-and-drop functionality by adding window blur event handling in po
 
 
 Improved: enhance environment exclusion handling in context builder tree with visual indicators and settings link
+
+
+feat: enhance onload sequence by registering ribbon actions before initializing (resolved: preserve ribbon icon ordering)
